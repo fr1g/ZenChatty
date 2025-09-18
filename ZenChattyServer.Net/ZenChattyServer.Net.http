@@ -1,0 +1,6 @@
+@ZenChattyServer.Net_HostAddress = http://localhost:5277
+
+GET {{ZenChattyServer.Net_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
