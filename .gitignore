@@ -1,0 +1,158 @@
+# 版权所有：基于标准Gitignore模板整理，适用于React-Native + .NET Core全栈项目
+# 生成时间：2023-10-27
+
+### === React Native / Android ===
+# 构建输出
+android/app/build/
+android/build/
+android/.gradle/
+android/*.log
+
+# 生成的文件
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/res/raw/**
+android/app/src/main/res/drawable-*/**
+android/app/src/main/jniLibs/
+
+# 本地配置（如环境变量）
+android/local.properties
+android/.project
+android/.classpath
+android/.settings/
+
+### === React Native / iOS ===
+# 构建/编译产物
+ios/build/
+ios/*.xcworkspace
+ios/Pods/
+ios/*.xcuserdatadict
+
+# 个人用户设置 (强烈建议忽略)
+ios/**/*.xcuserstate
+ios/**/*.xcworkspace/
+ios/**/xcuserdata/
+
+# CocoaPods
+# 我们建议将 Pods 目录添加到版本控制中，除非你确保所有协作者都安装了相同版本的 CocoaPods。
+# 但通常选择忽略，因为它是根据 `Podfile.lock` 生成的。
+# ios/Pods/
+
+# 其他
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+### === Node.js ===
+# 依赖目录
+node_modules/
+/.pnp
+.pnp.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 日志
+logs
+*.log
+
+# 运行时数据
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 覆盖率目录
+coverage/
+*.lcov
+
+# 依赖树
+.npm
+.yarn-integrity
+
+# 可选缓存目录
+.npm
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+### === .NET Core ===
+# 构建输出
+[Bb]in/
+[Oo]bj/
+
+# 编译中间文件
+*.log
+*.vspscc
+*.iobj
+*.ipdb
+*.pdb
+*.cache
+
+# 项目文件
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# 用户特定文件
+*.[Cc]ache
+*.bak
+*.ncb
+*.lib
+*.sbr
+
+# NuGet 包目录 (除非在解决方案中明确引用)
+packages/
+
+# .NET Core 全局工具安装目录
+.dotnet/
+
+# Rider / ReSharper 缓存目录
+_ReSharper*/
+.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Visual Studio 代码分析缓存
+.vs/
+
+### === NuGet (跨平台) ===
+# NuGet 包和缓存
+# 在 Windows 上：
+[Nn]u[Gg]et/[Pp]ackages/
+%UserProfile%/.nuget/packages/
+
+# 在 macOS/Linux 上：
+~/.nuget/packages/
+*.nupkg
+
+# NuGet  v3 缓存
+~/.local/share/NuGet/Cache
+~/.local/share/NuGet/v3-cache
+
+# 不要忽略 NuGet 配置文件 `NuGet.Config`，因为它可能包含包源信息。
+
+### === 操作系统生成文件 ===
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+[Tt]humbs.db:encryptable
+ehthumbs.db
+[Dd]esktop.ini
+
+# Linux
+*~
