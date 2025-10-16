@@ -1,7 +1,10 @@
 const { getDefaultConfig } = require("expo/metro-config");
+const { mergeConfig } = require('@react-native/metro-config');
 const { withNativeWind } = require('nativewind/metro');
 
-const config = getDefaultConfig(__dirname)
+const config = getDefaultConfig(__dirname);
 
-module.exports = withNativeWind(config, { input: './global.css' })
+module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = withNativeWind(config, { input: './v3.css' });
+
 // deprecated: because using nativeCN but using experimental nativewind v5
