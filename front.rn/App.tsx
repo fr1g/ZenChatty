@@ -1,45 +1,23 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+import { createStaticNavigation, } from '@react-navigation/native';
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
-  return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
-  );
+import "./v3.css";
+import "./v3.output.css";
+import HomePage from './pages/HomePage';
+
+const mainRoute = {
+  initialRouteName: 'Home',
+  screens: {
+    Home: HomePage
+  }
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
+const MainEntry = createStaticNavigation(createDrawerNavigator(mainRoute));
 
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
+export default function App() {
+  return <MainEntry />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export default App;
