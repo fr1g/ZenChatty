@@ -3,22 +3,35 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import Overview from '../screens/overview';
 import Details from '../screens/details';
 import { BackButton } from '../components/BackButton';
+import MainDrawerHeader from '../components/MainDrawerHeader';
 
-const Stack = createDrawerNavigator({
+// tag MainNavigationEntrance
+
+const Navigator = createDrawerNavigator({
+    screenOptions: {
+        drawerPosition: 'right',
+        header: ({ navigation, route, options }) =>
+            <MainDrawerHeader
+                navigation={navigation}
+                route={route}
+                options={options}
+            />,
+
+    },
     screens: {
         Overview: {
             screen: Overview,
         },
         Details: {
             screen: Details,
-            options: ({ navigation }) => ({
-                headerLeft: () => <BackButton onPress={navigation.goBack} />,
-            }),
+            // options: ({ navigation }) => ({
+            //     headerLeft: () => <BackButton onPress={navigation.goBack} />,
+            // }),
         },
     },
 });
 
-type RootNavigatorParamList = StaticParamList<typeof Stack>;
+type RootNavigatorParamList = StaticParamList<typeof Navigator>;
 
 declare global {
     namespace ReactNavigation {
@@ -27,5 +40,5 @@ declare global {
     }
 }
 
-const Navigation = createStaticNavigation(Stack);
+const Navigation = createStaticNavigation(Navigator);
 export default Navigation;
