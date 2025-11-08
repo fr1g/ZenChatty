@@ -10,15 +10,8 @@ public class Message(User sender, Chat ofChat, string content)
     private string _content = content;
     public string Content
     {
-        get
-        {
-            if (this.IsCanceled) return "";
-            else return this._content;
-        }
-        set
-        {
-            this._content = value;
-        }
+        get => this.IsCanceled ? "" : this._content;
+        set => this._content = value;
     }
 
     public string Info { get; set; } = ""; // can be empty, hint, or some description JSON
@@ -26,6 +19,20 @@ public class Message(User sender, Chat ofChat, string content)
     public EMessageType Type { get; set; } = EMessageType.Normal;
     public long SentTimestamp { get; set; }
     public long ServerCaughtTimestamp { get; set; } = DateTime.Now.ToFileTimeUtc();
+    
+    public bool IsMentioningAll { get; set; } = false; // if is in private chat, will act like a force attention on object
+    public string[]? MentionedUserGuids { get; set; } = null;
+    /* Mention behavior ():
+         * Client:
+             * User input @, showing "Add Mention" button which can multi-select user and auto input those usernames with prefix @
+             * When sending message, find every '\@.*\' and get those as valid group-member-display-name,
+             * find them and append their UUID into this array, to let backend decide who should be pushed Announcement.
+             * Therefore, if the sender finally removed name after @, the one who was attempted to be mentioned won't get Announcement
+         * Server:
+             * Server get such array of guids, and check if these are existing users in current group
+             * Push Announcement to all mentioned users, with entire of this Message inside.
+             * if guid is invalid, IGNORE them.
+     */
 
     public User Sender { get; set; } = sender;
     public Chat OfChat { get; set; } = ofChat;

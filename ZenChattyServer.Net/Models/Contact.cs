@@ -1,6 +1,6 @@
 ﻿namespace ZenChattyServer.Net.Models;
 
-public class Contact
+public class Contact // design of userChatObject has been merged here.
 {
     public User Host { get; set; }
     public Chat Object { get; set; } // can be a group  or   private

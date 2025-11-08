@@ -1,18 +1,44 @@
-﻿using ZenChattyServer.Net.Models.Enums;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
+using ZenChattyServer.Net.Helpers;
+using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Models;
-public class User
+
+
+[Table("Users")] [Index(nameof(PhoneNumber), nameof(Email), nameof(CustomId), IsUnique = true)]
+public class User(string email)
 {
-    public static string LocalId { get; set; } = Guid.NewGuid().ToString();
+    [Key]
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+    public Guid LocalId { get; set; } = Guid.NewGuid();
+    
+    [EmailAddress] [Required] [MaxLength(192)]
+    public string Email { get; set; } = email;
+    
+    [MaxLength(128)]
     public string DisplayName { get; set; } = "anonymous";
-    public string CustomId { get; set; } = LocalId;
-    public EUserStatus Status { get; set; } = EUserStatus.Unknown; // just registered: new; new object: unknown
-    public string AvatarBase64 { get; set; } = "";
-    public string BackgroundBase64 { get; set; } = "";
+    
+    [MaxLength(128)]
+    public string AvatarFileLocator { get; set; } = "";
+    
+    [MaxLength(128)]
+    public string BackgroundFileLocator { get; set; } = "";
+    
+    [MaxLength(256)]
     public string Bio { get; set; } = "This guy is pleased with default bio.";
+
+    [MaxLength(32)] 
+    public string? CustomId { get; set; } = AuthHelper.DefaultShortIdGenerator();
+    
+    [MaxLength(64)]
+    public string? PhoneNumber { get; set; }
+    
+    public EUserStatus Status { get; set; } = EUserStatus.Unknown; // just registered: new; new object: unknown
     public EGender Gender { get; set; } = EGender.Unset;
     public DateTime? Birth { get; set; } = null;
-    public PrivacySettings Privacies { get; set; } = new();
-
-
+    public DateTime RegisteredAt { get; set; } = DateTime.Now;
+    
+    public virtual PrivacySettings Privacies { get; set; } = new();
 }
