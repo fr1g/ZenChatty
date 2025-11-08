@@ -1,5 +1,5 @@
-import { createStaticNavigation, StaticParamList } from '@react-navigation/native';
-import { createDrawerNavigator } from '@react-navigation/drawer';
+import { createStaticNavigation, ParamListBase, RouteProp, StaticParamList } from '@react-navigation/native';
+import { createDrawerNavigator, DrawerNavigationOptions, DrawerNavigationProp } from '@react-navigation/drawer';
 import Overview from '../screens/overview';
 import Details from '../screens/details';
 import { BackButton } from '../components/BackButton';
@@ -7,17 +7,24 @@ import MainDrawerHeader from '../components/MainDrawerHeader';
 
 // tag MainNavigationEntrance
 
-const Navigator = createDrawerNavigator({
-    screenOptions: {
-        drawerPosition: 'right',
-        header: ({ navigation, route, options }) =>
-            <MainDrawerHeader
-                navigation={navigation}
-                route={route}
-                options={options}
-            />,
+export const headerBar = ({ navigation, route, options }:
+    {
+        navigation: DrawerNavigationProp<ParamListBase, string, undefined>,
+        route: RouteProp<ParamListBase>,
+        options: DrawerNavigationOptions
+    }) => <MainDrawerHeader
+        navigation={navigation}
+        route={route}
+        options={options}
+    />
 
-    },
+export const screenOpt: DrawerNavigationOptions = {
+    drawerPosition: 'right',
+    header: headerBar,
+}
+
+const Navigator = createDrawerNavigator({
+    screenOptions: screenOpt,
     screens: {
         Overview: {
             screen: Overview,
@@ -40,5 +47,5 @@ declare global {
     }
 }
 
-const Navigation = createStaticNavigation(Navigator);
-export default Navigation;
+const Drawer = Navigator; //createStaticNavigation(Navigator);
+export default Drawer;
