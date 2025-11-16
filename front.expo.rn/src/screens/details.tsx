@@ -1,18 +1,16 @@
-import type { StaticScreenProps } from '@react-navigation/native';
+import { useRoute, type StaticScreenProps } from '@react-navigation/native';
 import { ScreenContent } from './../components/ScreenContent';
 
 import { StyleSheet, View } from 'react-native';
 
-type Props = StaticScreenProps<{
-  name: string;
-}>;
 
-export default function Details({ route }: Props) {
+export default function Details() { // { route }: Props
+  const route = useRoute();
   return (
-    <View style={styles.container}>
+    <View className='bg-emerald-300' style={styles.container}>
       <ScreenContent
         path="screens/details.tsx"
-        title={`Showing details for user ${route.params?.name}`}
+        title={`Showing path: ${route.key}`}
       />
     </View>
   );

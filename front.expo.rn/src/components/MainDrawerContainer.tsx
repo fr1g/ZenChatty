@@ -31,6 +31,7 @@ export default function MainDrawerContainer(props: Props) {
 const styles = StyleSheet.create({
     drawerContainer: {
         flex: 1,
+        padding: 0,
     },
     drawerHeader: {
         height: 100,

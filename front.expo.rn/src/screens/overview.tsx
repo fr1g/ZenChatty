@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { ScreenContent } from './../components/ScreenContent';
 
-import { StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 
 import { Button } from '../components/Button';
 
@@ -12,11 +12,7 @@ export default function Overview() {
     <View style={styles.container}>
       <ScreenContent path="screens/overview.tsx" title="Overview"></ScreenContent>
       <Button
-        onPress={() =>
-          navigation.navigate('Details', {
-            name: 'Dan',
-          })
-        }
+        onPress={() => Alert.alert("hi")}
         title="Show Details"
       />
     </View>
