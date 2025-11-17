@@ -27,7 +27,7 @@ export default function App() {
     return <SafeAreaProvider>
         <LoggedInUserInstance.Provider value={[savedCredential, setSavedCredential]}>
             {
-                savedCredential === null ?
+                savedCredential !== null ?
                     <UnauthorizedView theme={theme} /> :
                     <DefaultView theme={theme} />
             }

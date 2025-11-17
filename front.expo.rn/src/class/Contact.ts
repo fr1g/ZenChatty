@@ -13,6 +13,7 @@ export default class Contact {
     isPinned: boolean;
     isBlocked: boolean;
     displayName: string | null;
+    avatarFileLocator: string | null;
 
     constructor(
         id: string,
@@ -23,7 +24,8 @@ export default class Contact {
         addTime: Date = new Date(),
         isPinned: boolean = false,
         isBlocked: boolean = false,
-        displayName: string | null = null
+        displayName: string | null = null,
+        avatarFileLocator: string | null = null
     ) {
         this.contactId = id;
         this.host = host;
@@ -33,17 +35,32 @@ export default class Contact {
         this.addTime = addTime;
         this.isPinned = isPinned;
         this.isBlocked = isBlocked;
+
+        let isGroup = object instanceof GroupChat;
          
         if(displayName != null) {
             this.displayName = displayName;
         }
-        else if (object instanceof GroupChat) {
+        else if (isGroup) {
             this.displayName = (object as GroupChat).settings.displayName;
         } else {
             if(host.localId === (object as PrivateChat).initBy.localId) {
                 this.displayName = (object as PrivateChat).receiver.displayName;
             } else {
                 this.displayName = (object as PrivateChat).initBy.displayName;
+            }
+        }
+        if(avatarFileLocator != null) {
+            this.avatarFileLocator = avatarFileLocator;
+        }
+        else if (isGroup) {
+            this.avatarFileLocator = (object as GroupChat).settings.avatarFileLocator;
+        }
+        else{
+            if(host.localId === (object as PrivateChat).initBy.localId) {
+                this.avatarFileLocator = (object as PrivateChat).receiver.avatarFileLocator;
+            } else {
+                this.avatarFileLocator = (object as PrivateChat).initBy.avatarFileLocator;
             }
         }
     }

@@ -1,8 +1,10 @@
-﻿namespace ZenChattyServer.Net.Models;
+namespace ZenChattyServer.Net.Models;
 
-public class GroupChat(User initBy, List<GroupChatMember> members) : Chat(initBy)
+public class GroupChat(User? initBy = null, List<GroupChatMember>? members = null) : Chat(initBy)
 {
-    public List<GroupChatMember> Members { get; set; } = members;
+    public GroupChat() : this(null!) { }
+    
+    public IReadOnlyCollection<GroupChatMember> Members { get; set; } = members ?? new List<GroupChatMember>();
     public GroupSettings Settings { get; set; } = new();
-    public List<Message> GroupAnnounce { get; set; } = new();
+    public virtual ICollection<Message> GroupAnnounce { get; set; } = new List<Message>();
 }

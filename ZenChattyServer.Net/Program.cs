@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using Constants = ZenChattyServer.Net.Shared.Constants;
@@ -35,12 +34,26 @@ if (app.Environment.IsDevelopment())
     {
         userContext.Database.EnsureDeleted();
         userContext.Database.EnsureCreated();
+        
+        // Test creating a user with privacy settings
         var testUser = new User("testify@me.org");
         userContext.Add(testUser);
         userContext.SaveChanges();
+        
         var getFromDb = userContext.Users.Include(user => user.Privacies).FirstOrDefault(user => user.Email == testUser.Email);
         Console.WriteLine(getFromDb!.Bio);
         Console.WriteLine(getFromDb!.Privacies.BioVisibility);
+        
+        // Test creating a private chat
+        var anotherUser = new User("another@test.org");
+        userContext.Add(anotherUser);
+        userContext.SaveChanges();
+        
+        var privateChat = new PrivateChat(testUser, anotherUser);
+        userContext.Add(privateChat);
+        userContext.SaveChanges();
+        
+        Console.WriteLine($"Created private chat with ID: {privateChat.UniqueMark}");
     }
 }
 

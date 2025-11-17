@@ -1,9 +1,13 @@
-﻿using ZenChattyServer.Net.Models.Enums;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Models;
 
 public class Message(User sender, Chat ofChat, string content)
 {
+    public Message () : this(null!, null!, null!){}
+    [Key]
     public string TraceId { get; set; } = Guid.NewGuid().ToString();
     public bool IsCanceled { get; set; } = false;
     
@@ -34,6 +38,10 @@ public class Message(User sender, Chat ofChat, string content)
              * if guid is invalid, IGNORE them.
      */
 
+    public Guid SenderId { get; set; }
     public User Sender { get; set; } = sender;
+    
+    public string OfChatId { get; set; }
+    // nav back
     public Chat OfChat { get; set; } = ofChat;
 }

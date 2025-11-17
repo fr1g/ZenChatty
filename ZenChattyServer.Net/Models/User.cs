@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers;
@@ -10,6 +10,8 @@ namespace ZenChattyServer.Net.Models;
 [Table("Users")] [Index(nameof(PhoneNumber), nameof(Email), nameof(CustomId), IsUnique = true)]
 public class User(string email)
 {
+    public User() : this(null!) { }
+    
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public Guid LocalId { get; set; } = Guid.NewGuid();
@@ -40,5 +42,12 @@ public class User(string email)
     public DateTime? Birth { get; set; } = null;
     public DateTime RegisteredAt { get; set; } = DateTime.Now;
     
+
     public virtual PrivacySettings Privacies { get; set; } = new();
+    
+    public virtual ICollection<Contact> Contacts { get; set; } = new List<Contact>();
+    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
+    public virtual ICollection<GroupChatMember> GroupMemberships { get; set; } = new List<GroupChatMember>();
+    public virtual ICollection<PrivateChat> PrivateChats { get; set; } = new List<PrivateChat>();
+    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
 }
