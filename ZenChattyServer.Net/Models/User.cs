@@ -19,7 +19,7 @@ public class User(string email)
     
     [MaxLength(128)]
     public string DisplayName { get; set; } = "anonymous";
-    
+        
     [MaxLength(128)]
     public string AvatarFileLocator { get; set; } = "";
     

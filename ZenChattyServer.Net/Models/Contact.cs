@@ -1,9 +1,10 @@
 ﻿namespace ZenChattyServer.Net.Models;
 
-public class Contact // design of userChatObject has been merged here.
+public class Contact(User opener, Chat chat) // design of userChatObject has been merged here.
 {
-    public User Host { get; set; }
-    public Chat Object { get; set; } // can be a group  or   private
+    public Guid ContactId { get; set; } = Guid.NewGuid();
+    public User Host { get; set; } = opener;
+    public Chat Object { get; set; } = chat; // can be a group  or   private
     public ushort LastUnreadCount { get; set; }
     public DateTime LastUsed { get; set; }
     public DateTime AddTime { get; set; } = DateTime.Now;

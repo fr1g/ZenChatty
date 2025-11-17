@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
-import { bg } from "../../class/ConstBgStyles";
+import { bg } from "../../class/shared/ConstBgStyles";
 import UserCredential from "../../class/UserCredential";
 
 

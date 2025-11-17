@@ -25,10 +25,10 @@ export default function UnauthorizedView({ theme }: { theme: ReactNavigation.The
     return <NavigationContainer theme={theme}>
         <Navigator.Navigator className="bg-transparent" initialRouteName="Login" style={{ marginTop: insetHeight }} >
             <Navigator.Screen name='Login'>
-                {(props) => <Login doLogin={doLogin} />}
+                {() => <Login doLogin={doLogin} />}
             </Navigator.Screen>
             <Navigator.Screen name='Register'>
-                {(props) => <Register doLogin={doLogin} />}
+                {() => <Register doLogin={doLogin} />}
             </Navigator.Screen>
         </Navigator.Navigator>
     </NavigationContainer>
