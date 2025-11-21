@@ -12,6 +12,8 @@ public class GroupChatMember(User member)
     
     public Guid TheGuyId { get; set; }
     public virtual User TheGuy { get; set; } = member;
+    public Guid GroupChatId { get; set; }
+    public virtual GroupChat GroupChat { get; set; } = null!;
     public Guid? InvitedById { get; set; } = null;
     public virtual User? InvitedBy { get; set; } = null;
 

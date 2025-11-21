@@ -132,12 +132,14 @@ try {
     }
     exit 1
 }
-
+$user2Id = ""
 try {
     $headers = @{ Authorization = "Bearer $user2Token" }
+    echo "$user2Token"
     $response = Invoke-WebRequest -Uri "$baseUrl/api/auth/userinfo" -Method Get -Headers $headers
     $user2Info = $response.Content | ConvertFrom-Json
-    $user2Id = $user2Info.LocalId
+    Write-Host "用户2信息: $($user2Info | ConvertTo-Json)"
+    $user2Id = $user2Info.userId
     Write-Host "✓ 用户2信息获取成功: $user2Id"
 } catch {
     Write-Host "✗ 用户2信息获取失败: $($_.Exception.Message)"
@@ -176,6 +178,7 @@ $addFriendData = @{
 $addFriend = $null
 try {
     $headers = @{ Authorization = "Bearer $user1Token" }
+    Write-Host "$user1Token + $($addFriendData | ConvertTo-Json)"
     $addFriend = Invoke-WebRequest -Uri "$baseUrl/api/social/add-friend" -Method Post -Body ($addFriendData | ConvertTo-Json) -Headers $headers -ContentType "application/json"
     $responseBody = $addFriend.Content | ConvertFrom-Json
     $chatId = $responseBody.ChatId

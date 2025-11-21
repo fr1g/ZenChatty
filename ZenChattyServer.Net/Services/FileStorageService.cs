@@ -85,7 +85,8 @@ public class FileStorageService
     /// 上传文件
     /// </summary>
     public async Task<(bool success, UserFile? userFile, string message)> UploadFileAsync(
-        string uploaderId, Stream fileStream, string fileName, EFileType fileType, string fileExtension)
+        string uploaderId, Stream fileStream, string fileName, EFileType fileType, string fileExtension,
+        IProgress<(long bytesRead, long totalBytes)>? progress = null)
     {
         try
         {
@@ -101,9 +102,18 @@ public class FileStorageService
             if (File.Exists(storagePath))
                 return (false, null, "文件已存在，请重试");
 
-            // 保存文件到磁盘
+            // 保存文件到磁盘（带进度报告）
             using var file = File.Create(storagePath);
-            await fileStream.CopyToAsync(file);
+            var buffer = new byte[81920]; // 80KB buffer
+            long totalBytesRead = 0;
+            int bytesRead;
+            
+            while ((bytesRead = await fileStream.ReadAsync(buffer)) > 0)
+            {
+                await file.WriteAsync(buffer.AsMemory(0, bytesRead));
+                totalBytesRead += bytesRead;
+                progress?.Report((totalBytesRead, fileStream.Length));
+            }
 
             // 获取文件信息
             var fileInfo = new FileInfo(storagePath);
@@ -140,6 +150,22 @@ public class FileStorageService
         catch (Exception ex)
         {
             _logger.LogError(ex, "文件上传失败");
+            
+            // 清理可能已创建的文件
+            var storagePath = GetStoragePath(GenerateFileLocator(fileType, fileExtension));
+            if (File.Exists(storagePath))
+            {
+                try
+                {
+                    File.Delete(storagePath);
+                    _logger.LogInformation("已清理上传失败的文件: {FilePath}", storagePath);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger.LogWarning(deleteEx, "清理上传失败文件时出错: {FilePath}", storagePath);
+                }
+            }
+            
             return (false, null, "文件上传失败");
         }
     }

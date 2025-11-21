@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using ZenChattyServer.Net.Helpers;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Request;
+using ZenChattyServer.Net.Models.Response;
 
 namespace ZenChattyServer.Net.Services;
 
@@ -81,6 +83,118 @@ public class UserSocialService
             _logger.LogError(ex, "创建私聊失败");
             return (false, "", "Failed to create private chat");
         }
+    }
+
+    /// <summary>
+    /// 查询用户信息（根据隐私设置过滤）
+    /// </summary>
+    public async Task<UserInfoResponse> QueryUserInfoAsync(string requesterUserId, string email, string? customId)
+    {
+        try
+        {
+            var requester = await _context.Users
+                .Include(u => u.Privacies)
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
+            
+            if (requester == null)
+                return new UserInfoResponse { success = false, message = "请求用户不存在" };
+
+            // 查找目标用户
+            var targetUser = await _context.Users
+                .Include(u => u.Privacies)
+                .FirstOrDefaultAsync(u => u.Email == email || u.CustomId == customId);
+            
+            if (targetUser == null)
+                return new UserInfoResponse { success = false, message = "目标用户不存在" };
+
+            // 检查是否允许通过搜索发现
+            if (!targetUser.Privacies.IsDiscoverableViaSearch)
+                return new UserInfoResponse { success = false, message = "该用户不允许被搜索" };
+
+            // 检查关系以确定可见性
+            var isFriend = RelationshipHelper.IsUserAFriend(_context, requester,  targetUser);
+            var isInSameGroup = await IsInSameGroupAsync(requester.LocalId.ToString(), targetUser.LocalId.ToString());
+
+            // 根据隐私设置过滤用户信息
+            var filteredUserInfo = FilterUserInfoByPrivacy(targetUser, isFriend, isInSameGroup);
+            
+            return filteredUserInfo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "查询用户信息失败");
+            return new UserInfoResponse { success = false, message = "查询用户信息失败" };
+        }
+    }
+
+    /// <summary>
+    /// 根据隐私设置过滤用户信息
+    /// </summary>
+    private UserInfoResponse FilterUserInfoByPrivacy(User targetUser, bool isFriend, bool isInSameGroup)
+    {
+        var response = new UserInfoResponse
+        {
+            LocalId = targetUser.LocalId,
+            success = true,
+            message = "查询成功"
+        };
+
+        // 基本信息（总是可见）
+        response.DisplayName = targetUser.DisplayName;
+        response.AvatarFileLocator = targetUser.AvatarFileLocator;
+        response.BackgroundFileLocator = targetUser.BackgroundFileLocator;
+        response.CustomId = targetUser.CustomId;
+        response.Status = targetUser.Status;
+        response.RegisteredAt = targetUser.RegisteredAt;
+
+        // 根据隐私设置过滤敏感信息
+        var privacy = targetUser.Privacies;
+
+        // 邮箱可见性检查
+        if (privacy.ContactVisibility == EPrivacyVisibilityRange.Everyone ||
+            (privacy.ContactVisibility == EPrivacyVisibilityRange.FriendsAndGroups && (isFriend || isInSameGroup)) ||
+            (privacy.ContactVisibility == EPrivacyVisibilityRange.Friends && isFriend))
+        {
+            response.Email = targetUser.Email;
+            response.PhoneNumber = targetUser.PhoneNumber;
+        }
+
+        // 个人简介可见性检查
+        if (privacy.BioVisibility == EPrivacyVisibilityRange.Everyone ||
+            (privacy.BioVisibility == EPrivacyVisibilityRange.FriendsAndGroups && (isFriend || isInSameGroup)) ||
+            (privacy.BioVisibility == EPrivacyVisibilityRange.Friends && isFriend))
+        {
+            response.Bio = targetUser.Bio;
+        }
+
+        // 性别可见性检查
+        if (privacy.GenderVisibility == EPrivacyVisibilityRange.Everyone ||
+            (privacy.GenderVisibility == EPrivacyVisibilityRange.FriendsAndGroups && (isFriend || isInSameGroup)) ||
+            (privacy.GenderVisibility == EPrivacyVisibilityRange.Friends && isFriend))
+        {
+            response.Gender = targetUser.Gender;
+            response.Birth = targetUser.Birth;
+        }
+
+        return response;
+    }
+
+    /// <summary>
+    /// 检查两个用户是否在同一个群组中
+    /// </summary>
+    private async Task<bool> IsInSameGroupAsync(string user1Id, string user2Id)
+    {
+        var user1Groups = await _context.GroupChatMembers
+            .Where(gm => gm.TheGuy.LocalId.ToString() == user1Id)
+            .Select(gm => gm.GroupChatId)
+            .ToListAsync();
+
+        var user2Groups = await _context.GroupChatMembers
+            .Where(gm => gm.TheGuy.LocalId.ToString() == user2Id)
+            .Select(gm => gm.GroupChatId)
+            .ToListAsync();
+
+        return user1Groups.Intersect(user2Groups).Any();
     }
 
     /// <summary>
@@ -654,5 +768,77 @@ public class UserSocialService
             _logger.LogError(ex, "拉黑用户失败");
             return (false, "拉黑用户失败");
         }
+        }
+
+    #region 隐私设置更新方法
+
+    /// <summary>
+    /// 更新用户隐私设置
+    /// </summary>
+    public async Task<BasicResponse> UpdatePrivacySettingsAsync(string userId, UpdatePrivacySettingsRequest request)
+    {
+        try
+        {
+            // 验证用户存在
+            var user = await _context.Users
+                .Include(u => u.Privacies)
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == userId);
+            if (user == null)
+            {
+                return new BasicResponse { success = false, content = "用户不存在" };
+            }
+
+            // 更新隐私设置字段（仅更新非空值）
+            if (request.IsDiscoverableViaSearch.HasValue)
+                user.Privacies.IsDiscoverableViaSearch = request.IsDiscoverableViaSearch.Value != EPrivacyVisibilityRange.None;
+            if (request.IsAddableFromGroup.HasValue)
+                user.Privacies.IsAddableFromGroup = request.IsAddableFromGroup.Value != EPrivacyVisibilityRange.None;
+            if (request.IsGroupInviteAllowed.HasValue)
+                user.Privacies.IsInvitableToGroup = request.IsGroupInviteAllowed.Value != EPrivacyVisibilityRange.None;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("用户 {UserId} 更新了隐私设置", userId);
+            return new BasicResponse { success = true, content = "隐私设置更新成功" };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "更新用户 {UserId} 隐私设置时发生错误", userId);
+            return new BasicResponse { success = false, content = "隐私设置更新失败" };
+        }
     }
+
+    /// <summary>
+    /// 获取用户隐私设置
+    /// </summary>
+    public async Task<PrivacySettingsResponse> GetPrivacySettingsAsync(string userId)
+    {
+        try
+        {
+            var user = await _context.Users
+                .Include(u => u.Privacies)
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == userId);
+            if (user == null)
+            {
+                return new PrivacySettingsResponse { success = false, message = "用户不存在" };
+            }
+
+            var privacy = user.Privacies;
+            return new PrivacySettingsResponse
+            {
+                success = true,
+                message = "获取隐私设置成功",
+                IsDiscoverableViaSearch = privacy.IsDiscoverableViaSearch ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None,
+                IsAddableFromGroup = privacy.IsAddableFromGroup ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None,
+                IsGroupInviteAllowed = privacy.IsInvitableToGroup ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "获取用户 {UserId} 隐私设置时发生错误", userId);
+            return new PrivacySettingsResponse { success = false, message = "获取隐私设置失败" };
+        }
+    }
+
+    #endregion
 }

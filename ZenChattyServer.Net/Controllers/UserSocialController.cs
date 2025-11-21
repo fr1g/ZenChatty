@@ -32,6 +32,30 @@ public class UserSocialController : ControllerBase
         _authService = authService;
     }
 
+    #region 用户信息查询接口
+
+    /// <summary>
+    /// 查询用户信息（根据隐私设置过滤）
+    /// </summary>
+    [HttpPost("query-user-info")]
+    public async Task<ActionResult<UserInfoResponse>> QueryUserInfo([FromBody] UserInfoQueryRequest request)
+    {
+        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
+        if (string.IsNullOrEmpty(token))
+            return Unauthorized(new BasicResponse { content = "Missing AccessToken", success = false });
+
+        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
+        if (!isValid || user == null)
+            return Unauthorized(new BasicResponse { content = "Token invalid", success = false });
+
+        var result = await _userSocialService.QueryUserInfoAsync(user.LocalId.ToString(), request.Email, request.CustomId);
+        
+        if (!result.success)
+            return BadRequest(result);
+        
+        return Ok(result);
+    }
+
     #region 私聊相关接口
 
     /// <summary>
@@ -139,7 +163,7 @@ public class UserSocialController : ControllerBase
         Console.WriteLine(result.message);
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.chatId }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
+            UnprocessableEntity(new BasicResponse { content = result.message, success = false });
     }
 
     #endregion
@@ -602,6 +626,54 @@ public class UserSocialController : ControllerBase
         
         return Ok(contacts);
     }
+
+    #endregion
+
+    #region 隐私设置管理接口
+
+    /// <summary>
+    /// 更新用户隐私设置
+    /// </summary>
+    [HttpPost("privacy/update")]
+    public async Task<ActionResult<BasicResponse>> UpdatePrivacySettings([FromBody] UpdatePrivacySettingsRequest request)
+    {
+        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
+        if (string.IsNullOrEmpty(token))
+            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+
+        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
+        if (!isValid || user == null)
+            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
+
+        var result = await _userSocialService.UpdatePrivacySettingsAsync(user.LocalId.ToString(), request);
+        
+        return result.success ? 
+            Ok(result) : 
+            BadRequest(result);
+    }
+
+    /// <summary>
+    /// 获取用户隐私设置
+    /// </summary>
+    [HttpGet("privacy/get")]
+    public async Task<ActionResult<PrivacySettingsResponse>> GetPrivacySettings()
+    {
+        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
+        if (string.IsNullOrEmpty(token))
+            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+
+        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
+        if (!isValid || user == null)
+            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
+
+        var result = await _userSocialService.GetPrivacySettingsAsync(user.LocalId.ToString());
+        
+        return result.success ? 
+            Ok(result) : 
+            BadRequest(result);
+    }
+
+    #endregion
 
     #endregion
 }

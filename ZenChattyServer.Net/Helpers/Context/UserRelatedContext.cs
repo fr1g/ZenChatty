@@ -82,7 +82,7 @@ public class UserRelatedContext : DbContext
             .HasOne(gcm => gcm.TheGuy)
             .WithMany(u => u.GroupMemberships)
             .HasForeignKey("TheGuyId")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
             
         modelBuilder.Entity<GroupChatMember>()
             .HasOne(gcm => gcm.InvitedBy)
@@ -93,7 +93,7 @@ public class UserRelatedContext : DbContext
         modelBuilder.Entity<GroupChat>()
             .HasMany(gc => gc.Members)
             .WithOne()
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
             
         modelBuilder.Entity<GroupChat>()
             .HasMany(gc => gc.AnnouncementMessages)

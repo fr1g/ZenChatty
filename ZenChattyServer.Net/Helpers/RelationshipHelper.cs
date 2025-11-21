@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 
@@ -16,7 +16,7 @@ public class RelationshipHelper
             .FirstOrDefault(pc => 
                 ((pc.InitBy.LocalId == looker.LocalId && pc.Receiver.LocalId == looking.LocalId) ||
                  (pc.InitBy.LocalId == looking.LocalId && pc.Receiver.LocalId == looker.LocalId)) &&
-                !pc.IsInformal);
+                !pc.IsInformal); // must be existing
                 
         return privateChat != null;
     }

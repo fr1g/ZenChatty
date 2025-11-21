@@ -13,11 +13,13 @@ public class FileController : ControllerBase
 {
     private readonly FileStorageService _fileStorageService;
     private readonly AuthService _authService;
+    private readonly ILogger<FileController> _logger;
 
-    public FileController(FileStorageService fileStorageService, AuthService authService)
+    public FileController(FileStorageService fileStorageService, AuthService authService, ILogger<FileController> logger)
     {
         _fileStorageService = fileStorageService;
         _authService = authService;
+        _logger = logger;
     }
 
     /// <summary>
@@ -43,13 +45,21 @@ public class FileController : ControllerBase
 
         try
         {
-            // 上传文件
+            // 上传文件（带进度报告）
+            var progress = new Progress<(long bytesRead, long totalBytes)>(report =>
+            {
+                var percentage = (double)report.bytesRead / report.totalBytes * 100;
+                _logger.LogInformation("文件上传进度: {BytesRead}/{TotalBytes} ({Percentage:F1}%)", 
+                    report.bytesRead, report.totalBytes, percentage);
+            });
+            
             var result = await _fileStorageService.UploadFileAsync(
                 user.LocalId.ToString(),
                 request.File.OpenReadStream(),
                 request.File.FileName,
                 fileType.Value,
-                request.FileExtension
+                request.FileExtension,
+                progress
             );
 
             if (!result.success || result.userFile == null)

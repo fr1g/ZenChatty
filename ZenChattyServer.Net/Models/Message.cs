@@ -8,7 +8,7 @@ public class Message(User sender, Chat ofChat, string content)
 {
     public Message () : this(null!, null!, null!){}
     [Key]
-    public string TraceId { get; set; } = Guid.NewGuid().ToString();
+    public string TraceId { get; set; } = Guid.NewGuid().ToString(); // todo ??????
     public bool IsCanceled { get; set; } = false;
     
     private string _content = content;

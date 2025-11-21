@@ -1,4 +1,4 @@
-﻿namespace ZenChattyServer.Net.Models.Response;
+namespace ZenChattyServer.Net.Models.Response;
 
 public class BasicResponse
 {
