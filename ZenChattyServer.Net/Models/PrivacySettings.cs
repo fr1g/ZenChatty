@@ -17,6 +17,7 @@ public class PrivacySettings
     public bool IsInvitableToGroup { get; set; } = false;
     public bool IsAddableFromGroup { get; set; } = false;
     public bool IsNewChatKeepSilent { get; set; } = false;
+    public bool AllowViewInfoFromGroupChat { get; set; } = false;
 
     public EPrivacyVisibilityRange ContactVisibility { get; set; } = EPrivacyVisibilityRange.None;
     public EPrivacyVisibilityRange BioVisibility { get; set; } = EPrivacyVisibilityRange.FriendsAndGroups;

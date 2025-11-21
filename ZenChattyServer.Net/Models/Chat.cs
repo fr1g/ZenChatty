@@ -12,7 +12,7 @@ public class Chat(User initBy)
     public string UniqueMark { get; set; }  = Guid.NewGuid().ToString();
     
     public Guid InitById { get; set; }
-    public User InitBy { get; set; } = initBy;
+    public virtual User InitBy { get; set; } = initBy;
     
     public virtual ICollection<Message> History { get; set; } = new List<Message>();
     public EChatStatus Status { get; set; } = EChatStatus.Normal;

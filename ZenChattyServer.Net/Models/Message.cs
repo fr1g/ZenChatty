@@ -26,9 +26,11 @@ public class Message(User sender, Chat ofChat, string content)
     
     public bool IsMentioningAll { get; set; } = false; // if is in private chat, will act like a force attention on object
     public string[]? MentionedUserGuids { get; set; } = null;
+    
+    public bool IsAnnouncement { get; set; } = false; // 是否为群公告
     /* Mention behavior ():
          * Client:
-             * User input @, showing "Add Mention" button which can multi-select user and auto input those usernames with prefix @
+             * User input @, showing "Add Mention" button which multi-select user and auto input those usernames with prefix @
              * When sending message, find every '\@.*\' and get those as valid group-member-display-name,
              * find them and append their UUID into this array, to let backend decide who should be pushed Announcement.
              * Therefore, if the sender finally removed name after @, the one who was attempted to be mentioned won't get Announcement
@@ -39,9 +41,11 @@ public class Message(User sender, Chat ofChat, string content)
      */
 
     public Guid SenderId { get; set; }
-    public User Sender { get; set; } = sender;
+    public virtual User Sender { get; set; } = sender;
+    
+    public string? ViaGroupChatId { get; set; } = null;
     
     public string OfChatId { get; set; }
     // nav back
-    public Chat OfChat { get; set; } = ofChat;
+    public virtual Chat OfChat { get; set; } = ofChat;
 }

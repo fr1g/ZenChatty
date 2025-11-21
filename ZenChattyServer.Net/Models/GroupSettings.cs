@@ -10,6 +10,6 @@ public class GroupSettings()
     public string DisplayName { get; set; } = "Group";
     public string AvatarFileLocator { get; set; } = "";
     public bool IsAllSilent { get; set; } = false;
-    public bool IsInviteOnly { get; set; } = false; // invite link, QR code with expiration 
+    public bool IsInviteOnly { get; set; } = false; // invite link, QR code with expiration // todo: deprecated: no need to allow group search for now (time cost)
     public bool IsPrivateChatAllowed { get; set; } = false;
 }

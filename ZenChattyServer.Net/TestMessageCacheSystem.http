@@ -1,0 +1,66 @@
+@ZenChattyServer_HostAddress = http://localhost:5197
+
+### 1. 用户登录获取Token
+POST {{ZenChattyServer_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "password123"
+}
+
+> {%
+    client.global.set("auth_token", response.body.token);
+%}
+
+### 2. 发送消息1（自动缓存）
+POST {{ZenChattyServer_HostAddress}}/api/message/send
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "chatUniqueMark": "test_chat_001",
+  "content": "这是第一条测试消息，应该会被自动缓存",
+  "messageType": "Text"
+}
+
+### 3. 发送消息2（自动缓存）
+POST {{ZenChattyServer_HostAddress}}/api/message/send
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "chatUniqueMark": "test_chat_001",
+  "content": "这是第二条测试消息，也会被缓存",
+  "messageType": "Text"
+}
+
+### 4. 查询历史消息（测试缓存查询）
+GET {{ZenChattyServer_HostAddress}}/api/message/history?chatUniqueMark=test_chat_001&page=1&pageSize=10
+Authorization: Bearer {{auth_token}}
+
+### 5. 发送更多消息（测试缓存限制）
+# 发送10条消息来测试缓存大小限制
+# 注意：系统每个聊天最多缓存1000条消息
+
+### 6. 测试分页查询（跨缓存和数据库）
+GET {{ZenChattyServer_HostAddress}}/api/message/history?chatUniqueMark=test_chat_001&page=2&pageSize=5
+Authorization: Bearer {{auth_token}}
+
+### 7. 测试不同聊天的缓存隔离
+POST {{ZenChattyServer_HostAddress}}/api/message/send
+Content-Type: application/json
+Authorization: Bearer {{auth_token}}
+
+{
+  "chatUniqueMark": "test_chat_002",
+  "content": "这是另一个聊天的消息",
+  "messageType": "Text"
+}
+
+GET {{ZenChattyServer_HostAddress}}/api/message/history?chatUniqueMark=test_chat_002&page=1&pageSize=10
+Authorization: Bearer {{auth_token}}
+
+### 8. 测试缓存同步（可选）
+# 可以通过修改数据库直接测试同步机制
+# 或者等待5分钟自动同步

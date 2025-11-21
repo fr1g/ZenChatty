@@ -14,7 +14,7 @@ import { getImgByLocator } from '../class/helpers/FileRequest';
 import ShortRecentMsgView from '../components/ShortRecentMsgView';
 
 export default async function Overview() {
-  const navigation = useNavigation();
+  // const navigation = useNavigation();
 
   const openedChats: Contact[] = MockContactBook.recentlyChats;
 

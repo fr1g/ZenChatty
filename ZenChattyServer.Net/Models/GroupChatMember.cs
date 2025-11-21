@@ -11,8 +11,10 @@ public class GroupChatMember(User member)
     public Guid Id { get; set; } = Guid.NewGuid();
     
     public Guid TheGuyId { get; set; }
-    public User TheGuy { get; set; } = member;
-    
+    public virtual User TheGuy { get; set; } = member;
+    public Guid? InvitedById { get; set; } = null;
+    public virtual User? InvitedBy { get; set; } = null;
+
     public EGroupMemberType Type { get; set; } = EGroupMemberType.Member;
     public string? GivenTitle { get; set; }
     public string Nickname { get; set; } = "";

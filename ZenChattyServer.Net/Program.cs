@@ -1,16 +1,74 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using ZenChattyServer.Net.Config;
+using ZenChattyServer.Net.Helpers;
 using ZenChattyServer.Net.Helpers.Context;
+using ZenChattyServer.Net.Hubs;
 using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Services;
 using Constants = ZenChattyServer.Net.Shared.Constants;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 
-builder.Services.AddControllers();
+// 添加内存缓存服务
+builder.Services.AddMemoryCache();
+
+// 添加日志服务
+builder.Services.AddLogging();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// config JWT
+builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddSingleton<JwtConfig>(provider =>
+{
+    var config = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtConfig>>().Value;
+    return config;
+});
+
+// config File Storage
+builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection("FileStorage"));
+builder.Services.AddScoped<FileStorageService>();
+
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ChatService>();
+builder.Services.AddScoped<ChatQueryHelper>();
+builder.Services.AddScoped<RelationshipHelper>();
+builder.Services.AddScoped<MessageValidationService>();
+builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
+builder.Services.AddSingleton<MessageCacheService>();
+builder.Services.AddScoped<CacheSyncService>();
+builder.Services.AddScoped<UserSocialService>();
+builder.Services.AddScoped<GroupManagementService>();
+builder.Services.AddScoped<GroupInviteLinkService>();
+builder.Services.AddScoped<GroupAnnouncementService>();
+builder.Services.AddDbContext<UserRelatedContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// 添加SignalR服务
+builder.Services.AddSignalR();
+
+// 添加消息批量存储服务
+builder.Services.AddHostedService<MessageBatchStorageService>();
+
+// 配置RabbitMQ
+builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.AddSingleton<RabbitMQConfig>(provider =>
+{
+    var config = new RabbitMQConfig();
+    builder.Configuration.GetSection("RabbitMQ").Bind(config);
+    return config;
+});
 
 var app = builder.Build();
 try
@@ -25,13 +83,16 @@ catch (Exception e)
     return;
 }
 
-// Configure the HTTP request pipeline.
+// HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-    using (var userContext = new UserRelatedContext())
+    
+    // 使用依赖注入创建作用域来获取数据库上下文
+    using (var scope = app.Services.CreateScope())
     {
+        var userContext = scope.ServiceProvider.GetRequiredService<UserRelatedContext>();
         userContext.Database.EnsureDeleted();
         userContext.Database.EnsureCreated();
         
@@ -62,5 +123,8 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// 添加SignalR Hub路由
+app.MapHub<ChatHub>("/chatHub");
 
 app.Run();

@@ -6,8 +6,8 @@ public class PrivateChat(User initBy, User receiver) : Chat(initBy)
 {
     public PrivateChat() : this(null!, null!) { }
     
-    public bool IsInformal { get; set; } = true; // not added into contact
+    public bool IsInformal { get; set; } = true; // 
     
     public Guid ReceiverId { get; set; } = receiver?.LocalId ?? Guid.Empty;
-    public User Receiver { get; set; } = receiver!;
+    public virtual User Receiver { get; set; } = receiver!;
 }

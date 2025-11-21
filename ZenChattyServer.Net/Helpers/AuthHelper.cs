@@ -1,4 +1,4 @@
-﻿namespace ZenChattyServer.Net.Helpers;
+namespace ZenChattyServer.Net.Helpers;
 
 public class AuthHelper
 {
@@ -9,8 +9,9 @@ public class AuthHelper
         var fromEnd = Guid.NewGuid().ToString("N");
         return $"{fromHead.Substring(0, 3)}{fromMedium.Substring(19, 6)}{fromEnd.Substring(0, 3)}";
     }
-    public static string Unbear(string rawToken)
+    public static string? Unbear(string? rawToken)
     {
-        return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken.Substring(7, rawToken.Length);
+        if (string.IsNullOrEmpty(rawToken)) return null;
+        return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken.Substring(7);
     }
 }
