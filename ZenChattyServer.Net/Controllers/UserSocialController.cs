@@ -10,28 +10,14 @@ namespace ZenChattyServer.Net.Controllers;
 
 [ApiController]
 [Route("/api/social")]
-public class UserSocialController : ControllerBase
+public class UserSocialController(
+    UserSocialService userSocialService,
+    GroupManagementService groupManagementService,
+    GroupInviteLinkService groupInviteLinkService,
+    GroupAnnouncementService groupAnnouncementService,
+    AuthService authService)
+    : ControllerBase
 {
-    private readonly UserSocialService _userSocialService;
-    private readonly GroupManagementService _groupManagementService;
-    private readonly GroupInviteLinkService _groupInviteLinkService;
-    private readonly GroupAnnouncementService _groupAnnouncementService;
-    private readonly AuthService _authService;
-
-    public UserSocialController(
-        UserSocialService userSocialService,
-        GroupManagementService groupManagementService,
-        GroupInviteLinkService groupInviteLinkService,
-        GroupAnnouncementService groupAnnouncementService,
-        AuthService authService)
-    {
-        _userSocialService = userSocialService;
-        _groupManagementService = groupManagementService;
-        _groupInviteLinkService = groupInviteLinkService;
-        _groupAnnouncementService = groupAnnouncementService;
-        _authService = authService;
-    }
-
     #region 用户信息查询接口
 
     /// <summary>
@@ -40,15 +26,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("query-user-info")]
     public async Task<ActionResult<UserInfoResponse>> QueryUserInfo([FromBody] UserInfoQueryRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "Missing AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token invalid", success = false });
-
-        var result = await _userSocialService.QueryUserInfoAsync(user.LocalId.ToString(), request.Email, request.CustomId);
+        var result = await userSocialService.QueryUserInfoAsync(refer.user!.LocalId.ToString(), request.Email, request.CustomId);
         
         if (!result.success)
             return BadRequest(result);
@@ -64,15 +45,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("private-chat")]
     public async Task<ActionResult<ChatResponse>> CreatePrivateChat([FromBody] CreatePrivateChatRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "Missing AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token invalid", success = false });
-
-        var result = await _userSocialService.CreatePrivateChatAsync(user.LocalId.ToString(), request);
+        var result = await userSocialService.CreatePrivateChatAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.chatId }) : 
@@ -80,20 +56,15 @@ public class UserSocialController : ControllerBase
     }
 
     /// <summary>
-    /// 检查拉黑状态
+    /// Check if user disabled
     /// </summary>
-    [HttpGet("is-blocked/{targetUserId}")]
-    public async Task<ActionResult<BasicResponse>> CheckBlockedStatus(string targetUserId)
+    [HttpGet("is-disabled/{targetUserId}")]
+    public async Task<ActionResult<BasicResponse>> CheckUserIsDisabled(string targetUserId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "Missing AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var isBlocked = await _userSocialService.CheckBlockStatusAsync(user.LocalId.ToString(), targetUserId);
+        var isBlocked = await userSocialService.CheckBlockStatusAsync(refer.user!.LocalId.ToString(), targetUserId);
         
         return Ok(new BasicResponse 
         { 
@@ -108,36 +79,28 @@ public class UserSocialController : ControllerBase
     [HttpPost("block/{targetUserId}")]
     public async Task<ActionResult<BasicResponse>> BlockUser(string targetUserId, [FromQuery] bool block = true)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.BlockUserAsync(user.LocalId.ToString(), targetUserId);
+        var result = await userSocialService.BlockUserAsync(refer.user!.LocalId.ToString(), targetUserId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
             BadRequest(new BasicResponse { content = result.message, success = false });
     }
 
+
+    
     /// <summary>
     /// 解除拉黑并添加好友
     /// </summary>
     [HttpPost("unblock-and-add/{targetUserId}")]
     public async Task<ActionResult<BasicResponse>> UnblockAndAddFriend(string targetUserId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
-
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.UnblockAndAddFriendAsync(user.LocalId.ToString(), targetUserId);
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
+        
+        var result = await userSocialService.UnblockAndAddFriendAsync(refer.user!.LocalId.ToString(), targetUserId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -150,17 +113,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("add-friend")]
     public async Task<ActionResult<ChatResponse>> AddFriend([FromBody] AddFriendRequest request)
     {
-        Console.WriteLine("income new friend add request");
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.AddFriendAsync(user.LocalId.ToString(), request);
-        Console.WriteLine(result.message);
+        var result = await userSocialService.AddFriendAsync(refer.user!.LocalId.ToString(), request);
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.chatId }) : 
             UnprocessableEntity(new BasicResponse { content = result.message, success = false });
@@ -176,15 +132,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group-chat")]
     public async Task<ActionResult<ChatResponse>> CreateGroupChat([FromBody] CreateGroupChatRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.CreateGroupChatAsync(user.LocalId.ToString(), request);
+        var result = await userSocialService.CreateGroupChatAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.groupId }) : 
@@ -197,15 +148,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/{groupId}/disable")]
     public async Task<ActionResult<BasicResponse>> DisableGroupChat(string groupId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.DisableGroupChatAsync(user.LocalId.ToString(), groupId);
+        var result = await userSocialService.DisableGroupChatAsync(refer.user!.LocalId.ToString(), groupId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -222,15 +168,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/admin")]
     public async Task<ActionResult<BasicResponse>> SetGroupAdmin([FromBody] GroupManagementRequest request, [FromQuery] bool isAdmin = true)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetAdminAsync(user.LocalId.ToString(), request, isAdmin);
+        var result = await groupManagementService.SetAdminAsync(refer.user!.LocalId.ToString(), request, isAdmin);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -243,15 +184,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/silent")]
     public async Task<ActionResult<BasicResponse>> SetMemberSilent([FromBody] GroupManagementRequest request, [FromQuery] bool isSilent = true)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberSilentAsync(user.LocalId.ToString(), request, isSilent);
+        var result = await groupManagementService.SetMemberSilentAsync(refer.user!.LocalId.ToString(), request, isSilent);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -264,15 +200,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/{groupId}/silent-all")]
     public async Task<ActionResult<BasicResponse>> ToggleGroupSilent(string groupId, [FromQuery] bool isSilent = true, [FromQuery] string? reason = null)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.ToggleGroupSilentAsync(user.LocalId.ToString(), groupId, isSilent, reason);
+        var result = await groupManagementService.ToggleGroupSilentAsync(refer.user!.LocalId.ToString(), groupId, isSilent, reason);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -285,15 +216,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/remove-member")]
     public async Task<ActionResult<BasicResponse>> RemoveGroupMember([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.LeaveGroupAsync(user.LocalId.ToString(), request.GroupId, request.TargetUserId);
+        var result = await groupManagementService.LeaveGroupAsync(refer.user!.LocalId.ToString(), request.GroupId, request.TargetUserId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -306,15 +232,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/invite-member")]
     public async Task<ActionResult<BasicResponse>> InviteGroupMember([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.InviteMemberAsync(user.LocalId.ToString(), request);
+        var result = await groupManagementService.InviteMemberAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -327,15 +248,10 @@ public class UserSocialController : ControllerBase
     [HttpPost("group/nickname")]
     public async Task<ActionResult<BasicResponse>> SetMemberNickname([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberNicknameAsync(user.LocalId.ToString(), request);
+        var result = await groupManagementService.SetMemberNicknameAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -345,18 +261,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 设置成员title（仅群主可操作）
     /// </summary>
-    [HttpPost("group/title")]
+    [HttpPost("group/set-title")]
     public async Task<ActionResult<BasicResponse>> SetMemberTitle([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
-
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberTitleAsync(user.LocalId.ToString(), request);
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
+        if (request.NewTitle == null || request.NewTitle.Length > 9) return BadRequest(new BasicResponse{content = "Too long or Null as title", success = false});
+        var result = await groupManagementService.SetMemberTitleAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -370,18 +281,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 创建群邀请链接
     /// </summary>
-    [HttpPost("group/invite-link")]
+    [HttpPost("group/invite-link/add")]
     public async Task<ActionResult<BasicResponse>> CreateGroupInviteLink([FromBody] GroupInviteLinkRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupInviteLinkService.CreateInviteLinkAsync(user.LocalId.ToString(), request);
+        var result = await groupInviteLinkService.CreateInviteLinkAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = $"Created successfully, invite code: {result.link?.InviteCode}", success = true }) : 
@@ -391,18 +297,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 通过邀请链接加入群聊
     /// </summary>
-    [HttpPost("group/join/{inviteCode}")]
+    [HttpPost("group/invite-link/consume/{inviteCode}")]
     public async Task<ActionResult<BasicResponse>> JoinGroupByInviteLink(string inviteCode)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupInviteLinkService.JoinGroupByInviteLinkAsync(inviteCode, user.LocalId.ToString());
+        var result = await groupInviteLinkService.JoinGroupByInviteLinkAsync(inviteCode, refer.user!.LocalId.ToString());
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -412,18 +313,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 获取群聊邀请链接
     /// </summary>
-    [HttpGet("group/{groupId}/invite-links")]
+    [HttpGet("group/invite-link/list/{groupId}")]
     public async Task<ActionResult<List<GroupInviteLink>>> GetGroupInviteLinks(string groupId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var links = await _groupInviteLinkService.GetValidInviteLinksAsync(groupId, user.LocalId.ToString());
+        var links = await groupInviteLinkService.GetValidInviteLinksAsync(groupId, refer.user!.LocalId.ToString());
         
         return Ok(links);
     }
@@ -431,18 +327,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 撤销邀请链接
     /// </summary>
-    [HttpDelete("group/invite-link/{inviteCode}")]
+    [HttpDelete("group/invite-link/del/{inviteCode}")]
     public async Task<ActionResult<BasicResponse>> RevokeGroupInviteLink(string inviteCode)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupInviteLinkService.RevokeInviteLinkAsync(user.LocalId.ToString(), inviteCode);
+        var result = await groupInviteLinkService.RevokeInviteLinkAsync(refer.user!.LocalId.ToString(), inviteCode);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -456,18 +347,13 @@ public class UserSocialController : ControllerBase
     /// <summary>
     /// 标记消息为公告
     /// </summary>
-    [HttpPost("group/message/{messageId}/mark-as-announcement")]
+    [HttpPost("group/ann/add/{messageId}")]
     public async Task<ActionResult<BasicResponse>> MarkMessageAsAnnouncement(string messageId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupAnnouncementService.MarkMessageAsAnnouncementAsync(user.LocalId.ToString(), messageId);
+        var result = await groupAnnouncementService.MarkMessageAsAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -475,20 +361,15 @@ public class UserSocialController : ControllerBase
     }
 
     /// <summary>
-    /// 取消消息的公告标记
+    /// Unmark as ann
     /// </summary>
-    [HttpPost("group/message/{messageId}/unmark-announcement")]
+    [HttpPost("group/ann/del/{messageId}")]
     public async Task<ActionResult<BasicResponse>> UnmarkAnnouncement(string messageId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupAnnouncementService.UnmarkAnnouncementAsync(user.LocalId.ToString(), messageId);
+        var result = await groupAnnouncementService.UnmarkAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -496,20 +377,15 @@ public class UserSocialController : ControllerBase
     }
 
     /// <summary>
-    /// 获取群公告列表
+    /// Get group anns 
     /// </summary>
-    [HttpGet("group/{groupId}/announcements")]
+    [HttpGet("group/ann/get/{groupId}")]
     public async Task<ActionResult<List<Message>>> GetGroupAnnouncements(string groupId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var announcements = await _groupAnnouncementService.GetAnnouncementsAsync(groupId, page, pageSize);
+        var announcements = await groupAnnouncementService.GetAnnouncementsAsync(groupId, refer.user!, page, pageSize);
         
         return Ok(announcements);
     }
@@ -517,91 +393,40 @@ public class UserSocialController : ControllerBase
     #endregion
 
     #region 隐私设置检查接口
-
-    /// <summary>
-    /// 检查隐私设置是否允许发送好友请求或群聊邀请
-    /// </summary>
-    [HttpPost("privacy/check-request")]
-    public async Task<ActionResult<BasicResponse>> CheckPrivacyForRequest([FromBody] PrivacyCheckRequest request)
-    {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
-
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.CheckPrivacySettingsForRequestAsync(
-            request.TargetUserId, user.LocalId.ToString(), request.IsGroupInvite);
-        
-        return result.allowed ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
+    // here removed a checking api which checks if one is addable - from group or by other ways.
+    // anyway, it's useless, since every check should be done during every action.
 
     /// <summary>
     /// 检查两个用户之间的拉黑状态
     /// </summary>
-    [HttpGet("privacy/block-status/{targetUserId}")]
+    [HttpGet("is-blocked/{targetUserId}")]
     public async Task<ActionResult<BasicResponse>> CheckBlockStatus(string targetUserId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var isBlocked = await _userSocialService.CheckBlockStatusAsync(user.LocalId.ToString(), targetUserId);
+        var isBlocked = await userSocialService.CheckBlockStatusAsync(refer.user!.LocalId.ToString(), targetUserId);
         
         return Ok(new BasicResponse { 
             content = isBlocked ? "Block relationship exists" : "No block relationship", 
             success = true
         });
     }
-
-    /// <summary>
-    /// 解除拉黑状态并添加好友（隐私设置检查版本）
-    /// </summary>
-    [HttpPost("privacy/unblock-and-add/{targetUserId}")]
-    public async Task<ActionResult<BasicResponse>> UnblockAndAddFriendWithPrivacyCheck(string targetUserId)
-    {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
-
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.UnblockAndAddFriendAsync(user.LocalId.ToString(), targetUserId);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
+    
     #endregion
 
     #region 其他接口
 
     /// <summary>
-    /// 更新未读消息计数
+    /// Update unread msgs
     /// </summary>
     [HttpPost("contact/{contactId}/unread")]
     public async Task<ActionResult<BasicResponse>> UpdateUnreadCount(string contactId, [FromQuery] int unreadCount)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.UpdateUnreadCountAsync(contactId, (ushort)unreadCount);
+        var result = await userSocialService.UpdateUnreadCountAsync(contactId, (ushort)unreadCount, refer.user!);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -609,20 +434,15 @@ public class UserSocialController : ControllerBase
     }
 
     /// <summary>
-    /// 获取用户联系人列表
+    /// Get contacts of oneself
     /// </summary>
-    [HttpGet("contacts")]
+    [HttpPost("contacts")]
     public async Task<ActionResult<List<Contact>>> GetContacts()
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var contacts = await _userSocialService.GetContactsAsync(user.LocalId.ToString());
+        var contacts = await userSocialService.GetContactsAsync(refer.user!.LocalId.ToString());
         
         return Ok(contacts);
     }
@@ -632,20 +452,15 @@ public class UserSocialController : ControllerBase
     #region 隐私设置管理接口
 
     /// <summary>
-    /// 更新用户隐私设置
+    /// Update one's privacies
     /// </summary>
-    [HttpPost("privacy/update")]
+    [HttpPatch("privacy/update")]
     public async Task<ActionResult<BasicResponse>> UpdatePrivacySettings([FromBody] UpdatePrivacySettingsRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.UpdatePrivacySettingsAsync(user.LocalId.ToString(), request);
+        var result = await userSocialService.UpdatePrivacySettingsAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(result) : 
@@ -658,15 +473,10 @@ public class UserSocialController : ControllerBase
     [HttpGet("privacy/get")]
     public async Task<ActionResult<PrivacySettingsResponse>> GetPrivacySettings()
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.GetPrivacySettingsAsync(user.LocalId.ToString());
+        var result = await userSocialService.GetPrivacySettingsAsync(refer.user!.LocalId.ToString());
         
         return result.success ? 
             Ok(result) : 

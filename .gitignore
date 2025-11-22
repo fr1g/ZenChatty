@@ -158,3 +158,4 @@ ehthumbs.db
 # Linux
 *~
 /x
+*.http

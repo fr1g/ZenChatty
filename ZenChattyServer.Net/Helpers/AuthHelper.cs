@@ -1,3 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
+using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Models.Response;
+using ZenChattyServer.Net.Services;
+
+
 namespace ZenChattyServer.Net.Helpers;
 
 public class AuthHelper
@@ -13,5 +19,27 @@ public class AuthHelper
     {
         if (string.IsNullOrEmpty(rawToken)) return null;
         return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken.Substring(7);
+    }
+    
+    public static async Task<(BasicResponse? failResult, bool isValid, User? user)> RejectOrNotAsync(string? token, AuthService authService)
+    {
+        (BasicResponse? failResult, bool isValid, User? user) result = (null, false, null);
+
+        if (string.IsNullOrEmpty(token))
+        {
+            result.failResult = new BasicResponse { content = "Lacking: AccessToken", success = false };
+            return result;
+        }
+
+        var (valid, user) = await authService.ValidateAccessTokenAsync(token);
+        if (!valid || user == null)
+            result.failResult = new BasicResponse { content = "Invalid: AccessToken", success = false };
+        else
+        {
+            result.isValid = valid;
+            result.user = user;
+        }
+
+        return result;
     }
 }

@@ -14,7 +14,7 @@ namespace ZenChattyServer.Net.Controllers;
 /// 消息收发API控制器
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/msg/[controller]")]
 [Authorize]
 public class MessageController : ControllerBase
 {
@@ -184,6 +184,7 @@ public class MessageController : ControllerBase
     /// </summary>
     private async Task<List<Message>> GetCombinedMessagesAsync(string chatUniqueMark, int page, int pageSize)
     {
+        // frontend need to kill same message by comparing trace id
         // 1. 从缓存获取消息
         var cachedMessages = _messageCacheService.GetCachedMessages(chatUniqueMark);
         

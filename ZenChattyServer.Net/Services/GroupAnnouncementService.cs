@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ZenChattyServer.Net.Helpers;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
@@ -82,13 +83,14 @@ public class GroupAnnouncementService
     /// <summary>
     /// 获取群公告列表（从群聊的公告集合中获取）
     /// </summary>
-    public async Task<List<Message>> GetAnnouncementsAsync(string groupId, int page = 1, int pageSize = 20)
+    public async Task<List<Message>> GetAnnouncementsAsync(string groupId, User user, int page = 1, int pageSize = 20)
     {
         try
         {
             var groupChat = await _context.GroupChats
                 .Include(gc => gc.AnnouncementMessages)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == groupId);
+            if (!RelationshipHelper.IsUserGroupMember(user, groupChat)) throw new Exception("Not a member");
 
             if (groupChat == null)
                 return new List<Message>();

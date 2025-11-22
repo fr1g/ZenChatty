@@ -11,20 +11,14 @@ using Constants = ZenChattyServer.Net.Shared.Constants;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
-// 添加内存缓存服务
 builder.Services.AddMemoryCache();
-
-// 添加日志服务
 builder.Services.AddLogging();
-
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -89,39 +83,34 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     
-    // 使用依赖注入创建作用域来获取数据库上下文
-    using (var scope = app.Services.CreateScope())
-    {
-        var userContext = scope.ServiceProvider.GetRequiredService<UserRelatedContext>();
-        userContext.Database.EnsureDeleted();
-        userContext.Database.EnsureCreated();
+    // dev test scope
+    using var scope = app.Services.CreateScope();
+    var userContext = scope.ServiceProvider.GetRequiredService<UserRelatedContext>();
+    userContext.Database.EnsureDeleted();
+    userContext.Database.EnsureCreated();
+    
+    var testUser = new User("testify@me.org");
+    userContext.Add(testUser);
+    userContext.SaveChanges();
         
-        // Test creating a user with privacy settings
-        var testUser = new User("testify@me.org");
-        userContext.Add(testUser);
-        userContext.SaveChanges();
+    var getFromDb = userContext.Users.Include(user => user.Privacies).FirstOrDefault(user => user.Email == testUser.Email);
+    Console.WriteLine(getFromDb!.Bio);
+    Console.WriteLine(getFromDb!.Privacies.BioVisibility);
         
-        var getFromDb = userContext.Users.Include(user => user.Privacies).FirstOrDefault(user => user.Email == testUser.Email);
-        Console.WriteLine(getFromDb!.Bio);
-        Console.WriteLine(getFromDb!.Privacies.BioVisibility);
+    // Test creating a private chat
+    var anotherUser = new User("another@test.org");
+    userContext.Add(anotherUser);
+    userContext.SaveChanges();
         
-        // Test creating a private chat
-        var anotherUser = new User("another@test.org");
-        userContext.Add(anotherUser);
-        userContext.SaveChanges();
+    var privateChat = new PrivateChat(testUser, anotherUser);
+    userContext.Add(privateChat);
+    userContext.SaveChanges();
         
-        var privateChat = new PrivateChat(testUser, anotherUser);
-        userContext.Add(privateChat);
-        userContext.SaveChanges();
-        
-        Console.WriteLine($"Created private chat with ID: {privateChat.UniqueMark}");
-    }
+    Console.WriteLine($"Created private chat with ID: {privateChat.UniqueMark}");
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
 
 // 添加SignalR Hub路由

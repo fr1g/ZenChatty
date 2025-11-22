@@ -4,7 +4,7 @@ public class GroupChat(User initBy, List<GroupChatMember>? members = null) : Cha
 {
     public GroupChat() : this(null!) { }
     
-    public virtual ICollection<GroupChatMember> Members { get; set; } = members ?? new List<GroupChatMember>();
+    public virtual ICollection<GroupChatMember> Members { get; set; } = members ?? [];
     public virtual GroupSettings Settings { get; set; } = new();
     
     // 公告消息集合（软拷贝，存储被标记为公告的消息）

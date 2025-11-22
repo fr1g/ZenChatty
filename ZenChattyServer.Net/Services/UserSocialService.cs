@@ -293,23 +293,21 @@ public class UserSocialService
     /// <summary>
     /// 更新Contact未读消息计数
     /// </summary>
-    public async Task<(bool success, string message)> UpdateUnreadCountAsync(string contactId, ushort unreadCount)
+    public async Task<(bool success, string message)> UpdateUnreadCountAsync(string contactId, ushort unreadCount, User user)
     {
         try
         {
             var contact = await _context.Contacts.FindAsync(Guid.Parse(contactId));
-            if (contact != null)
-            {
-                contact.LastUnreadCount = unreadCount;
-                contact.LastUsed = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-                return (true, "Unread count updated successfully");
-            }
-            return (false, "Contact does not exist");
+            if (contact == null || contact.HostId != user.LocalId) return (false, "Contact does not exist");
+            
+            contact.LastUnreadCount = unreadCount;
+            contact.LastUsed = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return (true, "Unread count updated successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新未读消息计数失败");
+            _logger.LogError(ex, "failed to update unread count");
             return (false, "Failed to update unread count");
         }
     }
@@ -448,7 +446,8 @@ public class UserSocialService
             Console.WriteLine("stage 0");
 
             // 检查是否被拉黑
-            var isBlocked = await IsUserBlockedAsync(targetUser.LocalId.ToString(), initiatorUserId);
+            var isBlocked = await CheckBlockStatusAsync(targetUser.LocalId.ToString(), initiatorUserId);
+            
             if (isBlocked)
                 return (false, "", "您已被对方拉黑，无法添加好友");
             
@@ -584,30 +583,7 @@ public class UserSocialService
             return (false, "Failed to unblock and add friend");
         }
     }
-
-    /// <summary>
-    /// 检查用户是否被拉黑
-    /// </summary>
-    public async Task<bool> IsUserBlockedAsync(string userId, string targetUserId)
-    {
-        try
-        {
-            var contact = await _context.Contacts
-                .FirstOrDefaultAsync(c => 
-                    c.HostId.ToString() == userId && 
-                    c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitById.ToString() == targetUserId || 
-                     ((PrivateChat)c.Object).ReceiverId.ToString() == targetUserId));
-
-            return contact?.IsBlocked ?? false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to check block status");
-            return false;
-        }
-    }
-
+    
     /// <summary>
     /// 解除拉黑并发送消息
     /// </summary>
