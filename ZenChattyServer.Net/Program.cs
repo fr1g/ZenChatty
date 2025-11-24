@@ -42,6 +42,7 @@ builder.Services.AddScoped<MessageValidationService>();
 builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 builder.Services.AddSingleton<MessageCacheService>();
 builder.Services.AddScoped<CacheSyncService>();
+builder.Services.AddScoped<ChatHubService>();
 builder.Services.AddScoped<UserSocialService>();
 builder.Services.AddScoped<GroupManageService>();
 builder.Services.AddScoped<GroupInviteLinkService>();

@@ -396,18 +396,17 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// 添加好友
     /// </summary>
     public async Task<(bool success, string chatId, string message)> AddFriendAsync(
-        string initiatorUserId, AddFriendRequest request)
+        string initiatorUserId, string targetUserId)
     {
         try
         {
-            // 查找目标用户 - 支持Guid格式(LocalId)和字符串格式(CustomId)
             User? targetUser = null;
             
             // 首先尝试按Guid格式查找
-            if (Guid.TryParse(request.TargetUserId, out var targetUserId))
+            if (Guid.TryParse(targetUserId, out var targetUserGuid))
             {
                 targetUser = await context.Users
-                    .FirstOrDefaultAsync(u => u.LocalId == targetUserId);
+                    .FirstOrDefaultAsync(u => u.LocalId == targetUserGuid);
             }
 
             if (targetUser == null)
@@ -439,7 +438,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             var isBlocked = await CheckBlockStatusAsync(targetUser.LocalId.ToString(), initiatorUserId);
             
             if (isBlocked)
-                return (false, "", "您已被对方拉黑，无法添加好友");
+                return (false, "", "blocked by target");
             
             Console.WriteLine("stage 1");
 
@@ -453,21 +452,23 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             // 创建正式私聊（非临时）
             var privateChat = new PrivateChat(initiator, targetUser)
             {
-                IsInformal = request.IsInformal
+                IsInformal = false
             };
 
             context.PrivateChats.Add(privateChat);
             await context.SaveChangesAsync(); // 
+            
+            var contactName = string.IsNullOrEmpty(targetUser.DisplayName) ? targetUser.CustomId : targetUser.DisplayName;
 
             // 为双方创建Contact对象
             var contact1 = new Contact(initiator, privateChat)
             {
-                DisplayName = targetUser.DisplayName ?? targetUser.CustomId
+                DisplayName = contactName
             };
 
             var contact2 = new Contact(targetUser, privateChat)
             {
-                DisplayName = initiator.DisplayName ?? initiator.CustomId
+                DisplayName = contactName
             };
 
             context.Contacts.AddRange(contact1, contact2);
@@ -476,7 +477,6 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
 
             // 发送自动打招呼消息
             await SendGreetingMessageAsync(privateChat.UniqueMark, initiatorUserId);
-
             return (true, privateChat.UniqueMark, "好友添加成功");
         }
         catch (Exception ex)

@@ -23,7 +23,7 @@ public class UserSocialController(
     /// <summary>
     /// 查询用户信息（根据隐私设置过滤）
     /// </summary>
-    [HttpPost("query-user-info")]
+    [HttpPost("get-user-info")]
     public async Task<ActionResult<UserInfoResponse>> QueryUserInfo([FromBody] UserInfoQueryRequest request)
     {
         var refer = await AuthenticateAsync();
@@ -110,26 +110,27 @@ public class UserSocialController(
     /// <summary>
     /// 添加好友
     /// </summary>
-    [HttpPost("add-friend")]
-    public async Task<ActionResult<ChatResponse>> AddFriend([FromBody] AddFriendRequest request)
+    [HttpPost("add-friend/{targetUserGuid}")]
+    public async Task<ActionResult<ChatResponse>> AddFriend(string targetUserGuid)
     {
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var result = await userSocialService.AddFriendAsync(refer.user!.LocalId.ToString(), request);
+        var result = await userSocialService.AddFriendAsync(refer.user!.LocalId.ToString(), targetUserGuid);
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.chatId }) : 
             UnprocessableEntity(new BasicResponse { content = result.message, success = false });
     }
 
     #endregion
+    
 
-    #region 群聊相关接口
-
+    #region UserGroupActons
+    
     /// <summary>
     /// 创建群聊
     /// </summary>
-    [HttpPost("group-chat")]
+    [HttpPost("group/create")]
     public async Task<ActionResult<ChatResponse>> CreateGroupChat([FromBody] CreateGroupChatRequest request)
     {
         var refer = await AuthenticateAsync();
@@ -142,180 +143,23 @@ public class UserSocialController(
             BadRequest(new BasicResponse { content = result.message, success = false });
     }
 
-    /// <summary>
-    /// 禁用群聊
-    /// </summary>
-    [HttpPost("group/disable-group/{groupId}")]
-    public async Task<ActionResult<BasicResponse>> DisableGroupChat(string groupId)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await userSocialService.DisableGroupChatAsync(refer.user!.LocalId.ToString(), groupId);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    #endregion
-
-    #region 群管理接口
-
-    /// <summary>
-    /// 设置/取消管理员
-    /// </summary>
-    [HttpPost("group/admin")]
-    public async Task<ActionResult<BasicResponse>> SetGroupAdmin([FromBody] GroupManagementRequest request, [FromQuery] bool isAdmin = true)
+    [HttpPost("group/leave-from/{groupId}")]
+    public async Task<ActionResult<BasicResponse>> LeaveGroup(string groupId)
     {
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var result = await groupManageService.SetAdminAsync(refer.user!.LocalId.ToString(), request, isAdmin);
+        var result = await groupManageService.LeaveGroupAsync(refer.user!.LocalId.ToString(), groupId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
             BadRequest(new BasicResponse { content = result.message, success = false });
     }
-
-    /// <summary>
-    /// 禁言/取消禁言成员
-    /// </summary>
-    [HttpPost("group/silent")]
-    public async Task<ActionResult<BasicResponse>> SetMemberSilent([FromBody] GroupManagementRequest request, [FromQuery] bool isSilent = true)
-    {
-        var refer = await AuthenticateAsync();
-        if (refer.failResult != null) return Unauthorized(refer.failResult);
-
-        var result = await groupManageService.SetMemberSilentAsync(refer.user!.LocalId.ToString(), request, isSilent);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// 开关全体禁言
-    /// </summary>
-    [HttpPost("group/silent-all/{groupId}")]
-    public async Task<ActionResult<BasicResponse>> ToggleGroupSilent(string groupId, [FromQuery] bool isSilent = true, [FromQuery] string? reason = null)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupManageService.ToggleGroupSilentAsync(refer.user!.LocalId.ToString(), groupId, isSilent, reason);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// 移除群成员
-    /// </summary>
-    [HttpPost("group/remove-member")]
-    public async Task<ActionResult<BasicResponse>> RemoveGroupMember([FromBody] GroupManagementRequest request)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupManageService.LeaveGroupAsync(refer.user!.LocalId.ToString(), request.GroupId, request.TargetUserId);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// 邀请成员加入群聊
-    /// </summary>
-    [HttpPost("group/invite-member")]
-    public async Task<ActionResult<BasicResponse>> InviteGroupMember([FromBody] GroupManagementRequest request)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupManageService.InviteMemberAsync(refer.user!.LocalId.ToString(), request);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// 设置成员昵称
-    /// </summary>
-    [HttpPost("group/nickname")]
-    public async Task<ActionResult<BasicResponse>> SetMemberNickname([FromBody] GroupManagementRequest request)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupManageService.SetMemberNicknameAsync(refer.user!.LocalId.ToString(), request);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// 设置成员title（仅群主可操作）
-    /// </summary>
-    [HttpPost("group/set-title")]
-    public async Task<ActionResult<BasicResponse>> SetMemberTitle([FromBody] GroupManagementRequest request)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-        if (request.NewTitle == null || request.NewTitle.Length > 9) return BadRequest(new BasicResponse{content = "Too long or Null as title", success = false});
-        var result = await groupManageService.SetMemberTitleAsync(refer.user!.LocalId.ToString(), request);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    #endregion
-
     
-
-    #region 群公告接口
-
-    /// <summary>
-    /// 标记消息为公告
-    /// </summary>
-    [HttpPost("group/ann/add/{messageId}")]
-    public async Task<ActionResult<BasicResponse>> MarkMessageAsAnnouncement(string messageId)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupAnnouncementService.MarkMessageAsAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
-    /// <summary>
-    /// Unmark as ann
-    /// </summary>
-    [HttpPost("group/ann/del/{messageId}")]
-    public async Task<ActionResult<BasicResponse>> UnmarkAnnouncement(string messageId)
-    {
-        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
-        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
-
-        var result = await groupAnnouncementService.UnmarkAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
-
     /// <summary>
     /// Get group anns 
     /// </summary>
-    [HttpGet("group/ann/get/{groupId}")]
+    [HttpGet("group/get-announcements/{groupId}")]
     public async Task<ActionResult<List<Message>>> GetGroupAnnouncements(string groupId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
@@ -325,8 +169,9 @@ public class UserSocialController(
         
         return Ok(announcements);
     }
-
     #endregion
+
+    
 
     #region 隐私设置检查接口
     // here removed a checking api which checks if one is addable - from group or by other ways.

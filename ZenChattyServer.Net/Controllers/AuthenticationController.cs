@@ -10,21 +10,12 @@ namespace ZenChattyServer.Net.Controllers;
 
 [ApiController]
 [Route("/api/auth")]
-public class AuthenticationController : ControllerBase
+public class AuthenticationController(AuthService authService, JwtConfig jwtConfig) : ControllerBase
 {
-    private readonly AuthService _authService;
-    private readonly JwtConfig _jwtConfig;
-    
-    public AuthenticationController(AuthService authService, JwtConfig jwtConfig)
-    {
-        _authService = authService;
-        _jwtConfig = jwtConfig;
-    }
-    
     [HttpPost("register")]
     public async Task<ActionResult<BasicResponse>> Register([FromBody] RegisterRequest request)
     {
-        var authObject = await _authService.RegisterAsync(request);
+        var authObject = await authService.RegisterAsync(request);
         if (authObject == null)
         {
             return BadRequest(new BasicResponse 
@@ -47,10 +38,10 @@ public class AuthenticationController : ControllerBase
         
         if (string.IsNullOrEmpty(request.DeviceId))
         {
-            request.DeviceId = GenerateDeviceId();
+            request.DeviceId = AuthHelper.GenerateDeviceId(jwtConfig);
         }
         
-        (AuthResponse? response, string? reason) authResponse = await _authService.LoginAsync(request);
+        (AuthResponse? response, string? reason) authResponse = await authService.LoginAsync(request);
         if (authResponse.response == null)
         {
             return Unauthorized(new BasicResponse 
@@ -63,10 +54,10 @@ public class AuthenticationController : ControllerBase
         return Ok(authResponse.response);
     }
     
-    [HttpPost("refresh")]
+    [HttpPatch("refresh")]
     public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] RefreshTokenRequest request)
     {
-        var authResponse = await _authService.RefreshTokenAsync(request);
+        var authResponse = await authService.RefreshTokenAsync(request);
         if (authResponse == null)
         {
             return StatusCode(403, new BasicResponse 
@@ -94,7 +85,7 @@ public class AuthenticationController : ControllerBase
             });
         }
         
-        var result = await _authService.LogoutAsync(deviceId, refreshToken);
+        var result = await authService.LogoutAsync(deviceId, refreshToken);
         
         return result ? 
             Ok(new BasicResponse { content = "Logout successful", success = true }) :
@@ -115,9 +106,9 @@ public class AuthenticationController : ControllerBase
             });
         }
         
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
+        var (isValid, user) = await authService.ValidateAccessTokenAsync(token);
         
-        return isValid ? 
+        return isValid && user is not null ? 
             Ok(new BasicResponse { content = "Token valid", success = true }) :
             Unauthorized(new BasicResponse { content = "Token Expired / Invalid [v]", success = false });
     }
@@ -138,7 +129,7 @@ public class AuthenticationController : ControllerBase
             });
         }
         
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
+        var (isValid, user) = await authService.ValidateAccessTokenAsync(token);
         
         if (!isValid || user == null)
         {
@@ -149,7 +140,7 @@ public class AuthenticationController : ControllerBase
             });
         }
         
-        var userInfo = await _authService.GetUserInfoAsync(user.LocalId);
+        var userInfo = await authService.GetUserInfoAsync(user.LocalId);
         
         return userInfo != null ? 
             Ok(userInfo) :
@@ -159,7 +150,7 @@ public class AuthenticationController : ControllerBase
     [HttpPost("disable/{userId}")]
     public async Task<ActionResult<BasicResponse>> DisableUser(Guid userId)
     {
-        var result = await _authService.DisableUserAsync(userId);
+        var result = await authService.DisableUserAsync(userId);
         
         return result.isSuccess ? 
             Ok(new BasicResponse { content = "User disabled", success = true }) :
@@ -172,11 +163,4 @@ public class AuthenticationController : ControllerBase
         return Ok(new BasicResponse{ content = "it do works!", success = true });
     }
     
-    private string GenerateDeviceId()
-    {
-        var random = new Random();
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        return new string(Enumerable.Repeat(chars, _jwtConfig.DeviceIdLength)
-            .Select(s => s[random.Next(s.Length)]).ToArray());
-    }
 }

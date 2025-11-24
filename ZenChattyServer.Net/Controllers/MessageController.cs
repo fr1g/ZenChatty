@@ -226,14 +226,20 @@ public class MessageController : ControllerBase
             .OrderBy(m => m.SentTimestamp) // 按时间正序返回
             .ToList();
         
-        _logger.LogInformation("Get chat {ChatId} message history, cached: {CachedCount}, DB: {DbCount}, total: {TotalCount}, returned: {ResultCount}",
+        _logger.LogInformation("""
+                               Get chat {ChatId} message history: ...
+                               | cached: {CachedCount}, 
+                               | DB: {DbCount}, 
+                               | total: {TotalCount}, 
+                               | returned: {ResultCount}
+                               """,
             chatUniqueMark, cachedMessages.Count, dbMessages.Count, allMessages.Count, result.Count);
         
         return result;
     }
 
     /// <summary>
-    /// 获取未读消息数量
+    /// 获取未读消息数量 todo !!! maybe need refracture to get all unread msgs... if need to be pushed to NSrvs as total-unread in notification?  
     /// </summary>
     [HttpGet("unread/count")]
     public async Task<ActionResult<Dictionary<string, int>>> GetUnreadMessageCount()

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using ZenChattyServer.Net.Config;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Response;
@@ -37,6 +38,14 @@ public class AuthHelper
     {
         return (operatorMember.Type == EGroupMemberType.Owner) || 
                (operatorMember.Type == EGroupMemberType.Admin && targetMember.Type == EGroupMemberType.Member);
+    }
+    
+    public static string GenerateDeviceId(JwtConfig jwtConfig)
+    {
+        var random = new Random();
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        return new string(Enumerable.Repeat(chars, jwtConfig.DeviceIdLength)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
     
     public static async Task<(BasicResponse? failResult, bool isValid, User? user)> RejectOrNotAsync(string? token, AuthService authService)

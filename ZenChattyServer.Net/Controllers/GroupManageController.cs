@@ -9,21 +9,23 @@ using ZenChattyServer.Net.Services;
 namespace ZenChattyServer.Net.Controllers;
 
 [ApiController]
-[Route("/api/group-management")]
+[Route("api/group-management")]
 public class GroupManageController(
     GroupManageService groupManageService,
     UserSocialService userSocialService,
     GroupInviteLinkService groupInviteLinkService,
+    GroupAnnouncementService groupAnnouncementService,
     AuthService authService)
     : AuthedControllerBase(authService)
 {
+    private readonly AuthService _authService = authService;
 
     #region GroupSettings管理接口
 
     /// <summary>
     /// 更新群设置（群主可更新所有属性，管理员仅可开关全员禁言）
     /// </summary>
-    [HttpPost("settings")]
+    [HttpPost("group-management/settings")]
     public async Task<ActionResult<BasicResponse>> UpdateGroupSettings([FromBody] UpdateGroupSettingsRequest request)
     {
         var refer = await AuthenticateAsync();
@@ -39,7 +41,7 @@ public class GroupManageController(
     /// <summary>
     /// 开关全体禁言（管理员权限）
     /// </summary>
-    [HttpPost("/group/toggle-silent-all/{groupId}")]
+    [HttpPost("group-management/toggle-silent-all/{groupId}")]
     public async Task<ActionResult<BasicResponse>> ToggleGroupSilent(string groupId, [FromQuery] bool isSilent = true, [FromQuery] string? reason = null)
     {
         var refer = await AuthenticateAsync();
@@ -53,13 +55,51 @@ public class GroupManageController(
     }
 
     #endregion
+    
+    #region 群公告接口
+
+    /// <summary>
+    /// 标记消息为公告
+    /// </summary>
+    [HttpPost("announcements/add/{messageId}")]
+    public async Task<ActionResult<BasicResponse>> MarkMessageAsAnnouncement(string messageId)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), _authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
+
+        var result = await groupAnnouncementService.MarkMessageAsAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
+        
+        return result.success ? 
+            Ok(new BasicResponse { content = result.message, success = true }) : 
+            BadRequest(new BasicResponse { content = result.message, success = false });
+    }
+
+    /// <summary>
+    /// Unmark as ann
+    /// </summary>
+    [HttpPost("announcements/del/{messageId}")]
+    public async Task<ActionResult<BasicResponse>> UnmarkAnnouncement(string messageId)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), _authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
+
+        var result = await groupAnnouncementService.UnmarkAnnouncementAsync(refer.user!.LocalId.ToString(), messageId);
+        
+        return result.success ? 
+            Ok(new BasicResponse { content = result.message, success = true }) : 
+            BadRequest(new BasicResponse { content = result.message, success = false });
+    }
+
+    
+
+    #endregion
 
     #region 群状态管理接口
 
     /// <summary>
     /// 禁用群聊（仅群主权限）
     /// </summary>
-    [HttpPost("{groupId}/disable")]
+    [HttpPost("disable/{groupId}")]
     public async Task<ActionResult<BasicResponse>> DisableGroupChat(string groupId)
     {
         var refer = await AuthenticateAsync();
@@ -75,7 +115,7 @@ public class GroupManageController(
     /// <summary>
     /// 启用群聊（仅群主权限）
     /// </summary>
-    [HttpPost("{groupId}/enable")]
+    [HttpPost("enable/{groupId}")]
     public async Task<ActionResult<BasicResponse>> EnableGroupChat(string groupId)
     {
         var refer = await AuthenticateAsync();
@@ -95,8 +135,8 @@ public class GroupManageController(
     /// <summary>
     /// 设置/取消管理员（仅群主权限）
     /// </summary>
-    [HttpPost("admin")]
-    public async Task<ActionResult<BasicResponse>> SetGroupAdmin([FromBody] GroupManagementRequest request, [FromQuery] bool isAdmin = true)
+    [HttpPost("toggle-admin/{isAdmin:bool}")]
+    public async Task<ActionResult<BasicResponse>> SetGroupAdmin([FromBody] GroupManagementRequest request, bool isAdmin = true)
     {
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
@@ -111,7 +151,7 @@ public class GroupManageController(
     /// <summary>
     /// 禁言/取消禁言成员（管理员权限）
     /// </summary>
-    [HttpPost("silent")]
+    [HttpPost("set-silent-status")]
     public async Task<ActionResult<BasicResponse>> SetMemberSilent([FromBody] GroupManagementRequest request, [FromQuery] bool isSilent = true)
     {
         var refer = await AuthenticateAsync();
@@ -161,7 +201,7 @@ public class GroupManageController(
     /// <summary>
     /// 设置成员title（仅群主权限）
     /// </summary>
-    [HttpPost("title")]
+    [HttpPost("set-title")]
     public async Task<ActionResult<BasicResponse>> SetMemberTitle([FromBody] GroupManagementRequest request)
     {
         var refer = await AuthenticateAsync();
@@ -173,17 +213,17 @@ public class GroupManageController(
             Ok(new BasicResponse { content = result.message, success = true }) : 
             BadRequest(new BasicResponse { content = result.message, success = false });
     }
-
+    
     /// <summary>
-    /// (Everyone but Owner) Leave from group
+    /// 邀请成员加入群聊
     /// </summary>
-    [HttpPost("/group/leave-from/{groupId}")]
-    public async Task<ActionResult<BasicResponse>> LeaveGroup(string groupId)
+    [HttpPost("debug/group-management/invite-member")]
+    public async Task<ActionResult<BasicResponse>> InviteGroupMember([FromBody] GroupManagementRequest request)
     {
-        var refer = await AuthenticateAsync();
-        if (refer.failResult != null) return Unauthorized(refer.failResult);
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), _authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var result = await groupManageService.LeaveGroupAsync(refer.user!.LocalId.ToString(), groupId);
+        var result = await groupManageService.InviteMemberAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -196,7 +236,7 @@ public class GroupManageController(
     /// <summary>
     /// 创建群邀请链接
     /// </summary>
-    [HttpPost("group/invite-link/add")]
+    [HttpPost("invite-link/new")]
     public async Task<ActionResult<BasicResponse>> CreateGroupInviteLink([FromBody] GroupInviteLinkRequest request)
     {
         var refer = await AuthenticateAsync();
@@ -212,7 +252,7 @@ public class GroupManageController(
     /// <summary>
     /// 通过邀请链接加入群聊
     /// </summary>
-    [HttpPost("group/invite-link/consume/{inviteCode}")]
+    [HttpPost("invite-link/consume/{inviteCode}")]
     public async Task<ActionResult<BasicResponse>> JoinGroupByInviteLink(string inviteCode)
     {
         var refer = await AuthenticateAsync();
@@ -228,7 +268,7 @@ public class GroupManageController(
     /// <summary>
     /// 获取群聊邀请链接
     /// </summary>
-    [HttpGet("group/invite-link/list/{groupId}")]
+    [HttpGet("invite-link/list/{groupId}")]
     public async Task<ActionResult<List<GroupInviteLink>>> GetGroupInviteLinks(string groupId)
     {
         var refer = await AuthenticateAsync();
@@ -242,7 +282,7 @@ public class GroupManageController(
     /// <summary>
     /// 撤销邀请链接
     /// </summary>
-    [HttpDelete("group/invite-link/del/{inviteCode}")]
+    [HttpDelete("invite-link/del/{inviteCode}")]
     public async Task<ActionResult<BasicResponse>> RevokeGroupInviteLink(string inviteCode)
     {
         var refer = await AuthenticateAsync();
