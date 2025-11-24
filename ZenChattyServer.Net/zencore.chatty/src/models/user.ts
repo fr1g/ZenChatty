@@ -20,10 +20,11 @@ export class User {
     privacies: PrivacySettings;
 
     constructor(
-        localId: string,
         email: string,
         displayName: string,
         customId: string | undefined,
+        localId: string = "ungiven",
+
         registeredAt: Date = new Date(),
         avatarFileLocator: string = 'img:xdefaultavtr.jpg',
         backgroundFileLocator: string = 'img:xdefaultback.jpg',

@@ -67,7 +67,6 @@ export class GroupSettings {
     ) {
         this.displayName = displayName;
         this.avatarFileLocator = avatarFileLocator;
-
         this.isAllSilent = isAllSilent;
         this.isInviteOnly = isInviteOnly
         this.isPrivateChatAllowed = isPrivateChatAllowed;
