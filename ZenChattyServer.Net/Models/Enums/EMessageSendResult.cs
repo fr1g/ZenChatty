@@ -1,8 +1,5 @@
 namespace ZenChattyServer.Net.Models.Enums;
 
-/// <summary>
-/// 消息发送结果枚举
-/// </summary>
 public enum EMessageSendResult
 {
     /// <summary>

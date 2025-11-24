@@ -1,0 +1,62 @@
+{
+  "name": "zen-core-chatty-typescript",
+  "version": "1.0.0",
+  "description": "ZenCore Chatty TypeScript SDK : for all ZenChatties",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "chat",
+    "messaging",
+    "typescript",
+    "sdk",
+    "api",
+    "axios"
+  ],
+  "author": "ZenCore Chatty Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/zen-core-chatty-typescript.git"
+  },
+  "homepage": "https://github.com/your-username/zen-core-chatty-typescript",
+  "bugs": {
+    "url": "https://github.com/your-username/zen-core-chatty-typescript/issues"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./models": {
+      "import": "./dist/models/index.js",
+      "types": "./dist/models/index.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api/index.js",
+      "types": "./dist/api/index.d.ts"
+    }
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.10.1",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^10.0.0",
+    "axios": "^1.13.2"
+  }
+}

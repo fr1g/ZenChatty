@@ -8,20 +8,20 @@ public enum EFileType
     /// <summary>
     /// 图片文件
     /// </summary>
-    Image = 1,
+    Image,
     
     /// <summary>
     /// 音频文件
     /// </summary>
-    Audio = 2,
+    Audio,
     
     /// <summary>
     /// 视频文件
     /// </summary>
-    Video = 3,
+    Video,
     
     /// <summary>
     /// 压缩文件
     /// </summary>
-    Archive = 4
+    Archive
 }
