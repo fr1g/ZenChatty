@@ -160,3 +160,5 @@ ehthumbs.db
 /x
 *.http
 /ZenChattyServer.Net/issues
+/ZenChattyServer.Net/zencore.chatty/dist
+/ZenChattyServer.Net/zencore.chatty/dist
