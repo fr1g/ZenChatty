@@ -90,10 +90,20 @@ public class UserRelatedContext : DbContext
             .HasForeignKey("InvitedById")
             .OnDelete(DeleteBehavior.Restrict);
             
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.TheGuyId);
+            
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.GroupChatId);
+            
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.InvitedById);
+            
         modelBuilder.Entity<GroupChat>()
             .HasMany(gc => gc.Members)
-            .WithOne()
-            .OnDelete(DeleteBehavior.Restrict);
+            .WithOne(gcm => gcm.GroupChat)
+            .HasForeignKey(gcm => gcm.GroupChatId)
+            .OnDelete(DeleteBehavior.Cascade);
             
         modelBuilder.Entity<GroupChat>()
             .HasMany(gc => gc.AnnouncementMessages)
