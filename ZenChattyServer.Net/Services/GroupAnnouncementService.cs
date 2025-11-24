@@ -6,17 +6,8 @@ using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Services;
 
-public class GroupAnnouncementService
+public class GroupAnnouncementService(UserRelatedContext context, ILogger<GroupAnnouncementService> logger, ChatHubService chatHub)
 {
-    private readonly UserRelatedContext _context;
-    private readonly ILogger<GroupAnnouncementService> _logger;
-
-    public GroupAnnouncementService(UserRelatedContext context, ILogger<GroupAnnouncementService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     /// <summary>
     /// 将普通消息标记为群公告
     /// </summary>
@@ -25,7 +16,7 @@ public class GroupAnnouncementService
     {
         try
         {
-            var message = await _context.Messages
+            var message = await context.Messages
                 .Include(m => m.OfChat)
                 .FirstOrDefaultAsync(m => m.TraceId == messageId);
 
@@ -33,10 +24,10 @@ public class GroupAnnouncementService
                 return (false, "消息不存在");
 
             // 验证消息是否在群聊中
-            if (string.IsNullOrEmpty(message.OfChatId) || !(message.OfChat is GroupChat))
+            if (string.IsNullOrEmpty(message.OfChatId) || message.OfChat is not GroupChat)
                 return (false, "只能在群聊中设置公告");
 
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.Members)
                 .Include(gc => gc.AnnouncementMessages)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == message.OfChatId);
@@ -51,8 +42,7 @@ public class GroupAnnouncementService
                 return (false, "不是群成员");
 
             // 检查权限（群主或管理员）
-            if (operatorMember.Type != EGroupMemberType.Owner && 
-                operatorMember.Type != EGroupMemberType.Admin)
+            if (!AuthHelper.CanManageGroup(operatorMember))
                 return (false, "没有权限设置公告");
 
             // 检查消息是否已经是公告
@@ -66,7 +56,7 @@ public class GroupAnnouncementService
             // 将消息添加到群聊的公告集合中
             groupChat.AnnouncementMessages.Add(message);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // 重新推送公告消息给所有群成员，设置hasVitalUnread为true
             await RepushAnnouncementMessageAsync(messageId);
@@ -75,7 +65,7 @@ public class GroupAnnouncementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "标记公告失败");
+            logger.LogError(ex, "标记公告失败");
             return (false, "标记公告失败");
         }
     }
@@ -87,13 +77,11 @@ public class GroupAnnouncementService
     {
         try
         {
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.AnnouncementMessages)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == groupId);
+            if (groupChat is null) throw new Exception("No such group");
             if (!RelationshipHelper.IsUserGroupMember(user, groupChat)) throw new Exception("Not a member");
-
-            if (groupChat == null)
-                return new List<Message>();
 
             return groupChat.AnnouncementMessages
                 .Where(m => m.IsAnnouncement)
@@ -104,8 +92,8 @@ public class GroupAnnouncementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取公告列表失败");
-            return new List<Message>();
+            logger.LogError(ex, "获取公告列表失败");
+            return [];
         }
     }
 
@@ -117,7 +105,7 @@ public class GroupAnnouncementService
     {
         try
         {
-            var message = await _context.Messages
+            var message = await context.Messages
                 .Include(m => m.OfChat)
                 .FirstOrDefaultAsync(m => m.TraceId == messageId);
 
@@ -125,10 +113,10 @@ public class GroupAnnouncementService
                 return (false, "消息不存在");
 
             // 验证消息是否在群聊中
-            if (string.IsNullOrEmpty(message.OfChatId) || !(message.OfChat is GroupChat))
+            if (string.IsNullOrEmpty(message.OfChatId) || message.OfChat is not GroupChat)
                 return (false, "只能在群聊中取消公告标记");
 
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.Members)
                 .Include(gc => gc.AnnouncementMessages)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == message.OfChatId);
@@ -143,8 +131,7 @@ public class GroupAnnouncementService
                 return (false, "不是群成员");
 
             // 检查权限（群主或管理员）
-            if (operatorMember.Type != EGroupMemberType.Owner && 
-                operatorMember.Type != EGroupMemberType.Admin)
+            if (!AuthHelper.CanManageGroup(operatorMember))
                 return (false, "没有权限取消公告标记");
 
             // 检查消息是否已经是公告
@@ -158,13 +145,13 @@ public class GroupAnnouncementService
             // 从群聊的公告集合中移除
             groupChat.AnnouncementMessages.Remove(message);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync(); // maybe no need to hit refresh
 
             return (true, "取消公告标记成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "取消公告标记失败");
+            logger.LogError(ex, "取消公告标记失败");
             return (false, "取消公告标记失败");
         }
     }
@@ -176,21 +163,23 @@ public class GroupAnnouncementService
     {
         try
         {
-            var message = await _context.Messages
+            var message = await context.Messages
                 .Include(m => m.OfChat)
                 .Include(m => m.Sender)
                 .FirstOrDefaultAsync(m => m.TraceId == messageId);
 
-            if (message == null || !message.IsAnnouncement)
+            if (message is not { IsAnnouncement: true })
                 return false;
 
             // 获取群聊中的所有联系人
-            var contacts = await _context.Contacts
+            var contacts = await context.Contacts
                 .Include(c => c.Object)
                 .Where(c => c.Object.UniqueMark == message.OfChatId)
                 .ToListAsync();
+            
+            message.Type = EMessageType.Announcement;
 
-            // 模拟消息队列数据，用于触发重要事件检测
+            // 模拟消息队列数据，用于触发重要事件检测 todo is this really needed?
             var messageData = new MessageQueueData
             {
                 MessageId = message.TraceId,
@@ -203,6 +192,8 @@ public class GroupAnnouncementService
                 IsMentioningAll = message.IsMentioningAll,
                 MentionedUserGuids = message.MentionedUserGuids
             };
+            
+            
 
             // 为所有群成员设置hasVitalUnread为true
             foreach (var contact in contacts)
@@ -211,27 +202,25 @@ public class GroupAnnouncementService
                 contact.LastUnreadCount++;
                 contact.LastUsed = DateTime.UtcNow;
                 
-                _logger.LogDebug("为用户 {UserId} 设置公告消息的重要未读标记", contact.HostId);
+                logger.LogDebug("为用户 {UserId} 设置公告消息的重要未读标记", contact.HostId);
             }
 
-            await _context.SaveChangesAsync();
+            await ChatAgent.Say(context, message, chatHub); // todo !!! maycauseproblem
+            await context.SaveChangesAsync();
             
-            _logger.LogInformation("重新推送公告消息 {MessageId}，影响用户数: {UserCount}", 
+            logger.LogInformation("重新推送公告消息 {MessageId}，影响用户数: {UserCount}", 
                 messageId, contacts.Count);
             
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "重新推送公告消息失败，消息ID: {MessageId}", messageId);
+            logger.LogError(ex, "重新推送公告消息失败，消息ID: {MessageId}", messageId);
             return false;
         }
     }
-
-    /// <summary>
-    /// 内部使用的消息队列数据结构
-    /// </summary>
-    private class MessageQueueData
+    
+    private class MessageQueueData // ? todo !!!
     {
         public string MessageId { get; set; } = string.Empty;
         public string ChatUniqueMark { get; set; } = string.Empty;

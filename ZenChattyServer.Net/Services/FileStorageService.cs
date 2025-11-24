@@ -73,11 +73,11 @@ public class FileStorageService
     /// <summary>
     /// 计算文件的MD5哈希值
     /// </summary>
-    public async Task<string> CalculateFileMd5Async(string filePath)
+    public static async Task<string> CalculateFileHashAsync(string filePath)
     {
-        using var md5 = MD5.Create();
-        using var stream = File.OpenRead(filePath);
-        var hashBytes = await md5.ComputeHashAsync(stream);
+        using var sha256 = SHA256.Create();
+        await using var stream = File.OpenRead(filePath);
+        var hashBytes = await sha256.ComputeHashAsync(stream);
         return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
     }
 
@@ -103,7 +103,7 @@ public class FileStorageService
                 return (false, null, "文件已存在，请重试");
 
             // 保存文件到磁盘（带进度报告）
-            using var file = File.Create(storagePath);
+            await using var file = File.Create(storagePath);
             var buffer = new byte[81920]; // 80KB buffer
             long totalBytesRead = 0;
             int bytesRead;
@@ -126,7 +126,7 @@ public class FileStorageService
             }
 
             // 计算MD5
-            var md5Hash = await CalculateFileMd5Async(storagePath);
+            var hash = await CalculateFileHashAsync(storagePath);
 
             // 创建UserFile记录
             var userFile = new UserFile
@@ -138,7 +138,7 @@ public class FileStorageService
                 UploaderId = Guid.Parse(uploaderId),
                 UploadTime = DateTime.UtcNow,
                 FileSize = fileInfo.Length,
-                Md5Hash = md5Hash,
+                Hash = hash,
                 StoragePath = storagePath
             };
 
@@ -169,10 +169,7 @@ public class FileStorageService
             return (false, null, "文件上传失败");
         }
     }
-
-    /// <summary>
-    /// 根据定位器获取文件信息
-    /// </summary>
+    
     public async Task<(bool success, UserFile? userFile, string message)> GetFileInfoAsync(string locator)
     {
         try
@@ -181,10 +178,7 @@ public class FileStorageService
                 .Include(uf => uf.Uploader)
                 .FirstOrDefaultAsync(uf => uf.Locator == locator);
 
-            if (userFile == null)
-                return (false, null, "文件不存在");
-
-            return (true, userFile, "文件信息获取成功");
+            return userFile == null ? (false, null, "文件不存在") : (true, userFile, "文件信息获取成功");
         }
         catch (Exception ex)
         {

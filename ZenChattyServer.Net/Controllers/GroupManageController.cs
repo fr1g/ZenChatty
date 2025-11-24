@@ -10,21 +10,13 @@ namespace ZenChattyServer.Net.Controllers;
 
 [ApiController]
 [Route("/api/group-management")]
-public class GroupManagementAPIController : ControllerBase
+public class GroupManageController(
+    GroupManageService groupManageService,
+    UserSocialService userSocialService,
+    GroupInviteLinkService groupInviteLinkService,
+    AuthService authService)
+    : AuthedControllerBase(authService)
 {
-    private readonly GroupManagementService _groupManagementService;
-    private readonly UserSocialService _userSocialService;
-    private readonly AuthService _authService;
-
-    public GroupManagementAPIController(
-        GroupManagementService groupManagementService,
-        UserSocialService userSocialService,
-        AuthService authService)
-    {
-        _groupManagementService = groupManagementService;
-        _userSocialService = userSocialService;
-        _authService = authService;
-    }
 
     #region GroupSettings管理接口
 
@@ -34,15 +26,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("settings")]
     public async Task<ActionResult<BasicResponse>> UpdateGroupSettings([FromBody] UpdateGroupSettingsRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await UpdateGroupSettingsInternalAsync(user.LocalId.ToString(), request);
+        var result = await UpdateGroupSettingsInternalAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -52,18 +39,13 @@ public class GroupManagementAPIController : ControllerBase
     /// <summary>
     /// 开关全体禁言（管理员权限）
     /// </summary>
-    [HttpPost("{groupId}/silent-all")]
+    [HttpPost("/group/toggle-silent-all/{groupId}")]
     public async Task<ActionResult<BasicResponse>> ToggleGroupSilent(string groupId, [FromQuery] bool isSilent = true, [FromQuery] string? reason = null)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.ToggleGroupSilentAsync(user.LocalId.ToString(), groupId, isSilent, reason);
+        var result = await groupManageService.ToggleGroupSilentAsync(refer.user!.LocalId.ToString(), groupId, isSilent, reason);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -80,15 +62,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("{groupId}/disable")]
     public async Task<ActionResult<BasicResponse>> DisableGroupChat(string groupId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _userSocialService.DisableGroupChatAsync(user.LocalId.ToString(), groupId);
+        var result = await userSocialService.DisableGroupChatAsync(refer.user!.LocalId.ToString(), groupId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -101,15 +78,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("{groupId}/enable")]
     public async Task<ActionResult<BasicResponse>> EnableGroupChat(string groupId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await EnableGroupChatInternalAsync(user.LocalId.ToString(), groupId);
+        var result = await EnableGroupChatInternalAsync(refer.user!.LocalId.ToString(), groupId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -126,15 +98,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("admin")]
     public async Task<ActionResult<BasicResponse>> SetGroupAdmin([FromBody] GroupManagementRequest request, [FromQuery] bool isAdmin = true)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetAdminAsync(user.LocalId.ToString(), request, isAdmin);
+        var result = await groupManageService.SetAdminAsync(refer.user!.LocalId.ToString(), request, isAdmin);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -147,15 +114,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("silent")]
     public async Task<ActionResult<BasicResponse>> SetMemberSilent([FromBody] GroupManagementRequest request, [FromQuery] bool isSilent = true)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberSilentAsync(user.LocalId.ToString(), request, isSilent);
+        var result = await groupManageService.SetMemberSilentAsync(refer.user!.LocalId.ToString(), request, isSilent);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -168,41 +130,17 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("remove-member")]
     public async Task<ActionResult<BasicResponse>> RemoveGroupMember([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.LeaveGroupAsync(user.LocalId.ToString(), request.GroupId, request.TargetUserId);
+        var result = await groupManageService.LeaveGroupAsync(refer.user!.LocalId.ToString(), request.GroupId, request.TargetUserId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
             BadRequest(new BasicResponse { content = result.message, success = false });
     }
 
-    /// <summary>
-    /// 邀请成员加入群聊（管理员权限）
-    /// </summary>
-    [HttpPost("invite-member")]
-    public async Task<ActionResult<BasicResponse>> InviteGroupMember([FromBody] GroupManagementRequest request)
-    {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.InviteMemberAsync(user.LocalId.ToString(), request);
-        
-        return result.success ? 
-            Ok(new BasicResponse { content = result.message, success = true }) : 
-            BadRequest(new BasicResponse { content = result.message, success = false });
-    }
 
     /// <summary>
     /// 设置成员昵称（管理员权限或自己设置）
@@ -210,15 +148,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("nickname")]
     public async Task<ActionResult<BasicResponse>> SetMemberNickname([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberNicknameAsync(user.LocalId.ToString(), request);
+        var result = await groupManageService.SetMemberNicknameAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -231,15 +164,10 @@ public class GroupManagementAPIController : ControllerBase
     [HttpPost("title")]
     public async Task<ActionResult<BasicResponse>> SetMemberTitle([FromBody] GroupManagementRequest request)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.SetMemberTitleAsync(user.LocalId.ToString(), request);
+        var result = await groupManageService.SetMemberTitleAsync(refer.user!.LocalId.ToString(), request);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -247,20 +175,15 @@ public class GroupManagementAPIController : ControllerBase
     }
 
     /// <summary>
-    /// 退出群聊（群成员权限）
+    /// (Everyone but Owner) Leave from group
     /// </summary>
-    [HttpPost("leave")]
-    public async Task<ActionResult<BasicResponse>> LeaveGroup([FromBody] GroupManagementRequest request)
+    [HttpPost("/group/leave-from/{groupId}")]
+    public async Task<ActionResult<BasicResponse>> LeaveGroup(string groupId)
     {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return Unauthorized(new BasicResponse { content = "缺少AccessToken", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var (isValid, user) = await _authService.ValidateAccessTokenAsync(token);
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
-        var result = await _groupManagementService.LeaveGroupAsync(user.LocalId.ToString(), request.GroupId);
+        var result = await groupManageService.LeaveGroupAsync(refer.user!.LocalId.ToString(), groupId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -268,7 +191,71 @@ public class GroupManagementAPIController : ControllerBase
     }
 
     #endregion
+#region 群邀请链接接口
 
+    /// <summary>
+    /// 创建群邀请链接
+    /// </summary>
+    [HttpPost("group/invite-link/add")]
+    public async Task<ActionResult<BasicResponse>> CreateGroupInviteLink([FromBody] GroupInviteLinkRequest request)
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        var result = await groupInviteLinkService.CreateInviteLinkAsync(refer.user!.LocalId.ToString(), request);
+        
+        return result.success ? 
+            Ok(new BasicResponse { content = $"Created successfully, invite code: {result.link?.InviteCode}", success = true }) : 
+            BadRequest(new BasicResponse { content = result.message, success = false });
+    }
+
+    /// <summary>
+    /// 通过邀请链接加入群聊
+    /// </summary>
+    [HttpPost("group/invite-link/consume/{inviteCode}")]
+    public async Task<ActionResult<BasicResponse>> JoinGroupByInviteLink(string inviteCode)
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        var result = await groupInviteLinkService.JoinGroupByInviteLinkAsync(inviteCode, refer.user!.LocalId.ToString());
+        
+        return result.success ? 
+            Ok(new BasicResponse { content = result.message, success = true }) : 
+            BadRequest(new BasicResponse { content = result.message, success = false });
+    }
+
+    /// <summary>
+    /// 获取群聊邀请链接
+    /// </summary>
+    [HttpGet("group/invite-link/list/{groupId}")]
+    public async Task<ActionResult<List<GroupInviteLink>>> GetGroupInviteLinks(string groupId)
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        var links = await groupInviteLinkService.GetValidInviteLinksAsync(groupId, refer.user!.LocalId.ToString());
+        
+        return Ok(links);
+    }
+
+    /// <summary>
+    /// 撤销邀请链接
+    /// </summary>
+    [HttpDelete("group/invite-link/del/{inviteCode}")]
+    public async Task<ActionResult<BasicResponse>> RevokeGroupInviteLink(string inviteCode)
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        var result = await groupInviteLinkService.RevokeInviteLinkAsync(refer.user!.LocalId.ToString(), inviteCode);
+        
+        return result.success ? 
+            Ok(new BasicResponse { content = result.message, success = true }) : 
+            BadRequest(new BasicResponse { content = result.message, success = false });
+    }
+
+    #endregion
     #region 内部实现方法
 
     /// <summary>
@@ -278,7 +265,7 @@ public class GroupManagementAPIController : ControllerBase
     {
         try
         {
-            var groupChat = await _groupManagementService.GetGroupChatAsync(request.GroupId);
+            var groupChat = await groupManageService.GetGroupChatAsync(request.GroupId);
             if (groupChat == null)
                 return (false, "群聊不存在");
 
@@ -286,10 +273,8 @@ public class GroupManagementAPIController : ControllerBase
             if (operatorMember == null)
                 return (false, "不是群成员");
 
-            // 检查权限
-            if (operatorMember.Type != EGroupMemberType.Owner && 
-                operatorMember.Type != EGroupMemberType.Admin)
-                return (false, "没有权限更新群设置");
+            var check = AuthHelper.CanManageGroupDetailed(operatorMember);
+            if (!check.isAllowed) return check;
 
             var settings = groupChat.Settings;
             bool hasChanges = false;
@@ -330,14 +315,14 @@ public class GroupManagementAPIController : ControllerBase
                     (request.DisplayName != null || request.AvatarFileLocator != null || 
                      request.IsInviteOnly != settings.IsInviteOnly || request.IsPrivateChatAllowed != settings.IsPrivateChatAllowed))
                 {
-                    return (false, "管理员只能开关全员禁言，不能修改其他群设置");
+                    return (false, "only allowed to update all-mute status");
                 }
 
                 settings.IsAllSilent = request.IsAllSilent;
                 hasChanges = true;
 
                 // 发送全体禁言通知
-                await _groupManagementService.SendGroupSilentMessageAsync(request.GroupId, operatorUserId, 
+                await groupManageService.SendGroupSilentMessageAsync(request.GroupId, operatorUserId, 
                     request.IsAllSilent, request.Reason);
             }
 
@@ -347,7 +332,7 @@ public class GroupManagementAPIController : ControllerBase
             // 发送群设置更新通知
             await SendGroupSettingsUpdatedMessageAsync(request.GroupId, operatorUserId, request);
 
-            await _groupManagementService.SaveChangesAsync();
+            await groupManageService.SaveChangesAsync();
             return (true, "群设置更新成功");
         }
         catch (Exception ex)
@@ -363,7 +348,7 @@ public class GroupManagementAPIController : ControllerBase
     {
         try
         {
-            var groupChat = await _groupManagementService.GetGroupChatAsync(groupId);
+            var groupChat = await groupManageService.GetGroupChatAsync(groupId);
             if (groupChat == null)
                 return (false, "群聊不存在");
 
@@ -385,7 +370,7 @@ public class GroupManagementAPIController : ControllerBase
             // 发送群启用通知
             await SendGroupEnabledMessageAsync(groupId, operatorUserId);
 
-            await _groupManagementService.SaveChangesAsync();
+            await groupManageService.SaveChangesAsync();
             return (true, "群聊已启用");
         }
         catch (Exception ex)
@@ -411,7 +396,7 @@ public class GroupManagementAPIController : ControllerBase
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            await _groupManagementService.AddMessageAsync(message);
+            await groupManageService.AddMessageAsync(message);
         }
         catch (Exception ex)
         {
@@ -437,7 +422,7 @@ public class GroupManagementAPIController : ControllerBase
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            await _groupManagementService.AddMessageAsync(message);
+            await groupManageService.AddMessageAsync(message);
         }
         catch (Exception ex)
         {

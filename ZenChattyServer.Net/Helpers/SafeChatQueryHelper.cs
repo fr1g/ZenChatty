@@ -4,6 +4,8 @@ using ZenChattyServer.Net.Models;
 
 namespace ZenChattyServer.Net.Helpers;
 
+// todo unknown if the current one is not usable
+
 /// <summary>
 /// 安全的Chat查询助手，确保不会意外加载历史消息
 /// </summary>

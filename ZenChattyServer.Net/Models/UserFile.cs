@@ -37,7 +37,7 @@ public class UserFile
     
     [Required]
     [MaxLength(32)]
-    public string Md5Hash { get; set; } = null!;
+    public string Hash { get; set; } = null!;
     
     [Required]
     [MaxLength(500)]
@@ -48,7 +48,7 @@ public class UserFile
     
     public UserFile() { }
     
-    public UserFile(EFileType fileType, string fileExtension, string locator, string originalFileName, Guid uploaderId, long fileSize, string md5Hash, string storagePath)
+    public UserFile(EFileType fileType, string fileExtension, string locator, string originalFileName, Guid uploaderId, long fileSize, string hash, string storagePath)
     {
         FileType = fileType;
         FileExtension = fileExtension;
@@ -57,7 +57,7 @@ public class UserFile
         UploaderId = uploaderId;
         UploadTime = DateTime.UtcNow;
         FileSize = fileSize;
-        Md5Hash = md5Hash;
+        Hash = hash;
         StoragePath = storagePath;
     }
 }

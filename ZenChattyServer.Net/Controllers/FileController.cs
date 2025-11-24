@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers;
+using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Response;
@@ -9,34 +11,37 @@ namespace ZenChattyServer.Net.Controllers;
 
 [ApiController]
 [Route("/api/file")]
-public class FileController : ControllerBase
+public class FileController(
+    FileStorageService fileStorageService,
+    AuthService authService,
+    ILogger<FileController> logger,
+    UserRelatedContext context
+    ) : AuthedControllerBase(authService)
 {
-    private readonly FileStorageService _fileStorageService;
-    private readonly AuthService _authService;
-    private readonly ILogger<FileController> _logger;
+    
 
-    public FileController(FileStorageService fileStorageService, AuthService authService, ILogger<FileController> logger)
-    {
-        _fileStorageService = fileStorageService;
-        _authService = authService;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// 上传文件
-    /// </summary>
     [HttpPost("upload")]
-    [RequestSizeLimit(128 * 1024 * 1024)] // 限制上传大小为128MB
+    [RequestSizeLimit(32 * 1024 * 1024)] // 32MB
     public async Task<ActionResult<FileUploadResponse>> UploadFile([FromForm] FileUploadRequest request)
     {
-        // 验证用户身份
-        var (isValid, user) = await ValidateUserTokenAsync();
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token invalid", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        // 验证文件是否存在
-        if (request.File == null || request.File.Length == 0)
-            return BadRequest(new BasicResponse { content = "Please select a file to upload", success = false });
+        var tryGetExistingFile = await context.UserFiles.FirstOrDefaultAsync(f => f.Hash == request.ClientCalculatedSha256);
+        
+        if(tryGetExistingFile is not null) return Ok(new FileUploadResponse
+        {
+            success = true,
+            content = "file already exist",
+            locator = tryGetExistingFile.Locator,
+            fileSize = tryGetExistingFile.FileSize,
+            uploadTime = tryGetExistingFile.UploadTime
+        }); // reuse
+        
+        if (request.File.Length == 0)
+            return BadRequest(new BasicResponse { content = "File invalid", success = false });
+        
+        
 
         // 验证文件类型
         var fileType = GetFileTypeFromExtension(request.FileExtension);
@@ -49,12 +54,12 @@ public class FileController : ControllerBase
             var progress = new Progress<(long bytesRead, long totalBytes)>(report =>
             {
                 var percentage = (double)report.bytesRead / report.totalBytes * 100;
-                _logger.LogInformation("文件上传进度: {BytesRead}/{TotalBytes} ({Percentage:F1}%)", 
+                logger.LogInformation("文件上传进度: {BytesRead}/{TotalBytes} ({Percentage:F1}%)", 
                     report.bytesRead, report.totalBytes, percentage);
             });
             
-            var result = await _fileStorageService.UploadFileAsync(
-                user.LocalId.ToString(),
+            var result = await fileStorageService.UploadFileAsync(
+                refer.user!.LocalId.ToString(),
                 request.File.OpenReadStream(),
                 request.File.FileName,
                 fileType.Value,
@@ -86,14 +91,12 @@ public class FileController : ControllerBase
     [HttpGet("info/{locator}")]
     public async Task<ActionResult<FileInfoResponse>> GetFileInfo(string locator)
     {
-        // 验证用户身份
-        var (isValid, user) = await ValidateUserTokenAsync();
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
-
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+        
         try
         {
-            var result = await _fileStorageService.GetFileInfoAsync(locator);
+            var result = await fileStorageService.GetFileInfoAsync(locator);
 
             if (!result.success || result.userFile == null)
                 return NotFound(new BasicResponse { content = result.message, success = false });
@@ -109,7 +112,7 @@ public class FileController : ControllerBase
                 fileSize = result.userFile.FileSize,
                 uploadTime = result.userFile.UploadTime,
                 uploaderId = result.userFile.UploaderId.ToString(),
-                md5Hash = result.userFile.Md5Hash
+                hash = result.userFile.Hash
             });
         }
         catch (Exception ex)
@@ -124,22 +127,18 @@ public class FileController : ControllerBase
     [HttpGet("download/{locator}")]
     public async Task<IActionResult> DownloadFile(string locator)
     {
-        // 验证用户身份
-        var (isValid, user) = await ValidateUserTokenAsync();
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
         try
         {
-            var result = await _fileStorageService.DownloadFileAsync(locator);
+            var result = await fileStorageService.DownloadFileAsync(locator);
 
             if (!result.success || result.fileStream == null)
                 return NotFound(new BasicResponse { content = result.message, success = false });
 
-            // 设置响应头
             Response.Headers.Append("Content-Disposition", $"attachment; filename=\"{result.fileName}\"");
             
-            // 根据文件类型设置Content-Type
             var contentType = GetContentTypeFromLocator(locator);
             
             return File(result.fileStream, contentType, result.fileName);
@@ -151,19 +150,17 @@ public class FileController : ControllerBase
     }
 
     /// <summary>
-    /// 删除文件
+    /// 删除文件 todo some of those apis should be only accessible to deployer
     /// </summary>
     [HttpDelete("delete/{locator}")]
     public async Task<ActionResult<BasicResponse>> DeleteFile(string locator)
     {
-        // 验证用户身份
-        var (isValid, user) = await ValidateUserTokenAsync();
-        if (!isValid || user == null)
-            return Unauthorized(new BasicResponse { content = "Token无效", success = false });
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
 
         try
         {
-            var result = await _fileStorageService.DeleteFileAsync(locator, user.LocalId.ToString());
+            var result = await fileStorageService.DeleteFileAsync(locator, refer.user!.LocalId.ToString());
 
             if (!result.success)
                 return BadRequest(new BasicResponse { content = result.message, success = false });
@@ -175,23 +172,8 @@ public class FileController : ControllerBase
             return StatusCode(500, new BasicResponse { content = "File deletion failed", success = false });
         }
     }
-
-    /// <summary>
-    /// 验证用户Token
-    /// </summary>
-    private async Task<(bool isValid, User? user)> ValidateUserTokenAsync()
-    {
-        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
-        if (string.IsNullOrEmpty(token))
-            return (false, null);
-
-        return await _authService.ValidateAccessTokenAsync(token);
-    }
-
-    /// <summary>
-    /// 根据文件扩展名获取文件类型
-    /// </summary>
-    private EFileType? GetFileTypeFromExtension(string extension)
+ 
+    private static EFileType? GetFileTypeFromExtension(string extension)
     {
         var ext = extension.ToLowerInvariant();
         
@@ -205,10 +187,7 @@ public class FileController : ControllerBase
         };
     }
 
-    /// <summary>
-    /// 根据定位器获取Content-Type
-    /// </summary>
-    private string GetContentTypeFromLocator(string locator)
+    private static string GetContentTypeFromLocator(string locator)
     {
         var parts = locator.Split('+');
         if (parts.Length != 3) return "application/octet-stream";
@@ -234,15 +213,11 @@ public class FileController : ControllerBase
 /// </summary>
 public class FileUploadRequest
 {
-    /// <summary>
-    /// 上传的文件
-    /// </summary>
     public IFormFile File { get; set; } = null!;
     
-    /// <summary>
-    /// 文件扩展名
-    /// </summary>
     public string FileExtension { get; set; } = null!;
+
+    public string ClientCalculatedSha256 { get; set; } = null!;
 }
 
 /// <summary>
@@ -250,64 +225,22 @@ public class FileUploadRequest
 /// </summary>
 public class FileUploadResponse : BasicResponse
 {
-    /// <summary>
-    /// 文件定位器
-    /// </summary>
+
     public string locator { get; set; } = null!;
     
-    /// <summary>
-    /// 文件大小（字节）
-    /// </summary>
     public long fileSize { get; set; }
-    
-    /// <summary>
-    /// 上传时间
-    /// </summary>
+
     public DateTime uploadTime { get; set; }
 }
 
-/// <summary>
-/// 文件信息响应模型
-/// </summary>
-public class FileInfoResponse : BasicResponse
+public class FileInfoResponse : BasicResponse // todo what happened here not using pascal case?
 {
-    /// <summary>
-    /// 文件定位器
-    /// </summary>
     public string locator { get; set; } = null!;
-    
-    /// <summary>
-    /// 文件类型
-    /// </summary>
     public string fileType { get; set; } = null!;
-    
-    /// <summary>
-    /// 文件扩展名
-    /// </summary>
     public string fileExtension { get; set; } = null!;
-    
-    /// <summary>
-    /// 原始文件名
-    /// </summary>
     public string originalFileName { get; set; } = null!;
-    
-    /// <summary>
-    /// 文件大小（字节）
-    /// </summary>
     public long fileSize { get; set; }
-    
-    /// <summary>
-    /// 上传时间
-    /// </summary>
     public DateTime uploadTime { get; set; }
-    
-    /// <summary>
-    /// 上传者ID
-    /// </summary>
     public string uploaderId { get; set; } = null!;
-    
-    /// <summary>
-    /// 文件MD5哈希值
-    /// </summary>
-    public string md5Hash { get; set; } = null!;
+    public string hash { get; set; } = null!;
 }

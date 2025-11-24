@@ -146,7 +146,7 @@ public class MessageController : ControllerBase
             }
 
             // 检查用户是否在聊天中
-            var hasAccess = await CheckChatAccessAsync(chat, userId);
+            var hasAccess = CheckChatAccess(chat, userId);
             if (!hasAccess)
             {
                 return Forbid();
@@ -167,7 +167,7 @@ public class MessageController : ControllerBase
     /// <summary>
     /// 检查用户是否有权限访问聊天
     /// </summary>
-    private async Task<bool> CheckChatAccessAsync(Chat chat, Guid userId)
+    private static bool CheckChatAccess(Chat chat, Guid userId)
     {
         return chat switch
         {
@@ -322,7 +322,7 @@ public class MessageController : ControllerBase
             }
 
             // 检查用户是否有权限访问该聊天
-            var hasAccess = await CheckChatAccessAsync(message.OfChat, userId);
+            var hasAccess = CheckChatAccess(message.OfChat, userId);
             if (!hasAccess)
             {
                 return BadRequest(new BasicResponse { success = false, content = "No access to this chat" });

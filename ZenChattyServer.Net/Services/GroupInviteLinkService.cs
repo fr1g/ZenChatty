@@ -1,21 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using ZenChattyServer.Net.Helpers;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Request;
 
 namespace ZenChattyServer.Net.Services;
 
-public class GroupInviteLinkService
+public class GroupInviteLinkService(
+    UserRelatedContext context,
+    ILogger<GroupInviteLinkService> logger,
+    ChatHubService chatAgent)
 {
-    private readonly UserRelatedContext _context;
-    private readonly ILogger<GroupInviteLinkService> _logger;
-
-    public GroupInviteLinkService(UserRelatedContext context, ILogger<GroupInviteLinkService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     /// <summary>
     /// 创建群邀请链接
     /// </summary>
@@ -25,7 +21,7 @@ public class GroupInviteLinkService
         try
         {
             // 验证群聊和操作权限
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.Members)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == request.GroupId);
 
@@ -39,8 +35,7 @@ public class GroupInviteLinkService
                 return (false, "不是群成员", null);
 
             // 检查权限（群主或管理员）
-            if (operatorMember.Type != Models.Enums.EGroupMemberType.Owner && 
-                operatorMember.Type != Models.Enums.EGroupMemberType.Admin)
+            if (!AuthHelper.CanManageGroup(operatorMember))
                 return (false, "没有权限创建邀请链接", null);
 
             // 生成邀请码
@@ -60,14 +55,14 @@ public class GroupInviteLinkService
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.GroupInviteLinks.Add(link);
-            await _context.SaveChangesAsync();
+            context.GroupInviteLinks.Add(link);
+            await context.SaveChangesAsync();
 
             return (true, "创建邀请链接成功", link);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建邀请链接失败");
+            logger.LogError(ex, "创建邀请链接失败");
             return (false, "创建邀请链接失败", null);
         }
     }
@@ -81,28 +76,25 @@ public class GroupInviteLinkService
         try
         {
             // 查找有效的邀请链接
-            var link = await _context.GroupInviteLinks
+            var link = await context.GroupInviteLinks
                 .Include(l => l.Group)
                 .ThenInclude(g => g.Members)
+                .Include(groupInviteLink => groupInviteLink.Group)
+                .ThenInclude(g => g.Settings)
                 .FirstOrDefaultAsync(l => l.InviteCode == inviteCode && 
-                                         !l.IsUsed && 
-                                         l.ExpiresAt > DateTime.UtcNow);
+                                          !l.IsUsed && 
+                                          l.ExpiresAt > DateTime.UtcNow);
 
-            if (link == null)
-                return (false, "邀请链接无效或已过期", null);
-
-            // 检查群聊是否被禁用
-            if (link.Group?.Status == Models.Enums.EChatStatus.GroupDisabled)
-                return (false, "群聊已被禁用，无法加入", null);
+            if (link?.Group is null || link.Group?.Status == EChatStatus.GroupDisabled)
+                return (false, $"邀请链接无效或已过期，或者群被禁用({link?.Group?.Status})", null);
 
             // 检查邀请人是否还是群成员且具有管理员权限
             var groupChat = link.Group;
-            var inviterMember = groupChat.Members.FirstOrDefault(m => 
+            var inviterMember = groupChat!.Members.FirstOrDefault(m =>  // todo !!! maycauseproblem
                 m.TheGuyId.ToString() == link.CreatedByUserId);
             
             if (inviterMember == null || 
-                (inviterMember.Type != Models.Enums.EGroupMemberType.Owner && 
-                 inviterMember.Type != Models.Enums.EGroupMemberType.Admin))
+                !AuthHelper.CanManageGroup(inviterMember))
                 return (false, "邀请人已不是管理员或已退群，邀请链接无效", null);
 
             // 检查链接是否针对特定用户
@@ -117,14 +109,14 @@ public class GroupInviteLinkService
                 return (false, "您已经是群成员", null);
 
             // 查找目标用户
-            var targetUser = await _context.Users
+            var targetUser = await context.Users
                 .FirstOrDefaultAsync(u => u.CustomId == targetUserId);
 
             if (targetUser == null)
                 return (false, "用户不存在", null);
 
             // 查找邀请人用户
-            var inviterUser = await _context.Users
+            var inviterUser = await context.Users
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == link.CreatedByUserId);
 
             if (inviterUser == null)
@@ -138,8 +130,7 @@ public class GroupInviteLinkService
             // 添加成员并记录邀请人
             var newMember = new GroupChatMember(targetUser)
             {
-                Type = Models.Enums.EGroupMemberType.Member,
-                Nickname = targetUser.DisplayName ?? targetUser.CustomId,
+                Type = EGroupMemberType.Member,
                 InvitedById = inviterUser.LocalId,
                 InvitedBy = inviterUser
             };
@@ -152,18 +143,18 @@ public class GroupInviteLinkService
                 DisplayName = groupChat.Settings.DisplayName
             };
 
-            _context.Contacts.Add(contact);
+            context.Contacts.Add(contact);
 
             // 发送加入通知，明确指定邀请人
             await SendMemberJoinedMessageAsync(groupChat.UniqueMark, 
                 link.CreatedByUserId, targetUserId);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, "加入群聊成功", groupChat);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "通过邀请链接加入群聊失败");
+            logger.LogError(ex, "通过邀请链接加入群聊失败");
             return (false, "加入群聊失败", null);
         }
     }
@@ -176,23 +167,22 @@ public class GroupInviteLinkService
         try
         {
             // 验证权限
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.Members)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == groupId);
 
             if (groupChat == null)
-                return new List<GroupInviteLink>();
+                return [];
 
             var operatorMember = groupChat.Members.FirstOrDefault(m => 
                 m.TheGuyId.ToString() == operatorUserId);
 
             if (operatorMember == null || 
-                (operatorMember.Type != Models.Enums.EGroupMemberType.Owner && 
-                 operatorMember.Type != Models.Enums.EGroupMemberType.Admin))
-                return new List<GroupInviteLink>();
+                !AuthHelper.CanManageGroup(operatorMember))
+                return [];
 
             // 获取有效的邀请链接
-            return await _context.GroupInviteLinks
+            return await context.GroupInviteLinks
                 .Where(l => l.GroupId == groupId && 
                            !l.IsUsed && 
                            l.ExpiresAt > DateTime.UtcNow)
@@ -200,8 +190,8 @@ public class GroupInviteLinkService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取邀请链接失败");
-            return new List<GroupInviteLink>();
+            logger.LogError(ex, "获取邀请链接失败");
+            return [];
         }
     }
 
@@ -213,12 +203,12 @@ public class GroupInviteLinkService
     {
         try
         {
-            var link = await _context.GroupInviteLinks
+            var link = await context.GroupInviteLinks
                 .Include(l => l.Group)
                 .ThenInclude(g => g.Members)
                 .FirstOrDefaultAsync(l => l.InviteCode == inviteCode);
 
-            if (link == null)
+            if (link?.Group == null)
                 return (false, "邀请链接不存在");
 
             // 验证权限
@@ -226,8 +216,7 @@ public class GroupInviteLinkService
                 m.TheGuyId.ToString() == operatorUserId);
 
             if (operatorMember == null || 
-                (operatorMember.Type != Models.Enums.EGroupMemberType.Owner && 
-                 operatorMember.Type != Models.Enums.EGroupMemberType.Admin))
+                !AuthHelper.CanManageGroup(operatorMember))
                 return (false, "没有权限撤销此链接");
 
             // 标记为已使用（撤销）
@@ -235,12 +224,12 @@ public class GroupInviteLinkService
             link.UsedAt = DateTime.UtcNow;
             link.UsedByUserId = operatorUserId;
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, "撤销邀请链接成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "撤销邀请链接失败");
+            logger.LogError(ex, "撤销邀请链接失败");
             return (false, "撤销邀请链接失败");
         }
     }
@@ -262,7 +251,7 @@ public class GroupInviteLinkService
     private async Task SendMemberJoinedMessageAsync(string groupId, string operatorId, string targetId)
     {
         // 查找邀请人信息
-        var inviterUser = await _context.Users
+        var inviterUser = await context.Users
             .FirstOrDefaultAsync(u => u.LocalId.ToString() == operatorId);
         
         var inviterName = inviterUser?.DisplayName ?? inviterUser?.CustomId ?? "未知用户";
@@ -272,11 +261,11 @@ public class GroupInviteLinkService
             TraceId = Guid.NewGuid().ToString(),
             SenderId = Guid.Parse(operatorId),
             OfChatId = groupId,
-            Content = $"用户 {targetId} 通过 {inviterName} 的邀请链接加入群聊",
-            Type = Models.Enums.EMessageType.Event,
+            Content = $"用户 {targetId} 通过邀请链接加入群聊",
+            Type = EMessageType.Event,
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        _context.Messages.Add(message);
+        await ChatAgent.Say(context, message, chatAgent);
     }
 }

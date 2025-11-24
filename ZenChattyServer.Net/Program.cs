@@ -43,7 +43,7 @@ builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 builder.Services.AddSingleton<MessageCacheService>();
 builder.Services.AddScoped<CacheSyncService>();
 builder.Services.AddScoped<UserSocialService>();
-builder.Services.AddScoped<GroupManagementService>();
+builder.Services.AddScoped<GroupManageService>();
 builder.Services.AddScoped<GroupInviteLinkService>();
 builder.Services.AddScoped<GroupAnnouncementService>();
 builder.Services.AddDbContext<UserRelatedContext>(options =>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Response;
 using ZenChattyServer.Net.Services;
 
@@ -19,6 +20,23 @@ public class AuthHelper
     {
         if (string.IsNullOrEmpty(rawToken)) return null;
         return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken.Substring(7);
+    }
+
+    public static bool CanManageGroup(GroupChatMember user)
+    {
+        return user.Type is not (EGroupMemberType.Owner or EGroupMemberType.Admin);
+    }
+
+    public static (bool isAllowed, string message) CanManageGroupDetailed(GroupChatMember user)
+    {
+        var result = CanManageGroup(user);
+        return result ? (true, "allowed") : (false, "no permission");
+    }
+    
+    public static bool CanOperateMember(GroupChatMember operatorMember, GroupChatMember targetMember)
+    {
+        return (operatorMember.Type == EGroupMemberType.Owner) || 
+               (operatorMember.Type == EGroupMemberType.Admin && targetMember.Type == EGroupMemberType.Member);
     }
     
     public static async Task<(BasicResponse? failResult, bool isValid, User? user)> RejectOrNotAsync(string? token, AuthService authService)

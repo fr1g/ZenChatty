@@ -8,17 +8,8 @@ using ZenChattyServer.Net.Models.Response;
 
 namespace ZenChattyServer.Net.Services;
 
-public class UserSocialService
+public class UserSocialService(UserRelatedContext context, ILogger<UserSocialService> logger, ChatHubService chatAgent)
 {
-    private readonly UserRelatedContext _context;
-    private readonly ILogger<UserSocialService> _logger;
-
-    public UserSocialService(UserRelatedContext context, ILogger<UserSocialService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     /// <summary>
     /// 创建私聊会话
     /// </summary>
@@ -28,14 +19,14 @@ public class UserSocialService
         try
         {
             // 查找接收者
-            var receiver = await _context.Users
+            var receiver = await context.Users
                 .FirstOrDefaultAsync(u => u.CustomId == request.ReceiverCustomId);
                 
             if (receiver == null)
                 return (false, "", "User does not exist");
 
             // 检查是否已经是好友（已有Contact关系）
-            var existingContact = await _context.Contacts
+            var existingContact = await context.Contacts
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => 
                     c.HostId.ToString() == initiatorUserId && 
@@ -47,7 +38,7 @@ public class UserSocialService
                 return (true, existingContact.ObjectId, "Private chat already exists");
 
             // 创建私聊会话
-            var initiator = await _context.Users.FindAsync(Guid.Parse(initiatorUserId));
+            var initiator = await context.Users.FindAsync(Guid.Parse(initiatorUserId));
             if (initiator == null)
                 return (false, "", "Initiator user does not exist");
 
@@ -56,7 +47,7 @@ public class UserSocialService
                 IsInformal = request.IsInformal
             };
 
-            _context.PrivateChats.Add(privateChat);
+            context.PrivateChats.Add(privateChat);
 
             // 为双方创建Contact对象
             var contact1 = new Contact(initiator, privateChat)
@@ -69,9 +60,9 @@ public class UserSocialService
                 DisplayName = initiator.DisplayName ?? initiator.CustomId
             };
 
-            _context.Contacts.AddRange(contact1, contact2);
+            context.Contacts.AddRange(contact1, contact2);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // 发送自动打招呼消息
             await SendGreetingMessageAsync(privateChat.UniqueMark, initiatorUserId);
@@ -80,7 +71,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建私聊失败");
+            logger.LogError(ex, "创建私聊失败");
             return (false, "", "Failed to create private chat");
         }
     }
@@ -92,7 +83,7 @@ public class UserSocialService
     {
         try
         {
-            var requester = await _context.Users
+            var requester = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
             
@@ -100,7 +91,7 @@ public class UserSocialService
                 return new UserInfoResponse { success = false, message = "请求用户不存在" };
 
             // 查找目标用户
-            var targetUser = await _context.Users
+            var targetUser = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.Email == email || u.CustomId == customId);
             
@@ -112,7 +103,7 @@ public class UserSocialService
                 return new UserInfoResponse { success = false, message = "该用户不允许被搜索" };
 
             // 检查关系以确定可见性
-            var isFriend = RelationshipHelper.IsUserAFriend(_context, requester,  targetUser);
+            var isFriend = RelationshipHelper.IsUserAFriend(context, requester,  targetUser);
             var isInSameGroup = await IsInSameGroupAsync(requester.LocalId.ToString(), targetUser.LocalId.ToString());
 
             // 根据隐私设置过滤用户信息
@@ -122,7 +113,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "查询用户信息失败");
+            logger.LogError(ex, "查询用户信息失败");
             return new UserInfoResponse { success = false, message = "查询用户信息失败" };
         }
     }
@@ -168,13 +159,12 @@ public class UserSocialService
         }
 
         // 性别可见性检查
-        if (privacy.GenderVisibility == EPrivacyVisibilityRange.Everyone ||
-            (privacy.GenderVisibility == EPrivacyVisibilityRange.FriendsAndGroups && (isFriend || isInSameGroup)) ||
-            (privacy.GenderVisibility == EPrivacyVisibilityRange.Friends && isFriend))
-        {
-            response.Gender = targetUser.Gender;
-            response.Birth = targetUser.Birth;
-        }
+        if (privacy.GenderVisibility != EPrivacyVisibilityRange.Everyone &&
+            (privacy.GenderVisibility != EPrivacyVisibilityRange.FriendsAndGroups || (!isFriend && !isInSameGroup)) &&
+            (privacy.GenderVisibility != EPrivacyVisibilityRange.Friends || !isFriend)) return response;
+        
+        response.Gender = targetUser.Gender;
+        response.Birth = targetUser.Birth;
 
         return response;
     }
@@ -184,17 +174,17 @@ public class UserSocialService
     /// </summary>
     private async Task<bool> IsInSameGroupAsync(string user1Id, string user2Id)
     {
-        var user1Groups = await _context.GroupChatMembers
+        var user1Groups = await context.GroupChatMembers
             .Where(gm => gm.TheGuy.LocalId.ToString() == user1Id)
             .Select(gm => gm.GroupChatId)
             .ToListAsync();
 
-        var user2Groups = await _context.GroupChatMembers
+        var user2Groups = await context.GroupChatMembers
             .Where(gm => gm.TheGuy.LocalId.ToString() == user2Id)
             .Select(gm => gm.GroupChatId)
             .ToListAsync();
 
-        return user1Groups.Intersect(user2Groups).Any();
+        return user1Groups.Intersect(user2Groups).Any(); // 我草，linq这不比我自己写的那个helper好用
     }
 
     /// <summary>
@@ -205,7 +195,7 @@ public class UserSocialService
     {
         try
         {
-            var creator = await _context.Users.FindAsync(Guid.Parse(creatorUserId));
+            var creator = await context.Users.FindAsync(Guid.Parse(creatorUserId));
             if (creator == null)
                 return (false, "", "Creator user does not exist");
 
@@ -215,20 +205,20 @@ public class UserSocialService
                 Settings = new GroupSettings
                 {
                     DisplayName = request.GroupName,
-                    AvatarFileLocator = request.AvatarUrl
+                    AvatarFileLocator = request.AvatarUrl ?? ""
                 }
             };
 
             // 添加创建者为群主
             var creatorMember = new GroupChatMember(creator)
             {
-                Type = EGroupMemberType.Owner,
-                Nickname = creator.DisplayName ?? creator.CustomId
+                Type = EGroupMemberType.Owner
+                // no need to add init nickname, only for frontend to determine which name to use.
             };
 
             groupChat.Members = new List<GroupChatMember> { creatorMember };
 
-            _context.GroupChats.Add(groupChat);
+            context.GroupChats.Add(groupChat);
 
             // 为创建者创建Contact对象
             var contact = new Contact(creator, groupChat)
@@ -236,9 +226,9 @@ public class UserSocialService
                 DisplayName = request.GroupName
             };
 
-            _context.Contacts.Add(contact);
+            context.Contacts.Add(contact);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // 发送群创建通知消息
             await SendGroupCreationMessageAsync(groupChat.UniqueMark, creatorUserId);
@@ -247,7 +237,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建群聊失败");
+            logger.LogError(ex, "创建群聊失败");
             return (false, "", "Failed to create group chat");
         }
     }
@@ -260,7 +250,7 @@ public class UserSocialService
     {
         try
         {
-            var groupChat = await _context.GroupChats
+            var groupChat = await context.GroupChats
                 .Include(gc => gc.Members)
                 .FirstOrDefaultAsync(gc => gc.UniqueMark == groupId);
 
@@ -280,12 +270,12 @@ public class UserSocialService
             // 发送群禁用通知消息
             await SendGroupDisabledMessageAsync(groupId, operatorUserId);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, "Group chat disabled");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "禁用群聊失败");
+            logger.LogError(ex, "禁用群聊失败");
             return (false, "Failed to disable group chat");
         }
     }
@@ -297,17 +287,17 @@ public class UserSocialService
     {
         try
         {
-            var contact = await _context.Contacts.FindAsync(Guid.Parse(contactId));
+            var contact = await context.Contacts.FindAsync(Guid.Parse(contactId));
             if (contact == null || contact.HostId != user.LocalId) return (false, "Contact does not exist");
             
             contact.LastUnreadCount = unreadCount;
             contact.LastUsed = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, "Unread count updated successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "failed to update unread count");
+            logger.LogError(ex, "failed to update unread count");
             return (false, "Failed to update unread count");
         }
     }
@@ -320,11 +310,11 @@ public class UserSocialService
     {
         try
         {
-            var targetUser = await _context.Users
+            var targetUser = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == targetUserId);
 
-            var requester = await _context.Users
+            var requester = await context.Users
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
                 
             if (requester == null || targetUser == null)
@@ -361,7 +351,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "检查隐私设置失败");
+            logger.LogError(ex, "检查隐私设置失败");
             return (false, "检查隐私设置失败");
         }
     }
@@ -374,7 +364,7 @@ public class UserSocialService
         try
         {
             // 检查userId1是否拉黑了userId2
-            var contact1 = await _context.Contacts
+            var contact1 = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => 
@@ -384,7 +374,7 @@ public class UserSocialService
                     c.IsBlocked);
 
             // 检查userId2是否拉黑了userId1
-            var contact2 = await _context.Contacts
+            var contact2 = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => 
@@ -397,7 +387,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to check block status");
+            logger.LogError(ex, "Failed to check block status");
             return false;
         }
     }
@@ -416,7 +406,7 @@ public class UserSocialService
             // 首先尝试按Guid格式查找
             if (Guid.TryParse(request.TargetUserId, out var targetUserId))
             {
-                targetUser = await _context.Users
+                targetUser = await context.Users
                     .FirstOrDefaultAsync(u => u.LocalId == targetUserId);
             }
 
@@ -427,7 +417,7 @@ public class UserSocialService
             }
 
             // 检查是否已经是好友（非临时私聊）
-            var existingPrivateChat = await _context.PrivateChats
+            var existingPrivateChat = await context.PrivateChats
                 .Include(pc => pc.InitBy)
                 .Include(pc => pc.Receiver)
                 .FirstOrDefaultAsync(pc => 
@@ -454,7 +444,7 @@ public class UserSocialService
             Console.WriteLine("stage 1");
 
             // 查找发起者用户
-            var initiator = await _context.Users.FindAsync(Guid.Parse(initiatorUserId));
+            var initiator = await context.Users.FindAsync(Guid.Parse(initiatorUserId));
             if (initiator == null)
                 return (false, "", "发起者用户不存在");
             
@@ -466,8 +456,8 @@ public class UserSocialService
                 IsInformal = request.IsInformal
             };
 
-            _context.PrivateChats.Add(privateChat);
-            await _context.SaveChangesAsync(); // 
+            context.PrivateChats.Add(privateChat);
+            await context.SaveChangesAsync(); // 
 
             // 为双方创建Contact对象
             var contact1 = new Contact(initiator, privateChat)
@@ -480,9 +470,9 @@ public class UserSocialService
                 DisplayName = initiator.DisplayName ?? initiator.CustomId
             };
 
-            _context.Contacts.AddRange(contact1, contact2);
+            context.Contacts.AddRange(contact1, contact2);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // 发送自动打招呼消息
             await SendGreetingMessageAsync(privateChat.UniqueMark, initiatorUserId);
@@ -491,7 +481,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "添加好友失败");
+            logger.LogError(ex, "添加好友失败");
             return (false, "", "添加好友失败");
         }
     }
@@ -505,7 +495,7 @@ public class UserSocialService
         try
         {
             // 查找双方的Contact记录
-            var contacts = await _context.Contacts
+            var contacts = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
                 .Where(c => 
@@ -522,7 +512,7 @@ public class UserSocialService
             }
 
             // 检查是否已经是好友（非临时私聊）
-            var existingPrivateChat = await _context.PrivateChats
+            var existingPrivateChat = await context.PrivateChats
                 .Include(pc => pc.InitBy)
                 .Include(pc => pc.Receiver)
                 .FirstOrDefaultAsync(pc => 
@@ -533,8 +523,8 @@ public class UserSocialService
             if (existingPrivateChat == null)
             {
                 // 创建正式私聊
-                var user1 = await _context.Users.FindAsync(Guid.Parse(userId1));
-                var user2 = await _context.Users.FindAsync(Guid.Parse(userId2));
+                var user1 = await context.Users.FindAsync(Guid.Parse(userId1));
+                var user2 = await context.Users.FindAsync(Guid.Parse(userId2));
 
                 if (user1 == null || user2 == null)
                     return (false, "用户不存在");
@@ -544,7 +534,7 @@ public class UserSocialService
                     IsInformal = false
                 };
 
-                _context.PrivateChats.Add(privateChat);
+                context.PrivateChats.Add(privateChat);
 
                 // 为双方创建Contact对象
                 var contact1 = new Contact(user1, privateChat)
@@ -557,13 +547,13 @@ public class UserSocialService
                     DisplayName = user1.DisplayName ?? user1.CustomId
                 };
 
-                _context.Contacts.AddRange(contact1, contact2);
+                context.Contacts.AddRange(contact1, contact2);
             }
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             // 发送自动打招呼消息
-            var user1Contacts = await _context.Contacts
+            var user1Contacts = await context.Contacts
                 .Include(c => c.Object)
                 .Where(c => c.Host.LocalId.ToString() == userId1 && 
                            c.Object is PrivateChat && 
@@ -579,7 +569,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to unblock and add friend");
+            logger.LogError(ex, "Failed to unblock and add friend");
             return (false, "Failed to unblock and add friend");
         }
     }
@@ -592,7 +582,7 @@ public class UserSocialService
     {
         try
         {
-            var contact = await _context.Contacts
+            var contact = await context.Contacts
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => 
                     c.HostId.ToString() == userId && 
@@ -612,12 +602,12 @@ public class UserSocialService
             // 发送打招呼消息
             await SendGreetingMessageAsync(contact.ObjectId, userId);
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return (true, "Unblocked and sent greeting message successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to unblock");
+            logger.LogError(ex, "Failed to unblock");
             return (false, "Failed to unblock");
         }
     }
@@ -636,12 +626,11 @@ public class UserSocialService
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            _context.Messages.Add(greetingMessage);
-            await _context.SaveChangesAsync();
+            await ChatAgent.Say(context, greetingMessage, chatAgent);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send greeting message");
+            logger.LogError(ex, "Failed to send greeting message");
         }
     }
 
@@ -659,12 +648,12 @@ public class UserSocialService
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            _context.Messages.Add(creationMessage);
-            await _context.SaveChangesAsync();
+            await ChatAgent.Say(context, creationMessage, chatAgent);
+
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send group creation notification message");
+            logger.LogError(ex, "Failed to send group creation notification message");
         }
     }
 
@@ -675,7 +664,7 @@ public class UserSocialService
     {
         try
         {
-            var contacts = await _context.Contacts
+            var contacts = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
                 .Where(c => c.Host.LocalId.ToString() == userId)
@@ -686,12 +675,12 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get contact list");
+            logger.LogError(ex, "Failed to get contact list");
             return new List<Contact>();
         }
     }
 
-    private async Task SendGroupDisabledMessageAsync(string groupId, string operatorId)
+    private async Task SendGroupDisabledMessageAsync(string groupId, string operatorId) // factory
     {
         try
         {
@@ -705,12 +694,11 @@ public class UserSocialService
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            _context.Messages.Add(disabledMessage);
-            await _context.SaveChangesAsync();
+            await ChatAgent.Say(context, disabledMessage, chatAgent);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "发送群禁用通知消息失败");
+            logger.LogError(ex, "发送群禁用通知消息失败");
         }
     }
 
@@ -722,7 +710,7 @@ public class UserSocialService
         try
         {
             // 查找与目标用户的私聊Contact记录
-            var contact = await _context.Contacts
+            var contact = await context.Contacts
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => 
                     c.HostId.ToString() == userId && 
@@ -735,13 +723,13 @@ public class UserSocialService
 
             // 设置拉黑状态
             contact.IsBlocked = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
             return (true, "拉黑成功");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "拉黑用户失败");
+            logger.LogError(ex, "拉黑用户失败");
             return (false, "拉黑用户失败");
         }
         }
@@ -756,7 +744,7 @@ public class UserSocialService
         try
         {
             // 验证用户存在
-            var user = await _context.Users
+            var user = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == userId);
             if (user == null)
@@ -772,14 +760,14 @@ public class UserSocialService
             if (request.IsGroupInviteAllowed.HasValue)
                 user.Privacies.IsInvitableToGroup = request.IsGroupInviteAllowed.Value != EPrivacyVisibilityRange.None;
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
 
-            _logger.LogInformation("用户 {UserId} 更新了隐私设置", userId);
+            logger.LogInformation("用户 {UserId} 更新了隐私设置", userId);
             return new BasicResponse { success = true, content = "隐私设置更新成功" };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "更新用户 {UserId} 隐私设置时发生错误", userId);
+            logger.LogError(ex, "更新用户 {UserId} 隐私设置时发生错误", userId);
             return new BasicResponse { success = false, content = "隐私设置更新失败" };
         }
     }
@@ -791,7 +779,7 @@ public class UserSocialService
     {
         try
         {
-            var user = await _context.Users
+            var user = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.LocalId.ToString() == userId);
             if (user == null)
@@ -811,7 +799,7 @@ public class UserSocialService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取用户 {UserId} 隐私设置时发生错误", userId);
+            logger.LogError(ex, "获取用户 {UserId} 隐私设置时发生错误", userId);
             return new PrivacySettingsResponse { success = false, message = "获取隐私设置失败" };
         }
     }

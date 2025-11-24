@@ -142,7 +142,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 
         _channel.BasicConsume(
             queue: _queueName,
-            autoAck: false, // 手动确认
+            autoAck: false, // todo !!! maycauseproblem 手动确认
             consumer: consumer);
 
         _logger.LogInformation("Message queue consumption started");
@@ -241,28 +241,11 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     /// <summary>
     /// 检查是否为重要事件（@提及、群公告、@全体）
     /// </summary>
-    private bool IsVitalEvent(Guid userId, MessageQueueData messageData)
+    private static bool IsVitalEvent(Guid userId, MessageQueueData messageData)
     {
-        // 检查是否为群公告
-        if (messageData.MessageType == EMessageType.Announcement)
-        {
-            return true;
-        }
-        
-        // 检查是否为@全体事件
-        if (messageData.IsMentioningAll)
-        {
-            return true;
-        }
-        
-        // 检查用户是否被@提及
-        if (messageData.MentionedUserGuids != null && 
-            messageData.MentionedUserGuids.Contains(userId.ToString()))
-        {
-            return true;
-        }
-        
-        return false;
+        return (messageData.MessageType == EMessageType.Announcement) ||
+               (messageData.IsMentioningAll) ||
+               (messageData.MentionedUserGuids != null && messageData.MentionedUserGuids.Contains(userId.ToString())) ;
     }
 
     /// <summary>
@@ -283,15 +266,13 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (_disposed) return;
+        if (disposing)
         {
-            if (disposing)
-            {
-                _channel?.Dispose();
-                _connection?.Dispose();
-            }
-            _disposed = true;
+            _channel?.Dispose();
+            _connection?.Dispose();
         }
+        _disposed = true;
     }
 
     /// <summary>
