@@ -10,6 +10,8 @@ public enum EFileType
     /// </summary>
     Image,
     
+    Animated,
+    
     /// <summary>
     /// 音频文件
     /// </summary>
