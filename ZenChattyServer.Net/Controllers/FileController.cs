@@ -150,6 +150,38 @@ public class FileController(
     }
 
     /// <summary>
+    /// 直接显示图片（不设置下载头，浏览器直接显示）
+    /// </summary>
+    [HttpGet("get-img/{locator}")]
+    public async Task<IActionResult> GetImage(string locator)
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            var result = await fileStorageService.DownloadFileAsync(locator);
+            if(result.fileType != EFileType.Image)
+                return BadRequest(new BasicResponse{content = "Forbidden: Not an Image file", success = false});
+
+            if (!result.success || result.fileStream == null)
+                return NotFound(new BasicResponse { content = result.message, success = false });
+
+            // 检查是否为图片类型
+            var contentType = GetContentTypeFromLocator(locator);
+            if (!contentType.StartsWith("image/"))
+                return BadRequest(new BasicResponse { content = "Only image files can be viewed directly", success = false });
+            
+            // 不设置Content-Disposition头，让浏览器直接显示图片
+            return File(result.fileStream, contentType);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new BasicResponse { content = "Image view failed", success = false });
+        }
+    }
+
+    /// <summary>
     /// 删除文件 todo some of those apis should be only accessible to deployer
     /// </summary>
     [HttpDelete("delete/{locator}")]

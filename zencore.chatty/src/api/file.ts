@@ -41,8 +41,12 @@ export class FileApiClient extends ApiClientBase {
         });
     }
 
+    public imageFileByUrl(locator: string): string{
+        return `${this.baseURL}/api/file/download/${locator}`;
+    }
+
     /**
-     * 删除文件
+     * 删除文件 @deprecated
      * @param locator - 文件定位器
      * @returns 基础响应
      */

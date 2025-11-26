@@ -190,7 +190,7 @@ public class FileStorageService
     /// <summary>
     /// 下载文件
     /// </summary>
-    public async Task<(bool success, FileStream? fileStream, string message, string fileName)> DownloadFileAsync(string locator)
+    public async Task<(bool success, FileStream? fileStream, string message, string fileName, EFileType? fileType)> DownloadFileAsync(string locator)
     {
         try
         {
@@ -198,20 +198,20 @@ public class FileStorageService
                 .FirstOrDefaultAsync(uf => uf.Locator == locator);
 
             if (userFile == null)
-                return (false, null, "文件不存在", "");
+                return (false, null, "文件不存在", "", null);
 
             if (!File.Exists(userFile.StoragePath))
-                return (false, null, "文件不存在于磁盘", "");
+                return (false, null, "文件不存在于磁盘", "", null);
 
             var fileStream = File.OpenRead(userFile.StoragePath);
             var fileName = $"{userFile.OriginalFileName}";
 
-            return (true, fileStream, "文件下载成功", fileName);
+            return (true, fileStream, "文件下载成功", fileName, userFile.FileType);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "文件下载失败");
-            return (false, null, "文件下载失败", "");
+            return (false, null, "文件下载失败", "", null);
         }
     }
 

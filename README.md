@@ -8,12 +8,13 @@ Involved AI usages:
 - Jetbrains Rider AI Assistant
 - Trae Builder (Deepseek v3/v3.1-terminus/r1, Alibaba QWen3-Coder)
 - Trae CUE Code Generation/Refactoring
+- Jetbrains Rider Qodana Code Inspection (Local)
 
 Used under what situation:
 - Auto code complete
 - Finding risks, analyse of model-classes
 - Generating unrelated materials (such as: readme, issues)
-- EF relationship analysis and repeating
+- EF relationship analysis and repeating works
 
 Maybe asked questions:
 - Why here's a gigantic submit in git including 9225 new lines at commit `6ac0b3fc3caa959743eb77d9e1e6f1deff281047`?

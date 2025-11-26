@@ -1,18 +1,14 @@
-import { GroupChat } from "../GroupChat";
-import Contact from "../Contact";
-import User from "../User";
-import { EGroupMemberType } from "../enums/EnumUserRelated";
-import { GroupChatMember } from "../GroupChatMember";
-import { PrivateChat } from "../PrivateChat";
+import { User, EGroupMemberType, GroupChatMember, GroupChat, PrivateChat, Contact } from "zen-core-chatty-typescript";
+
 
 export const MockUsers: Record<string, User> = {
-    John: new User('123', 'john@ali.com', 'John Doe',  undefined),
-    Fern: new User('456', 'fern@Maliburn.org', 'Fernandes Vacuez',  undefined),
-    Wise: new User('789', 'wise@prot0n.com', 'Wise Elle',  undefined),
-    Ivan: new User('0ab', 'ivan@kv.com', 'Ivan Masydov',  undefined),
-    Tagy: new User('cde', 'tagy@lasy.cc', 'Tagy Lasy',  undefined),
-    Chen: new User('fgh', 'chen@kv.com', 'Chen Dao',  undefined),
-    Ibin: new User('ijk', 'ibin@orse.co', 'Omar Ibin Yahya',  undefined),
+    John: new User('123', 'john@ali.com', 'John Doe', undefined),
+    Fern: new User('456', 'fern@Maliburn.org', 'Fernandes Vacuez', undefined),
+    Wise: new User('789', 'wise@prot0n.com', 'Wise Elle', undefined),
+    Ivan: new User('0ab', 'ivan@kv.com', 'Ivan Masydov', undefined),
+    Tagy: new User('cde', 'tagy@lasy.cc', 'Tagy Lasy', undefined),
+    Chen: new User('fgh', 'chen@kv.com', 'Chen Dao', undefined),
+    Ibin: new User('ijk', 'ibin@orse.co', 'Omar Ibin Yahya', undefined),
 };
 
 export function toGroupMember(user: User, type: EGroupMemberType = EGroupMemberType.Member) {

@@ -8,8 +8,8 @@ public class Chat(User initBy)
 {
     public Chat() : this(null!) { }
     
-    [Key]
-    public string UniqueMark { get; set; }  = Guid.NewGuid().ToString();
+    [Key] [MaxLength(64)]
+    public string UniqueMark { get; set; }  = Guid.NewGuid().ToString(); // todo maycauseproblem !!! unknown if causes error: string type of primary key
     
     public Guid InitById { get; set; }
     public virtual User InitBy { get; set; } = initBy;

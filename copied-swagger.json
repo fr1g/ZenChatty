@@ -427,6 +427,28 @@
         }
       }
     },
+    "/api/file/get-img/{locator}": {
+      "get": {
+        "tags": [
+          "File"
+        ],
+        "parameters": [
+          {
+            "name": "locator",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/file/delete/{locator}": {
       "delete": {
         "tags": [
@@ -2073,6 +2095,7 @@
         "type": "object",
         "properties": {
           "uniqueMark": {
+            "maxLength": 64,
             "type": "string",
             "nullable": true
           },
@@ -2462,6 +2485,7 @@
         "type": "object",
         "properties": {
           "uniqueMark": {
+            "maxLength": 64,
             "type": "string",
             "nullable": true
           },
@@ -2864,6 +2888,7 @@
         "type": "object",
         "properties": {
           "uniqueMark": {
+            "maxLength": 64,
             "type": "string",
             "nullable": true
           },
@@ -2985,6 +3010,10 @@
           "content": {
             "minLength": 1,
             "type": "string"
+          },
+          "sentTimestamp": {
+            "type": "integer",
+            "format": "int64"
           },
           "messageType": {
             "$ref": "#/components/schemas/EMessageType"
