@@ -5,9 +5,9 @@ describe('User Models', () => {
     test('should create User instance with default values', () => {
       const user = new User('test@example.com', 'test1', undefined);
       expect(user).toBeInstanceOf(User);
-      expect(user.localId).toBe('');
+      expect(user.localId).toBe('ungiven');
       expect(user.email).toBe('test@example.com');
-      expect(user.displayName).toBe('anonymous');
+      expect(user.displayName).toBe('test1');
     });
 
     test('should create User instance with provided values', () => {

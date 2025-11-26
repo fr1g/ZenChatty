@@ -53,3 +53,8 @@ export class PrivacyCheckRequest {
     public targetUserId: string = '';
     public checkType: string = '';
 }
+
+export class UserInfoQueryRequest {
+    public email: string = '';
+    public customId?: string;
+}

@@ -1,141 +1,84 @@
 import { ApiClientBase } from './base';
-import { Contact } from '../models/other';
 import { BasicResponse } from '../models/auth';
+import { ChatResponse } from '../models/chat';
+import { Contact } from '../models/other';
+import { UserInfoQueryRequest } from '../models/requests';
+
+export interface UserInfoResponse {
+    success: boolean;
+    content?: string;
+    user?: {
+        localId: string;
+        email: string;
+        customId?: string;
+        displayName?: string;
+        avatarUrl?: string;
+        status: string;
+    };
+}
 
 export class ContactApiClient extends ApiClientBase {
-    /**
-     * 获取联系人列表
-     * @returns 联系人列表
-     */
-    public async getContacts(): Promise<Contact[]> {
-        return await this.get<Contact[]>('/api/contacts');
+    constructor(baseUrl: string, timeout: number = 10000) {
+        super(baseUrl, timeout);
     }
 
     /**
-     * 添加联系人
-     * @param userId - 用户ID
-     * @param remark - 备注名（可选）
-     * @returns 基础响应
+     * 查询用户信息（根据隐私设置过滤）
      */
-    public async addContact(userId: string, remark?: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/contacts', { userId, remark });
+    async queryUserInfo(request: UserInfoQueryRequest): Promise<UserInfoResponse> {
+        return this.post<UserInfoResponse>('/api/social/get-user-info', request);
     }
 
     /**
-     * 删除联系人
-     * @param contactId - 联系人ID
-     * @returns 基础响应
+     * 检查用户是否被禁用
      */
-    public async deleteContact(contactId: string): Promise<BasicResponse> {
-        return await this.delete<BasicResponse>(`/api/contacts/${contactId}`);
+    async checkUserIsDisabled(targetUserId: string): Promise<BasicResponse> {
+        return this.get<BasicResponse>(`/api/social/is-disabled/${targetUserId}`);
     }
 
     /**
-     * 更新联系人备注
-     * @param contactId - 联系人ID
-     * @param remark - 新备注
-     * @returns 基础响应
+     * 拉黑/取消拉黑用户
      */
-    public async updateContactRemark(contactId: string, remark: string): Promise<BasicResponse> {
-        return await this.put<BasicResponse>(`/api/contacts/${contactId}/remark`, { remark });
+    async blockUser(targetUserId: string, block: boolean = true): Promise<BasicResponse> {
+        return this.post<BasicResponse>(`/api/social/block/${targetUserId}`, null, { 
+            params: { block } 
+        });
     }
 
     /**
-     * 获取联系人详情
-     * @param contactId - 联系人ID
-     * @returns 联系人详情
+     * 解除拉黑并添加好友
      */
-    public async getContact(contactId: string): Promise<Contact> {
-        return await this.get<Contact>(`/api/contacts/${contactId}`);
+    async unblockAndAddFriend(targetUserId: string): Promise<BasicResponse> {
+        return this.post<BasicResponse>(`/api/social/unblock-and-add/${targetUserId}`);
     }
 
     /**
-     * 搜索联系人
-     * @param query - 搜索关键词
-     * @returns 联系人列表
+     * 添加好友
      */
-    public async searchContacts(query: string): Promise<Contact[]> {
-        return await this.get<Contact[]>(`/api/contacts/search?q=${encodeURIComponent(query)}`);
+    async addFriend(targetUserGuid: string): Promise<ChatResponse> {
+        return this.post<ChatResponse>(`/api/social/add-friend/${targetUserGuid}`);
     }
 
     /**
-     * 获取联系人请求列表
-     * @returns 联系人请求列表
+     * 检查两个用户之间的拉黑状态
      */
-    public async getContactRequests(): Promise<any[]> {
-        return await this.get<any[]>('/api/contacts/requests');
+    async checkBlockStatus(targetUserId: string): Promise<BasicResponse> {
+        return this.get<BasicResponse>(`/api/social/is-blocked/${targetUserId}`);
     }
 
     /**
-     * 发送联系人请求
-     * @param userId - 用户ID
-     * @param message - 请求消息（可选）
-     * @returns 基础响应
+     * 更新未读消息计数
      */
-    public async sendContactRequest(userId: string, message?: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/contacts/requests', { userId, message });
+    async updateUnreadCount(contactId: string, unreadCount: number): Promise<BasicResponse> {
+        return this.post<BasicResponse>(`/api/social/contact/get-unread/${contactId}`, null, {
+            params: { unreadCount }
+        });
     }
 
     /**
-     * 接受联系人请求
-     * @param requestId - 请求ID
-     * @returns 基础响应
+     * 获取用户的所有联系人
      */
-    public async acceptContactRequest(requestId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/contacts/requests/${requestId}/accept`);
-    }
-
-    /**
-     * 拒绝联系人请求
-     * @param requestId - 请求ID
-     * @returns 基础响应
-     */
-    public async rejectContactRequest(requestId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/contacts/requests/${requestId}/reject`);
-    }
-
-    /**
-     * 取消联系人请求
-     * @param requestId - 请求ID
-     * @returns 基础响应
-     */
-    public async cancelContactRequest(requestId: string): Promise<BasicResponse> {
-        return await this.delete<BasicResponse>(`/api/contacts/requests/${requestId}`);
-    }
-
-    /**
-     * 获取联系人分组
-     * @returns 联系人分组列表
-     */
-    public async getContactGroups(): Promise<any[]> {
-        return await this.get<any[]>('/api/contacts/groups');
-    }
-
-    /**
-     * 创建联系人分组
-     * @param name - 分组名称
-     * @returns 基础响应
-     */
-    public async createContactGroup(name: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/contacts/groups', { name });
-    }
-
-    /**
-     * 删除联系人分组
-     * @param groupId - 分组ID
-     * @returns 基础响应
-     */
-    public async deleteContactGroup(groupId: string): Promise<BasicResponse> {
-        return await this.delete<BasicResponse>(`/api/contacts/groups/${groupId}`);
-    }
-
-    /**
-     * 移动联系人到分组
-     * @param contactId - 联系人ID
-     * @param groupId - 分组ID
-     * @returns 基础响应
-     */
-    public async moveContactToGroup(contactId: string, groupId: string): Promise<BasicResponse> {
-        return await this.put<BasicResponse>(`/api/contacts/${contactId}/group`, { groupId });
+    async getContacts(): Promise<Contact[]> {
+        return this.post<Contact[]>('/api/social/contact/list');
     }
 }
