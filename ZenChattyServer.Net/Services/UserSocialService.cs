@@ -739,7 +739,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 更新用户隐私设置
     /// </summary>
-    public async Task<BasicResponse> UpdatePrivacySettingsAsync(string userId, UpdatePrivacySettingsRequest request)
+    public async Task<BasicResponse> UpdatePrivacySettingsAsync(string userId, PrivacySettings request)
     {
         try
         {
@@ -752,13 +752,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 return new BasicResponse { success = false, content = "用户不存在" };
             }
 
-            // 更新隐私设置字段（仅更新非空值）
-            if (request.IsDiscoverableViaSearch.HasValue)
-                user.Privacies.IsDiscoverableViaSearch = request.IsDiscoverableViaSearch.Value != EPrivacyVisibilityRange.None;
-            if (request.IsAddableFromGroup.HasValue)
-                user.Privacies.IsAddableFromGroup = request.IsAddableFromGroup.Value != EPrivacyVisibilityRange.None;
-            if (request.IsGroupInviteAllowed.HasValue)
-                user.Privacies.IsInvitableToGroup = request.IsGroupInviteAllowed.Value != EPrivacyVisibilityRange.None;
+            user.Privacies.Migrate(request);
 
             await context.SaveChangesAsync();
 

@@ -1,14 +1,17 @@
 import { EndpointSettings } from "../shared/ApiConfig";
+import { UserApiClient } from "zen-core-chatty-typescript";
 // @ts-ignore
 const localAsset = require('../../assets/default-1r1-placeholder.png');
 
 export async function getImgByLocator(locator: string): Promise<string> {
-    if (locator === '') {
-      const response = await fetch(localAsset.default || localAsset);
-      const blob = await response.blob();
-      return await blobToBase64(blob);
-    }
-    return await fetchFileAsBase64(`${EndpointSettings.baseUrl}/locate/${locator}`);
+  if (locator === '') {
+    const response = await fetch(localAsset.default || localAsset);
+    const blob = await response.blob();
+    return await blobToBase64(blob);
+  }
+  let n = new UserApiClient()
+
+  return await fetchFileAsBase64(`${EndpointSettings.baseUrl}/locate/${locator}`);
 }
 
 /**

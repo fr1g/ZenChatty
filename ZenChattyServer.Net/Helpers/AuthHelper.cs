@@ -20,7 +20,7 @@ public class AuthHelper
     public static string? Unbear(string? rawToken)
     {
         if (string.IsNullOrEmpty(rawToken)) return null;
-        return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken.Substring(7);
+        return !rawToken.StartsWith("Bearer ") ? rawToken : rawToken[7..];
     }
 
     public static bool CanManageGroup(GroupChatMember user)

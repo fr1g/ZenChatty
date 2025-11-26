@@ -22,5 +22,17 @@ public class PrivacySettings
     public EPrivacyVisibilityRange ContactVisibility { get; set; } = EPrivacyVisibilityRange.None;
     public EPrivacyVisibilityRange BioVisibility { get; set; } = EPrivacyVisibilityRange.FriendsAndGroups;
     public EPrivacyVisibilityRange GenderVisibility { get; set; } = EPrivacyVisibilityRange.Everyone;
+
+    public void Migrate(PrivacySettings settings)
+    {
+        this.IsDiscoverableViaSearch = settings.IsDiscoverableViaSearch;
+        this.IsInvitableToGroup = settings.IsInvitableToGroup;
+        this.IsAddableFromGroup = settings.IsAddableFromGroup;
+        this.IsNewChatKeepSilent = settings.IsNewChatKeepSilent;
+        this.AllowViewInfoFromGroupChat = settings.AllowViewInfoFromGroupChat;
+        this.ContactVisibility = settings.ContactVisibility;
+        this.BioVisibility = settings.BioVisibility;
+        this.GenderVisibility = settings.GenderVisibility;
+    }
     
 }

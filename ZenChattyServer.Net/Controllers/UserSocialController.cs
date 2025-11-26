@@ -236,12 +236,12 @@ public class UserSocialController(
     /// Update one's privacies
     /// </summary>
     [HttpPatch("privacy/update")]
-    public async Task<ActionResult<BasicResponse>> UpdatePrivacySettings([FromBody] UpdatePrivacySettingsRequest request)
+    public async Task<ActionResult<BasicResponse>> UpdatePrivacySettings([FromBody] PrivacySettings newObject)
     {
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
         if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var result = await userSocialService.UpdatePrivacySettingsAsync(refer.user!.LocalId.ToString(), request);
+        var result = await userSocialService.UpdatePrivacySettingsAsync(refer.user!.LocalId.ToString(), newObject);
         
         return result.success ? 
             Ok(result) : 
