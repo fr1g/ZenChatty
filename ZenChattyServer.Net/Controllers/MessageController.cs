@@ -14,7 +14,7 @@ namespace ZenChattyServer.Net.Controllers;
 /// 消息收发API控制器
 /// </summary>
 [ApiController]
-[Route("api/msg/[controller]")]
+[Route("api/msg")]
 [Authorize]
 public class MessageController : ControllerBase
 {

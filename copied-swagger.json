@@ -1207,7 +1207,7 @@
         }
       }
     },
-    "/api/msg/Message/send": {
+    "/api/msg/send": {
       "post": {
         "tags": [
           "Message"
@@ -1255,7 +1255,7 @@
         }
       }
     },
-    "/api/msg/Message/history/{chatUniqueMark}": {
+    "/api/msg/history/{chatUniqueMark}": {
       "get": {
         "tags": [
           "Message"
@@ -1321,7 +1321,7 @@
         }
       }
     },
-    "/api/msg/Message/unread/count": {
+    "/api/msg/unread/count": {
       "get": {
         "tags": [
           "Message"
@@ -1362,7 +1362,7 @@
         }
       }
     },
-    "/api/msg/Message/recall": {
+    "/api/msg/recall": {
       "post": {
         "tags": [
           "Message"

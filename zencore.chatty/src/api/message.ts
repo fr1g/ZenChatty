@@ -10,7 +10,7 @@ export class MessageApiClient extends ApiClientBase {
      * @returns 发送消息响应
      */
     public async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
-        return await this.post<SendMessageResponse>('/api/msg/Message/send', request);
+        return await this.post<SendMessageResponse>('/api/msg/send', request);
     }
 
     /**
@@ -21,7 +21,7 @@ export class MessageApiClient extends ApiClientBase {
      * @returns 消息列表
      */
     public async getMessageHistory(chatUniqueMark: string, page: number = 1, pageSize: number = 50): Promise<Message[]> {
-        return await this.get<Message[]>(`/api/msg/Message/history/${chatUniqueMark}?page=${page}&pageSize=${pageSize}`);
+        return await this.get<Message[]>(`/api/msg/history/${chatUniqueMark}?page=${page}&pageSize=${pageSize}`);
     }
 
     /**
@@ -29,7 +29,7 @@ export class MessageApiClient extends ApiClientBase {
      * @returns 未读消息数量字典（聊天ID -> 未读数量）
      */
     public async getUnreadCount(): Promise<Record<string, number>> {
-        return await this.get<Record<string, number>>('/api/msg/Message/unread/count');
+        return await this.get<Record<string, number>>('/api/msg/unread/count');
     }
 
     /**
@@ -38,6 +38,6 @@ export class MessageApiClient extends ApiClientBase {
      * @returns 基础响应
      */
     public async recallMessage(request: RecallMessageRequest): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/msg/Message/recall', request);
+        return await this.post<BasicResponse>('/api/msg/recall', request);
     }
 }

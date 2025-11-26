@@ -54,5 +54,12 @@ export class ZenCoreChattyClient {
     }
 }
 
-export { AuthApiClient, UserApiClient, ChatApiClient, MessageApiClient, FileApiClient, GroupApiClient, PrivacyApiClient, ContactApiClient };
+export { AuthApiClient } from './auth';
+export { UserApiClient } from './user';
+export { ChatApiClient } from './chat';
+export { MessageApiClient } from './message';
+export { FileApiClient } from './file';
+export { GroupApiClient } from './group';
+export { PrivacyApiClient } from './privacy';
+export { ContactApiClient } from './contact';
 export { ApiClientBase } from './base';

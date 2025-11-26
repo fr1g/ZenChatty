@@ -2,9 +2,6 @@ import { ApiClientBase } from './base';
 import { UserInfoResponse } from '../models/user';
 import { UserInfoQueryRequest } from '../models/requests';
 import { BasicResponse } from '../models/auth';
-import { ChatResponse } from '../models/chat';
-import { CreatePrivateChatRequest, CreateGroupChatRequest } from '../models/requests';
-import { Message } from '../models/message';
 import { Contact } from '../models/other';
 import { PrivacySettings, PrivacySettingsResponse } from '../models/other';
 
@@ -63,43 +60,7 @@ export class UserApiClient extends ApiClientBase {
         return await this.get<BasicResponse>(`/api/social/is-blocked/${targetUserId}`);
     }
 
-    /**
-     * 创建私聊
-     * @param request - 创建私聊请求
-     * @returns 聊天响应
-     */
-    public async createPrivateChat(request: CreatePrivateChatRequest): Promise<ChatResponse> {
-        return await this.post<ChatResponse>('/api/social/private-chat', request);
-    }
 
-    /**
-     * 创建群聊
-     * @param request - 创建群聊请求
-     * @returns 聊天响应
-     */
-    public async createGroupChat(request: CreateGroupChatRequest): Promise<ChatResponse> {
-        return await this.post<ChatResponse>('/api/social/group/create', request);
-    }
-
-    /**
-     * 退出群聊
-     * @param groupId - 群聊ID
-     * @returns 基础响应
-     */
-    public async leaveGroup(groupId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/social/group/leave-from/${groupId}`);
-    }
-
-    /**
-     * 获取群公告
-     * @param groupId - 群聊ID
-     * @param page - 页码
-     * @param pageSize - 每页大小
-     * @returns 消息列表
-     */
-    public async getGroupAnnouncements(groupId: string, page: number = 1, pageSize: number = 20): Promise<Message[]> {
-        return await this.get<Message[]>(`/api/social/group/get-announcements/${groupId}?page=${page}&pageSize=${pageSize}`);
-    }
 
     /**
      * 更新未读消息数

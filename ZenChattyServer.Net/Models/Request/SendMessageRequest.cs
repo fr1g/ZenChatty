@@ -14,6 +14,8 @@ public class SendMessageRequest
     [Required]
     public string Content { get; set; } = string.Empty;
     
+    public long SentTimestamp { get; set; }
+    
     public EMessageType MessageType { get; set; } = EMessageType.Normal;
     
     /// <summary>

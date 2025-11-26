@@ -48,6 +48,14 @@
     "./api": {
       "import": "./dist/api/index.js",
       "types": "./dist/api/index.d.ts"
+    },
+    "./signalr-client": {
+      "import": "./dist/signalr-client.js",
+      "types": "./dist/signalr-client.d.ts"
+    },
+    "./tools": {
+      "import": "./dist/tools/index.js",
+      "types": "./dist/tools/index.d.ts"
     }
   },
   "devDependencies": {

@@ -1,6 +1,8 @@
 import { ApiClientBase } from './base';
 import { BasicResponse } from '../models/auth';
-import { UpdateGroupSettingsRequest, GroupManagementRequest, GroupInviteLinkRequest } from '../models/requests';
+import { ChatResponse } from '../models/chat';
+import { Message } from '../models/message';
+import { UpdateGroupSettingsRequest, GroupManagementRequest, GroupInviteLinkRequest, CreateGroupChatRequest } from '../models/requests';
 
 export interface GroupSettings {
     groupId: string;
@@ -25,12 +27,41 @@ export interface GroupInviteLink {
 
 export class GroupApiClient extends ApiClientBase {
     /**
+     * 创建群聊
+     * @param request - 创建群聊请求
+     * @returns 聊天响应
+     */
+    public async createGroupChat(request: CreateGroupChatRequest): Promise<ChatResponse> {
+        return await this.post<ChatResponse>('/api/social/group/create', request);
+    }
+
+    /**
+     * 退出群聊
+     * @param groupId - 群聊ID
+     * @returns 基础响应
+     */
+    public async leaveGroup(groupId: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/group/leave-from/${groupId}`);
+    }
+
+    /**
+     * 获取群公告
+     * @param groupId - 群聊ID
+     * @param page - 页码
+     * @param pageSize - 每页大小
+     * @returns 消息列表
+     */
+    public async getGroupAnnouncements(groupId: string, page: number = 1, pageSize: number = 20): Promise<Message[]> {
+        return await this.get<Message[]>(`/api/social/group/get-announcements/${groupId}?page=${page}&pageSize=${pageSize}`);
+    }
+
+    /**
      * 更新群设置
      * @param request - 更新群设置请求
      * @returns 基础响应
      */
     public async updateGroupSettings(request: UpdateGroupSettingsRequest): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/group-management/group-management/settings', request);
+        return await this.post<BasicResponse>('/api/group-management/settings', request);
     }
 
     /**
@@ -45,7 +76,7 @@ export class GroupApiClient extends ApiClientBase {
         params.append('isSilent', isSilent.toString());
         if (reason) params.append('reason', reason);
         
-        return await this.post<BasicResponse>(`/api/group-management/group-management/toggle-silent-all/${groupId}?${params}`);
+        return await this.post<BasicResponse>(`/api/group-management/toggle-silent-all/${groupId}?${params}`);
     }
 
     /**
@@ -131,7 +162,7 @@ export class GroupApiClient extends ApiClientBase {
      * @returns 基础响应
      */
     public async inviteMember(request: GroupManagementRequest): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/group-management/debug/group-management/invite-member', request);
+        return await this.post<BasicResponse>('/api/group-management/debug/invite-member', request);
     }
 
     /**
@@ -167,6 +198,6 @@ export class GroupApiClient extends ApiClientBase {
      * @returns 基础响应
      */
     public async deleteInviteLink(inviteCode: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/group-management/invite-link/del/${inviteCode}`);
+        return await this.delete<BasicResponse>(`/api/group-management/invite-link/del/${inviteCode}`);
     }
 }

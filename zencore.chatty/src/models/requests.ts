@@ -21,6 +21,7 @@ export class CreateGroupChatRequest {
 
 export class SendMessageRequest {
     public chatUniqueMark: string = '';
+    public sentTimestamp: number = (new Date()).getTime();
     public content: string = '';
     public messageType?: EMessageType;
     public viaGroupChatId?: string;

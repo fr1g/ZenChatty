@@ -113,7 +113,7 @@ public class ChatHub(
             {
                 TraceId = Guid.NewGuid().ToString(),
                 Type = request.MessageType,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
+                SentTimestamp = request.SentTimestamp,
                 ServerCaughtTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
                 Info = request.Info ?? "",
                 IsMentioningAll = request.IsMentioningAll,
