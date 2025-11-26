@@ -1,4 +1,4 @@
-import { EMessageType } from './enums';
+import { EMessageType, EMessageSendResult } from './enums';
 import { User } from './user';
 import { Chat } from './chat';
 
@@ -39,11 +39,12 @@ export class Message {
 
 }
 
-export class SendMessageResponse {
+export class MessageSendResponse {
 
-    public messageId: string = '';
-    public sentTimestamp: number = 0;
-    public result: string = 'Empty';
+    public result?: EMessageSendResult;
+    public messageId?: string;
     public errorMessage?: string;
+    public sentAt?: Date;
+    public isQueued: boolean = false;
 
 }

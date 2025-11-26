@@ -1,5 +1,5 @@
 import { ApiClientBase } from './base';
-import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, BasicResponse } from '../models/auth';
+import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, BasicResponse, UserInfo } from '../models/auth';
 
 export class AuthApiClient extends ApiClientBase {
     /**
@@ -14,10 +14,10 @@ export class AuthApiClient extends ApiClientBase {
     /**
      * 用户注册
      * @param request - 注册请求
-     * @returns 认证响应
+     * @returns 基础响应
      */
-    public async register(request: RegisterRequest): Promise<AuthResponse> {
-        return await this.post<AuthResponse>('/api/auth/register', request);
+    public async register(request: RegisterRequest): Promise<BasicResponse> {
+        return await this.post<BasicResponse>('/api/auth/register', request);
     }
 
     /**
@@ -26,7 +26,7 @@ export class AuthApiClient extends ApiClientBase {
      * @returns 认证响应
      */
     public async refreshToken(request: RefreshTokenRequest): Promise<AuthResponse> {
-        return await this.post<AuthResponse>('/api/auth/refresh', request);
+        return await this.patch<AuthResponse>('/api/auth/refresh', request);
     }
 
     /**
@@ -46,24 +46,27 @@ export class AuthApiClient extends ApiClientBase {
     }
 
     /**
-     * 请求密码重置
-     * @param email - 用户邮箱
-     * @returns 基础响应
+     * 获取用户信息
+     * @returns 用户信息
      */
-    public async requestPasswordReset(email: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/auth/forgot-password', { email });
+    public async getUserInfo(): Promise<UserInfo> {
+        return await this.get<UserInfo>('/api/auth/userinfo');
     }
 
     /**
-     * 重置密码
-     * @param token - 重置令牌
-     * @param newPassword - 新密码
+     * 禁用用户
+     * @param userId - 用户ID
      * @returns 基础响应
      */
-    public async resetPassword(token: string, newPassword: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>('/api/auth/reset-password', {
-            token,
-            newPassword
-        });
+    public async disableUser(userId: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/auth/disable/${userId}`);
+    }
+
+    /**
+     * 心跳检测
+     * @returns 基础响应
+     */
+    public async touch(): Promise<BasicResponse> {
+        return await this.get<BasicResponse>('/api/auth/touch');
     }
 }

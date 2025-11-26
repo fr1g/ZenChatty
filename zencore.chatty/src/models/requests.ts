@@ -1,52 +1,68 @@
 import { EMessageType } from "./enums";
 
 export class CreatePrivateChatRequest {
-    public participantUserId: string = '';
+    public receiverCustomId: string = '';
+    public isInformal: boolean = false;
+    public displayName?: string;
+}
+
+export class UserInfoQueryRequest {
+    public email: string = '';
+    public customId?: string;
 }
 
 export class CreateGroupChatRequest {
     public groupName: string = '';
-    public description: string = '';
-    public initialMemberIds: string[] = [];
+    public description?: string;
+    public avatarUrl?: string;
+    public allowMemberInvite: boolean = false;
+    public requireApproval: boolean = false;
 }
 
 export class SendMessageRequest {
-
-    public chatId: string = '';
+    public chatUniqueMark: string = '';
     public content: string = '';
-    public messageType: EMessageType = EMessageType.Normal;
-    public mentionedUserIds?: string[];
+    public messageType?: EMessageType;
+    public viaGroupChatId?: string;
     public isMentioningAll: boolean = false;
-    public isAnnouncement: boolean = false;
+    public mentionedUserIds?: string[];
+    public info?: string;
+}
 
+export class SendMessageResponse {
+    public success: boolean = false;
+    public message: string = '';
+    public result?: string;
 }
 
 export class RecallMessageRequest {
-    public messageId: string = '';
-    public chatId: string = '';
+    public messageTraceId: string = '';
+    public chatUniqueMark: string = '';
 }
 
 export class GroupManagementRequest {
     public groupId: string = '';
     public targetUserId: string = '';
-    public action: string = '';
+    public reason?: string;
+    public silentDuration?: string;
+    public newTitle?: string;
 }
 
 export class UpdateGroupSettingsRequest {
     public groupId: string = '';
-    public groupName?: string;
-    public description?: string;
-    public allowAnyoneInvite?: boolean;
-    public requireApprovalToJoin?: boolean;
-    public allowSendMessages?: boolean;
-    public allowSendMedia?: boolean;
-    public allowSendFiles?: boolean;
+    public displayName?: string;
+    public avatarFileLocator?: string;
+    public isAllSilent: boolean = false;
+    public isInviteOnly: boolean = false;
+    public isPrivateChatAllowed: boolean = false;
+    public reason?: string;
 }
 
 export class GroupInviteLinkRequest {
     public groupId: string = '';
-    public maxUses: number = 0;
     public expiresAt?: Date;
+    public targetUserId?: string;
+    public isPublic?: boolean;
 }
 
 export class PrivacyCheckRequest {
@@ -54,7 +70,31 @@ export class PrivacyCheckRequest {
     public checkType: string = '';
 }
 
-export class UserInfoQueryRequest {
-    public email: string = '';
-    public customId?: string;
+export class UpdateGroupAnnouncementRequest {
+    public announcement: string = '';
+}
+
+export class FileUploadRequest {
+    public file: File = new File([], '');
+    public fileExtension: string = '';
+    public clientCalculatedSha256: string = '';
+}
+
+export class FileUploadResponse {
+    public locator: string = '';
+    public fileSize: number = 0;
+    public uploadTime: Date = new Date();
+    public success: boolean = false;
+    public message: string = '';
+}
+
+export class FileInfoResponse {
+    public locator: string = '';
+    public fileName: string = '';
+    public fileSize: number = 0;
+    public mimeType: string = '';
+    public uploadTime: Date = new Date();
+    public uploaderId: string = '';
+    public success: boolean = false;
+    public message: string = '';
 }

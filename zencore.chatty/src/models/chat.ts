@@ -108,9 +108,9 @@ export class GroupChatMember {
  * 聊天响应类
  */
 export class ChatResponse {
-    public chatId: string = '';
-    public chatType: string = '';
-    public displayName: string = '';
+    public chatId?: string;
+    public chatType?: string;
+    public displayName?: string;
     public avatarUrl?: string;
     public createdAt: Date = new Date();
     public unreadCount: number = 0;

@@ -1,136 +1,43 @@
 import { ApiClientBase } from './base';
-import { Message, SendMessageResponse } from '../models/message';
+import { Message } from '../models/message';
 import { BasicResponse } from '../models/auth';
+import { SendMessageRequest, SendMessageResponse, RecallMessageRequest } from '../models/requests';
 
 export class MessageApiClient extends ApiClientBase {
     /**
-     * 获取聊天消息
-     * @param chatId - 聊天ID
+     * 发送消息
+     * @param request - 发送消息请求
+     * @returns 发送消息响应
+     */
+    public async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
+        return await this.post<SendMessageResponse>('/api/msg/Message/send', request);
+    }
+
+    /**
+     * 获取消息历史
+     * @param chatUniqueMark - 聊天唯一标识
      * @param page - 页码
      * @param pageSize - 每页大小
      * @returns 消息列表
      */
-    public async getMessages(chatId: string, page: number = 1, pageSize: number = 50): Promise<Message[]> {
-        return await this.get<Message[]>(`/api/chat/${chatId}/messages?page=${page}&pageSize=${pageSize}`);
+    public async getMessageHistory(chatUniqueMark: string, page: number = 1, pageSize: number = 50): Promise<Message[]> {
+        return await this.get<Message[]>(`/api/msg/Message/history/${chatUniqueMark}?page=${page}&pageSize=${pageSize}`);
     }
 
     /**
-     * 发送文本消息
-     * @param chatId - 聊天ID
-     * @param content - 消息内容
-     * @returns 发送消息响应
+     * 获取未读消息数量
+     * @returns 未读消息数量字典（聊天ID -> 未读数量）
      */
-    public async sendTextMessage(chatId: string, content: string): Promise<SendMessageResponse> {
-        return await this.post<SendMessageResponse>(`/api/chat/${chatId}/messages/text`, { content });
-    }
-
-    /**
-     * 发送图片消息
-     * @param chatId - 聊天ID
-     * @param imageFile - 图片文件
-     * @param caption - 图片描述（可选）
-     * @returns 发送消息响应
-     */
-    public async sendImageMessage(chatId: string, imageFile: File, caption?: string): Promise<SendMessageResponse> {
-        const formData = new FormData();
-        formData.append('image', imageFile);
-        if (caption) {
-            formData.append('caption', caption);
-        }
-
-        return await this.post<SendMessageResponse>(`/api/chat/${chatId}/messages/image`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-    }
-
-    /**
-     * 发送文件消息
-     * @param chatId - 聊天ID
-     * @param file - 文件
-     * @returns 发送消息响应
-     */
-    public async sendFileMessage(chatId: string, file: File): Promise<SendMessageResponse> {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        return await this.post<SendMessageResponse>(`/api/chat/${chatId}/messages/file`, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-    }
-
-    /**
-     * 删除消息
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
-     * @returns 基础响应
-     */
-    public async deleteMessage(chatId: string, messageId: string): Promise<BasicResponse> {
-        return await this.delete<BasicResponse>(`/api/chat/${chatId}/messages/${messageId}`);
-    }
-
-    /**
-     * 编辑消息
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
-     * @param newContent - 新内容
-     * @returns 基础响应
-     */
-    public async editMessage(chatId: string, messageId: string, newContent: string): Promise<BasicResponse> {
-        return await this.put<BasicResponse>(`/api/chat/${chatId}/messages/${messageId}`, { content: newContent });
+    public async getUnreadCount(): Promise<Record<string, number>> {
+        return await this.get<Record<string, number>>('/api/msg/Message/unread/count');
     }
 
     /**
      * 撤回消息
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
+     * @param request - 撤回消息请求
      * @returns 基础响应
      */
-    public async recallMessage(chatId: string, messageId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/chat/${chatId}/messages/${messageId}/recall`);
-    }
-
-    /**
-     * 转发消息
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
-     * @param targetChatId - 目标聊天ID
-     * @returns 基础响应
-     */
-    public async forwardMessage(chatId: string, messageId: string, targetChatId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/chat/${chatId}/messages/${messageId}/forward`, { targetChatId });
-    }
-
-    /**
-     * 标记消息为已读
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
-     * @returns 基础响应
-     */
-    public async markMessageAsRead(chatId: string, messageId: string): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/chat/${chatId}/messages/${messageId}/read`);
-    }
-
-    /**
-     * 搜索消息
-     * @param chatId - 聊天ID
-     * @param query - 搜索关键词
-     * @returns 消息列表
-     */
-    public async searchMessages(chatId: string, query: string): Promise<Message[]> {
-        return await this.get<Message[]>(`/api/chat/${chatId}/messages/search?q=${encodeURIComponent(query)}`);
-    }
-
-    /**
-     * 获取消息详情
-     * @param chatId - 聊天ID
-     * @param messageId - 消息ID
-     * @returns 消息详情
-     */
-    public async getMessage(chatId: string, messageId: string): Promise<Message> {
-        return await this.get<Message>(`/api/chat/${chatId}/messages/${messageId}`);
+    public async recallMessage(request: RecallMessageRequest): Promise<BasicResponse> {
+        return await this.post<BasicResponse>('/api/msg/Message/recall', request);
     }
 }

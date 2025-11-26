@@ -1,108 +1,138 @@
 import { ApiClientBase } from './base';
 import { UserInfoResponse } from '../models/user';
+import { UserInfoQueryRequest } from '../models/requests';
 import { BasicResponse } from '../models/auth';
-import { PrivacySettingsResponse } from '../models/other';
+import { ChatResponse } from '../models/chat';
+import { CreatePrivateChatRequest, CreateGroupChatRequest } from '../models/requests';
+import { Message } from '../models/message';
+import { Contact } from '../models/other';
+import { PrivacySettings, PrivacySettingsResponse } from '../models/other';
 
 export class UserApiClient extends ApiClientBase {
     /**
-     * 获取当前用户信息
+     * 获取用户信息
+     * @param request - 用户信息查询请求
      * @returns 用户信息响应
      */
-    public async getCurrentUserInfo(): Promise<UserInfoResponse> {
-        return await this.get<UserInfoResponse>('/api/user/me');
+    public async getUserInfo(request: UserInfoQueryRequest): Promise<UserInfoResponse> {
+        return await this.post<UserInfoResponse>('/api/social/get-user-info', request);
     }
 
     /**
-     * 获取指定用户信息
-     * @param userId - 用户ID
-     * @returns 用户信息响应
+     * 检查用户是否被禁用
+     * @param targetUserId - 目标用户ID
+     * @returns 是否被禁用
      */
-    public async getUserInfo(userId: string): Promise<UserInfoResponse> {
-        return await this.get<UserInfoResponse>(`/api/user/${userId}`);
+    public async isUserDisabled(targetUserId: string): Promise<boolean> {
+        return await this.get<boolean>(`/api/social/is-disabled/${targetUserId}`);
     }
 
     /**
-     * 更新用户信息
-     * @param userInfo - 用户信息
+     * 屏蔽用户
+     * @param targetUserId - 目标用户ID
      * @returns 基础响应
      */
-    public async updateUserInfo(userInfo: Partial<UserInfoResponse>): Promise<BasicResponse> {
-        return await this.put<BasicResponse>('/api/user/profile', userInfo);
+    public async blockUser(targetUserId: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/block/${targetUserId}`);
     }
 
     /**
-     * 更新用户头像
-     * @param avatarFile - 头像文件
+     * 取消屏蔽并添加好友
+     * @param targetUserId - 目标用户ID
      * @returns 基础响应
      */
-    public async updateAvatar(avatarFile: File): Promise<BasicResponse> {
-        const formData = new FormData();
-        formData.append('avatar', avatarFile);
-
-        return await this.post<BasicResponse>('/api/user/avatar', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+    public async unblockAndAddFriend(targetUserId: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/unblock-and-add/${targetUserId}`);
     }
 
     /**
-     * 更新用户背景
-     * @param backgroundFile - 背景文件
+     * 添加好友
+     * @param targetUserGuid - 目标用户GUID
      * @returns 基础响应
      */
-    public async updateBackground(backgroundFile: File): Promise<BasicResponse> {
-        const formData = new FormData();
-        formData.append('background', backgroundFile);
-
-        return await this.post<BasicResponse>('/api/user/background', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+    public async addFriend(targetUserGuid: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/add-friend/${targetUserGuid}`);
     }
 
     /**
-     * 搜索用户
-     * @param query - 搜索关键词
-     * @returns 用户信息响应列表
+     * 检查拉黑状态
+     * @param targetUserId - 目标用户ID
+     * @returns 基础响应
      */
-    public async searchUsers(query: string): Promise<UserInfoResponse[]> {
-        return await this.get<UserInfoResponse[]>(`/api/user/search?q=${encodeURIComponent(query)}`);
+    public async checkBlockStatus(targetUserId: string): Promise<BasicResponse> {
+        return await this.get<BasicResponse>(`/api/social/is-blocked/${targetUserId}`);
     }
 
     /**
-     * 获取用户隐私设置
-     * @returns 隐私设置响应
+     * 创建私聊
+     * @param request - 创建私聊请求
+     * @returns 聊天响应
      */
-    public async getPrivacySettings(): Promise<PrivacySettingsResponse> {
-        return await this.get<PrivacySettingsResponse>('/api/user/privacy');
+    public async createPrivateChat(request: CreatePrivateChatRequest): Promise<ChatResponse> {
+        return await this.post<ChatResponse>('/api/social/private-chat', request);
     }
 
     /**
-     * 更新用户隐私设置
+     * 创建群聊
+     * @param request - 创建群聊请求
+     * @returns 聊天响应
+     */
+    public async createGroupChat(request: CreateGroupChatRequest): Promise<ChatResponse> {
+        return await this.post<ChatResponse>('/api/social/group/create', request);
+    }
+
+    /**
+     * 退出群聊
+     * @param groupId - 群聊ID
+     * @returns 基础响应
+     */
+    public async leaveGroup(groupId: string): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/group/leave-from/${groupId}`);
+    }
+
+    /**
+     * 获取群公告
+     * @param groupId - 群聊ID
+     * @param page - 页码
+     * @param pageSize - 每页大小
+     * @returns 消息列表
+     */
+    public async getGroupAnnouncements(groupId: string, page: number = 1, pageSize: number = 20): Promise<Message[]> {
+        return await this.get<Message[]>(`/api/social/group/get-announcements/${groupId}?page=${page}&pageSize=${pageSize}`);
+    }
+
+    /**
+     * 更新未读消息数
+     * @param contactId - 联系人ID
+     * @param unreadCount - 未读消息数
+     * @returns 基础响应
+     */
+    public async updateUnreadCount(contactId: string, unreadCount: number): Promise<BasicResponse> {
+        return await this.post<BasicResponse>(`/api/social/contact/get-unread/${contactId}?unreadCount=${unreadCount}`);
+    }
+
+    /**
+     * 获取联系人列表
+     * @returns 联系人列表
+     */
+    public async getContacts(): Promise<Contact[]> {
+        return await this.post<Contact[]>('/api/social/contact/list');
+    }
+
+    /**
+     * 更新隐私设置
      * @param settings - 隐私设置
      * @returns 基础响应
      */
-    public async updatePrivacySettings(settings: Partial<PrivacySettingsResponse>): Promise<BasicResponse> {
-        return await this.put<BasicResponse>('/api/user/privacy', settings);
+    public async updatePrivacySettings(settings: PrivacySettings): Promise<BasicResponse> {
+        return await this.patch<BasicResponse>('/api/social/privacy/update', settings);
     }
 
     /**
-     * 获取用户在线状态
-     * @param userId - 用户ID
-     * @returns 在线状态
+     * 获取隐私设置
+     * @returns 隐私设置响应
      */
-    public async getUserStatus(userId: string): Promise<{ status: string; lastSeen: Date }> {
-        return await this.get<{ status: string; lastSeen: Date }>(`/api/user/${userId}/status`);
-    }
-
-    /**
-     * 更新用户在线状态
-     * @param status - 状态
-     * @returns 基础响应
-     */
-    public async updateUserStatus(status: string): Promise<BasicResponse> {
-        return await this.put<BasicResponse>('/api/user/status', { status });
+    public async getPrivacySettings(): Promise<PrivacySettingsResponse> {
+        return await this.get<PrivacySettingsResponse>('/api/social/privacy/get');
     }
 }

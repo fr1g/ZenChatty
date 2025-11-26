@@ -73,6 +73,7 @@ export class PrivacySettings {
     isInvitableToGroup: boolean;
     isAddableFromGroup: boolean;
     isNewChatKeepSilent: boolean;
+    allowViewInfoFromGroupChat: boolean;
 
     contactVisibility: EPrivacyVisibilityRange;
     bioVisibility: EPrivacyVisibilityRange;
@@ -83,6 +84,7 @@ export class PrivacySettings {
         isInvitableToGroup: boolean = false,
         isAddableFromGroup: boolean = false,
         isNewChatKeepSilent: boolean = false,
+        allowViewInfoFromGroupChat: boolean = false,
 
         contactVisibility: EPrivacyVisibilityRange = EPrivacyVisibilityRange.None,
         bioVisibility: EPrivacyVisibilityRange = EPrivacyVisibilityRange.FriendsAndGroups,
@@ -92,6 +94,7 @@ export class PrivacySettings {
         this.isInvitableToGroup = isInvitableToGroup;
         this.isAddableFromGroup = isAddableFromGroup;
         this.isNewChatKeepSilent = isNewChatKeepSilent;
+        this.allowViewInfoFromGroupChat = allowViewInfoFromGroupChat;
         this.contactVisibility = contactVisibility;
         this.bioVisibility = bioVisibility;
         this.genderVisibility = genderVisibility;

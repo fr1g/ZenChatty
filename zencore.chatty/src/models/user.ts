@@ -54,7 +54,6 @@ export class User {
 export class UserInfoResponse {
 
     public localId: string = '';
-    public message: string = '';
     public email?: string;
     public displayName?: string;
     public avatarFileLocator?: string;
@@ -67,6 +66,7 @@ export class UserInfoResponse {
     public birth?: Date;
     public registeredAt: Date = new Date();
     public success: boolean = false;
+    public message?: string;
 
 }
 
@@ -77,3 +77,4 @@ export class UserAuthObject {
     public passwordSalt: string = '';
 
 }
+

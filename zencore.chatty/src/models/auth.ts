@@ -16,22 +16,24 @@ export class UserInfo {
 }
 
 export class LoginRequest {
-    public username: string = '';
-    public password: string = '';
-    public deviceId: string = '';
+    public username?: string;
+    public password?: string;
+    public deviceId?: string;
 }
 
 export class RegisterRequest {
-    public email: string = '';
-    public username: string = '';
-    public password: string = '';
-    public displayName: string = '';
-    public deviceId: string = '';
+    public uniqueCustomId?: string;
+    public password?: string;
+    public displayName?: string;
+    public email?: string;
+    public gender?: string;
+    public birthday?: string;
+    public bio?: string;
 }
 
 export class RefreshTokenRequest {
-    public refreshToken: string = '';
-    public deviceId: string = '';
+    public refreshToken?: string;
+    public deviceId?: string;
 }
 
 export class BasicResponse {
