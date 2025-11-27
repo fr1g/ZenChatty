@@ -1,3 +1,5 @@
+import { EGender, EUserStatus } from "./enums";
+
 export class AuthResponse {
     public accessToken: string = '';
     public refreshToken: string = '';
@@ -12,7 +14,7 @@ export class UserInfo {
     public username: string = '';
     public displayName: string = '';
     public email: string = '';
-    public status: string = '';
+    public status: EUserStatus = EUserStatus.Unknown;
 }
 
 export class LoginRequest {
@@ -26,7 +28,7 @@ export class RegisterRequest {
     public password?: string;
     public displayName?: string;
     public email?: string;
-    public gender?: string;
+    public gender?: EGender;
     public birthday?: Date;
     public bio?: string;
 }

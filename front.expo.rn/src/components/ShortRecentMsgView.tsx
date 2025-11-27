@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Chat } from "zen-core-chatty-typescript"
+import { Chat } from "zen-core-chatty-ts"
 import { Text } from 'react-native';
 
 export default function ShortRecentMsgView({ chat }: { chat: Chat }) {

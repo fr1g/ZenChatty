@@ -274,7 +274,7 @@ public class UserSocialController(
     /// <summary>
     /// 发送好友请求
     /// </summary>
-    [HttpPost("friend/request")]
+    [HttpPost("add-friend-request")]
     public async Task<ActionResult<BasicResponse>> SendFriendRequest(
         [FromQuery] Guid targetUserId,
         [FromQuery] string? viaGroupId = null)

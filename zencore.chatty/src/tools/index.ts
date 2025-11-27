@@ -1,5 +1,3 @@
-export { AuthManager, MemoryAuthStorage, AuthStorage } from './auth-storage';
-export { ReactNativeAuthStorage, WebAuthStorage, SecureAuthStorage, PlatformDetector } from './platform-adapters';
 export { Tools, ErrorHandler, DateTimeUtils, StringUtils, ValidationUtils, FileUtils } from './utils';
 
 /**
@@ -9,4 +7,4 @@ export { Tools, ErrorHandler, DateTimeUtils, StringUtils, ValidationUtils, FileU
 //     bear(token: string) {
 //         return `Bearer ${token}`;
 //     },
-// };
+// };  

@@ -1,4 +1,4 @@
-import { User, EGroupMemberType, GroupChatMember, GroupChat, PrivateChat, Contact } from "zen-core-chatty-typescript";
+import { User, EGroupMemberType, GroupChatMember, GroupChat, PrivateChat, Contact } from "zen-core-chatty-ts";
 
 
 export const MockUsers: Record<string, User> = {

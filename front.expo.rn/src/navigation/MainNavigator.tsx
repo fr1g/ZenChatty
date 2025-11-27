@@ -2,6 +2,7 @@ import { NavigationContainer, ParamListBase, RouteProp, StaticParamList } from '
 import { createDrawerNavigator, DrawerNavigationOptions, DrawerNavigationProp } from '@react-navigation/drawer';
 import Overview from '../screens/overview';
 import Details from '../screens/details';
+import StorageTestScreen from '../screens/StorageTestScreen';
 import MainDrawerHeader from '../components/MainDrawerHeader';
 import MainDrawerContainer from '../components/MainDrawerContainer';
 import { useEffect, useState } from 'react';
@@ -45,6 +46,7 @@ export default function DefaultView({ theme }: { theme: ReactNavigation.Theme })
             drawerContent={(props) => <MainDrawerContainer {...props} />}>
             <Drawer.Screen name='index' component={Overview} />
             <Drawer.Screen name='another' component={Details} />
+            <Drawer.Screen name='storage-test' component={StorageTestScreen} options={{ title: '存储测试' }} />
         </Drawer.Navigator>
     </NavigationContainer>;
 }

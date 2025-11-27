@@ -1,5 +1,5 @@
 import { ClientInitObject, CreateZenCoreClient, ZenCoreClient } from "../api";
-import { AuthResponse, EGender, LoginRequest, RefreshTokenRequest } from "../models";
+import { AuthResponse, BasicResponse, EGender, LoginRequest, RefreshTokenRequest, RegisterRequest } from "../models";
 import { Credential } from "../models/front";
 
 export class AuthError extends Error { }
@@ -26,20 +26,22 @@ export const AuthActs = {
             AccessTokenExpiresAtTimestamp: result.accessTokenExpiresAt.getTime()
         } as Credential;
 
-        AuthStoreMgrActs.flushCredentials(toStore, storageMethod);
-
+        AuthStoreMgrActs.flushCredential(toStore, storageMethod);
+        return toStore;
     },
     async register(registerData: RegDataForm, clientConfig: ClientInitObject | undefined = undefined) {
         let client: ZenCoreClient;
         if (clientConfig) client = CreateZenCoreClient(clientConfig);
         else client = new ZenCoreClient();
 
-        let result: AuthResponse;
-        await client.auth.register()
+        // check verification code (not now)
 
+        const data = registerData as RegisterRequest;
+        data.uniqueCustomId = registerData.customUserId;
+        return await client.auth.register(data);
     },
     registerAndLogin() {
-        // todo later
+        // todo later or never XD
     },
     async refreshIfNeeded(
         activeCredential: Credential,
@@ -65,7 +67,7 @@ export const AuthActs = {
             const newCredential = activeCredential;
             newCredential.AccessTokenExpiresAtTimestamp = result.accessTokenExpiresAt.getTime();
             newCredential.AccessToken = result.accessToken;
-            AuthStoreMgrActs.flushCredentials(newCredential, storageMethod);
+            AuthStoreMgrActs.flushCredential(newCredential, storageMethod);
             return newCredential;
         }
         else return activeCredential;
@@ -73,17 +75,23 @@ export const AuthActs = {
     findPasswd() { // even not avaliable in backend...
         // todo later
     }, // fvck it. no longer wanted to write a find&login method
-    logoff() {
-
-    },
-    logoffByUserId(userId: string, readMethod: () => Credential | Credential[], clientConfig: ClientInitObject | undefined = undefined) {
-        const user = AuthStoreMgrActs.readCredentials(readMethod, userId);
+    async logoff(credential: Credential, storageMethod: (object: any) => any, clientConfig: ClientInitObject | undefined = undefined) {
         let client: ZenCoreClient;
         if (clientConfig) client = CreateZenCoreClient(clientConfig);
         else client = new ZenCoreClient();
-        client.setAuthToken(user.AccessToken);
-        client.auth.logout(user.UsingDeviceId);
+        client.setAuthToken(credential.AccessToken);
+        await client.auth.logout(credential.UsingDeviceId);
+        AuthStoreMgrActs.clearCredential(credential, storageMethod);
+    },
+    logoffByUserId(userId: string, readMethod: () => Credential | Credential[], storageMethod: (object: any) => any, clientConfig: ClientInitObject | undefined = undefined) {
+        const userCred = AuthStoreMgrActs.readCredential(readMethod, userId);
+        let client: ZenCoreClient;
+        if (clientConfig) client = CreateZenCoreClient(clientConfig);
+        else client = new ZenCoreClient();
+        client.setAuthToken(userCred.AccessToken);
+        client.auth.logout(userCred.UsingDeviceId);
         // ... yebucihoule 
+        AuthStoreMgrActs.clearCredential(userCred, storageMethod);
     },
     changeEmailAddress() {
         // todo later
@@ -92,8 +100,8 @@ export const AuthActs = {
 
 }
 
-export const AuthStoreMgrActs = {
-    readCredentials(readMethod: () => Credential | Credential[], matchingUserId: string | undefined = undefined): Credential {
+export const AuthStoreMgrActs = { // async???????????????????????????????????????????????????? or just dispatch????????
+    readCredential(readMethod: () => Credential | Credential[], matchingUserId: string | undefined = undefined): Credential {
         try {
             const result = readMethod();
             if (result instanceof Credential)
@@ -111,8 +119,11 @@ export const AuthStoreMgrActs = {
             throw error;
         }
     },
-    flushCredentials(credential: Credential, storageMethod: (object: any) => any) {
-        storageMethod(credential); // aaaaaa how to!!!!!!!
+    flushCredential(credential: Credential, storageMethod: (object: any, wipe: boolean) => any) {
+        storageMethod(credential, false); // aaaaaa how to!!!!!!!
+    },
+    clearCredential(credential: Credential, storageMethod: (object: any, wipe: boolean) => any) {
+        storageMethod(credential, true); // aaaaaa how to!!!!!!!
     }
 }
 

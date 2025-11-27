@@ -14,7 +14,7 @@ const commonPlugins = [
 ];
 
 // 公共外部依赖
-const commonExternal = ['axios', '@microsoft/signalr'];
+const commonExternal = ['axios', '@microsoft/signalr', '@reduxjs/toolkit'];
 
 const config = [
   // 主入口点
@@ -85,6 +85,34 @@ const config = [
     ],
     plugins: commonPlugins,
     external: commonExternal
+  },
+
+  // Actions入口点（新增）
+  {
+    input: 'src/actions/index.ts',
+    output: [
+      {
+        file: 'dist/actions/index.js',
+        format: 'esm',
+        sourcemap: true
+      }
+    ],
+    plugins: commonPlugins,
+    external: commonExternal
+  },
+
+  // Redux入口点（新增）
+  {
+    input: 'src/redux/index.ts',
+    output: [
+      {
+        file: 'dist/redux/index.js',
+        format: 'esm',
+        sourcemap: true
+      }
+    ],
+    plugins: commonPlugins,
+    external: [...commonExternal, '@reduxjs/toolkit']
   },
 
   // // 类型声明文件处理 // fvck... idiot...

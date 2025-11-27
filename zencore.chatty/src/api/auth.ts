@@ -50,7 +50,7 @@ export class AuthApiClient extends ApiClientBase {
     }
 
     /**
-     * 获取用户信息
+     * 获取用户's 信息
      * @returns 用户信息
      */
     public async getUserInfo(): Promise<UserInfo> {

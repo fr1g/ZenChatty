@@ -4,14 +4,11 @@ import { ScreenContent } from './../components/ScreenContent';
 import { Alert, FlatList, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 
 import { Button } from '../components/Button';
-import Contact from './../class/Contact';
-import User from '../class/User';
-import Chat from '../class/Chat';
-import { EChatStatus } from '../class/enums/EnumChatRelated';
 import { MockContactBook } from '../class/shared/MockData';
 import Avatar from '../components/Avatar';
 import { getImgByLocator } from '../class/helpers/FileRequest';
 import ShortRecentMsgView from '../components/ShortRecentMsgView';
+import { Contact } from 'zen-core-chatty-ts';
 
 export default async function Overview() {
   // const navigation = useNavigation();

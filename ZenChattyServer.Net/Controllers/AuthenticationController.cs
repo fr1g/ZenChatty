@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ZenChattyServer.Net.Config;
 using ZenChattyServer.Net.Helpers;
+using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Request;
 using ZenChattyServer.Net.Models.Response;
 using ZenChattyServer.Net.Services;
@@ -116,7 +117,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
     // todo: the authentication should become one single function
     
     [HttpGet("userinfo")]
-    public async Task<ActionResult<UserInfo>> GetUserInfo()
+    public async Task<ActionResult<User>> GetUserInfo()
     {
         var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
         
@@ -139,12 +140,14 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
                 success = false 
             });
         }
-        
-        var userInfo = await authService.GetUserInfoAsync(user.LocalId);
-        
-        return userInfo != null ? 
-            Ok(userInfo) :
-            NotFound(new BasicResponse { content = "No Such User", success = false });
+
+        return Ok(user);
+        //
+        // var userInfo = await authService.GetUserInfoAsync(user.LocalId);
+        //
+        // return userInfo != null ? 
+        //     Ok(userInfo) :
+        //     NotFound(new BasicResponse { content = "No Such User", success = false });
     }
     
     [HttpPost("disable/{userId}")]

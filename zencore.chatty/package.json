@@ -1,5 +1,5 @@
 {
-  "name": "zen-core-chatty-typescript",
+  "name": "zen-core-chatty-ts",
   "version": "1.0.0",
   "description": "ZenCore Chatty TypeScript SDK : for all ZenChatties",
   "main": "dist/index.js",

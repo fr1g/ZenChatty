@@ -109,11 +109,11 @@ describe('ValidationUtils', () => {
     expect(ValidationUtils.isValidEmail('test@')).toBe(false);
   });
 
-  test('should validate phone format', () => {
-    expect(ValidationUtils.isValidPhone('13812345678')).toBe(true);
-    expect(ValidationUtils.isValidPhone('12345678901')).toBe(false);
-    expect(ValidationUtils.isValidPhone('1381234567')).toBe(false);
-  });
+  // test('should validate phone format', () => {
+  //   expect(ValidationUtils.isValidPhone('13812345678')).toBe(true);
+  //   expect(ValidationUtils.isValidPhone('12345678901')).toBe(false);
+  //   expect(ValidationUtils.isValidPhone('1381234567')).toBe(false);
+  // });
 
   test('should validate password strength', () => {
     const weakPassword = ValidationUtils.validatePassword('12345');

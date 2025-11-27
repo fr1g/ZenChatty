@@ -1,5 +1,5 @@
 import { EndpointSettings } from "../shared/ApiConfig";
-import { UserApiClient } from "zen-core-chatty-typescript";
+import { UserApiClient } from "zen-core-chatty-ts";
 // @ts-ignore
 const localAsset = require('../../assets/default-1r1-placeholder.png');
 

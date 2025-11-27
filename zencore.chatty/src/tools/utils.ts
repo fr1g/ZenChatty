@@ -183,14 +183,6 @@ export class ValidationUtils {
   }
 
   /**
-   * 验证手机号格式（中国）
-   */
-  static isValidPhone(phone: string): boolean {
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    return phoneRegex.test(phone);
-  }
-
-  /**
    * 验证密码强度
    */
   static validatePassword(password: string): {

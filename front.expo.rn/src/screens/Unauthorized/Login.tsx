@@ -1,57 +1,96 @@
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Controller, useForm } from 'react-hook-form';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
-import UserCredential from "../../class/UserCredential";
+import { CoreRedux, LoginRequest } from "zen-core-chatty-ts";
+import { RootState } from "../../redux/StoreProvider";
+import zenCoreClient from "../../api/ZenCoreClientInstance";
+import { SQLiteStorageAdapter } from "../../database/SQLiteStorageAdapter";
 
-export default function Login({ doLogin }: { doLogin: (afterJob: () => void, credential: UserCredential) => void }) {
+const { loginUser } = CoreRedux;
+
+export default function Login() {
     const bottomInset = useSafeAreaInsets().bottom;
     const [showingFindPassword, setShowingFindPassword] = useState(false);
-    const login = (credential: UserCredential) => {
-        doLogin(() => { }, credential);
-    }
-    return <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-        className={`h-full flex flex-col-reverse  `}
-
-        keyboardVerticalOffset={bottomInset + 10}
-    >
-        {!showingFindPassword ?
-            <LoginMain doLogin={login} switching={setShowingFindPassword} bottomInset={bottomInset} />
-            :
-            <FindPassword switching={setShowingFindPassword} bottomInset={bottomInset} />
-        }
-    </KeyboardAvoidingView>
+    
+    return (
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            className={`h-full flex flex-col-reverse`}
+            keyboardVerticalOffset={bottomInset + 10}
+        >
+            {!showingFindPassword ?
+                <LoginMain switching={setShowingFindPassword} bottomInset={bottomInset} />
+                :
+                <FindPassword switching={setShowingFindPassword} bottomInset={bottomInset} />
+            }
+        </KeyboardAvoidingView>
+    );
 }
 
-function LoginMain({ doLogin, bottomInset, switching }: { doLogin: (credential: UserCredential) => void, bottomInset: number, switching: (val: boolean) => void }) {
+function LoginMain({ bottomInset, switching }: { bottomInset: number, switching: (val: boolean) => void }) {
+    const dispatch = useDispatch();
+    const authState = useSelector((state: RootState) => state.auth);
+    
     const {
         control,
         handleSubmit,
         formState: { errors },
         watch
-    } = useForm({
+    } = useForm<LoginRequest>({
         defaultValues: {
             email: "",
-            passwd: "",
+            password: "",
         },
         mode: "all"
     });
 
     // Watch passwd field for confirm password validation
-    const passwd = watch('passwd');
+    const password = watch('password');
 
     // Function to handle getting verification code
     const handleGetVerificationCode = () => {
         console.log('Getting verification code...');
         // Implementation for sending verification code would go here
     };
-    const onSubmit = (data: any) => {
-        const a = new UserCredential(data.email, data.passwd, '')
-        console.log(a)
-        doLogin(a);
+
+    const onSubmit = async (data: LoginRequest) => {
+        try {
+            const result = await dispatch(loginUser(data) as any).unwrap();
+            
+            if (result.success) {
+                console.log('Login successful:', result);
+                
+                // 登录成功后，获取用户信息并缓存到SQLite
+                try {
+                    // 设置认证令牌
+                    zenCoreClient.setAuthToken(result.credential?.token);
+                    
+                    // 调用AuthApiClient.getUserInfo()获取用户信息
+                    const userInfo = await zenCoreClient.auth.getUserInfo();
+                    console.log('User info retrieved:', userInfo);
+                    
+                    // 缓存用户信息到SQLite
+                    const storageAdapter = new SQLiteStorageAdapter();
+                    await storageAdapter.cacheCurrentUserInfo(userInfo);
+                    console.log('User info cached to SQLite successfully');
+                    
+                } catch (cacheError: any) {
+                    console.warn('Failed to cache user info:', cacheError);
+                    // 缓存失败不影响登录流程，仅记录警告
+                }
+                
+                // 登录成功，Redux 会自动更新状态，App.tsx 会检测到认证状态变化
+            } else {
+                Alert.alert('Login Failed', result.error || 'Unknown error occurred');
+            }
+        } catch (error: any) {
+            console.error('Login error:', error);
+            Alert.alert('Login Error', error.message || 'An error occurred during login');
+        }
     }
 
     const [changed, setChanged] = useState(false);
@@ -104,9 +143,9 @@ function LoginMain({ doLogin, bottomInset, switching }: { doLogin: (credential: 
                         secureTextEntry
                     />
                 )}
-                name="passwd"
+                name="password"
             />
-            {errors.passwd && <Text className="text-red-500">{errors.passwd.message as string}</Text>}
+            {errors.password && <Text className="text-red-500">{errors.password.message as string}</Text>}
         </View>
 
         <ButtonSet buttons={buttons} />
