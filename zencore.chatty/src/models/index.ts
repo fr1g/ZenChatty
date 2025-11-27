@@ -1,5 +1,5 @@
 export * from './enums';
-
+export * from './front';
 export * from './user';
 export * from './auth';
 export * from './chat';

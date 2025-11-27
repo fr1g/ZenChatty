@@ -1,6 +1,7 @@
 import { ApiClientBase } from './base';
 import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, BasicResponse, UserInfo } from '../models/auth';
 import { Tools } from '../tools';
+import { EGender } from '../models';
 
 export class AuthApiClient extends ApiClientBase {
     /**
@@ -18,6 +19,7 @@ export class AuthApiClient extends ApiClientBase {
      * @returns 基础响应
      */
     public async register(request: RegisterRequest): Promise<BasicResponse> {
+        console.log(JSON.stringify(request));
         return await this.post<BasicResponse>('/api/auth/register', request);
     }
 
@@ -74,3 +76,4 @@ export class AuthApiClient extends ApiClientBase {
         return await this.get<BasicResponse>('/api/auth/touch');
     }
 }
+

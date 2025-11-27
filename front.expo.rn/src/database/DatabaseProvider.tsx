@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
 import { DatabaseManager } from './DatabaseManager';
 
 interface DatabaseContextType {
@@ -49,20 +50,20 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
 
   if (error) {
     return (
-      <div style={{ padding: 20, textAlign: 'center' }}>
-        <h2>Database Initialization Error</h2>
-        <p>{error}</p>
-        <p>Please restart the application.</p>
-      </div>
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Database Initialization Error</Text>
+        <Text style={{ marginBottom: 10 }}>{error}</Text>
+        <Text>Please restart the application.</Text>
+      </View>
     );
   }
 
   if (!isInitialized) {
     return (
-      <div style={{ padding: 20, textAlign: 'center' }}>
-        <h2>Initializing Database...</h2>
-        <p>Please wait while we set up the database.</p>
-      </div>
+      <View style={{ padding: 20, alignItems: 'center' }}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Initializing Database...</Text>
+        <Text>Please wait while we set up the database.</Text>
+      </View>
     );
   }
 

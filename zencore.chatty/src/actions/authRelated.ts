@@ -1,6 +1,8 @@
 import { ClientInitObject, CreateZenCoreClient, ZenCoreClient } from "../api";
+import { LoginDataForm, RegDataForm } from "../models/auth";
 import { AuthResponse, BasicResponse, EGender, LoginRequest, RefreshTokenRequest, RegisterRequest } from "../models";
 import { Credential } from "../models/front";
+import { Tools } from "../tools";
 
 export class AuthError extends Error { }
 
@@ -17,6 +19,12 @@ export const AuthActs = {
             throw error;
         }
 
+        console.log(JSON.stringify(result));
+        console.log(`date1: ${result.accessTokenExpiresAt}, type: ${typeof result.accessTokenExpiresAt}`)
+        if (typeof result.accessTokenExpiresAt == 'string') {
+            result.accessTokenExpiresAt = Tools.dotnetDateParse(result.accessTokenExpiresAt);
+            result.refreshTokenExpiresAt = Tools.dotnetDateParse(result.refreshTokenExpiresAt as never);
+        }
         const toStore = {
             UserGuid: result.userInfo.userId,
             UsingDeviceId: loginData.deviceId,
@@ -36,7 +44,12 @@ export const AuthActs = {
 
         // check verification code (not now)
 
-        const data = registerData as RegisterRequest;
+        const data = {
+            uniqueCustomId: registerData.customUserId,
+            password: registerData.passwd,
+            email: registerData.email,
+        } as RegisterRequest;
+
         data.uniqueCustomId = registerData.customUserId;
         return await client.auth.register(data);
     },
@@ -63,10 +76,18 @@ export const AuthActs = {
                 refreshToken: activeCredential.RefreshToken
             } as RefreshTokenRequest;
             result = await client.auth.refreshToken(req);
-            if (!result) throw new Error("Failed to refresh token");
+
+            if (!result || (result as unknown as BasicResponse))
+                throw new Error("Failed to refresh token");
+
             const newCredential = activeCredential;
-            newCredential.AccessTokenExpiresAtTimestamp = result.accessTokenExpiresAt.getTime();
+            if (typeof result.accessTokenExpiresAt == 'string') {
+                newCredential.AccessTokenExpiresAtTimestamp = Tools.dotnetDateParse(result.accessTokenExpiresAt).getTime();
+            } else
+                newCredential.AccessTokenExpiresAtTimestamp = result.accessTokenExpiresAt.getTime();
+
             newCredential.AccessToken = result.accessToken;
+
             AuthStoreMgrActs.flushCredential(newCredential, storageMethod);
             return newCredential;
         }
@@ -125,19 +146,4 @@ export const AuthStoreMgrActs = { // async??????????????????????????????????????
     clearCredential(credential: Credential, storageMethod: (object: any, wipe: boolean) => any) {
         storageMethod(credential, true); // aaaaaa how to!!!!!!!
     }
-}
-
-export interface LoginDataForm {
-    login: string;
-    passwd: string;
-    deviceId: string;
-}
-
-export interface RegDataForm {
-    customUserId: string | undefined;
-    passwd: string;
-    email: string;
-    displayName: string;
-    gender: EGender;
-    birthday: undefined | Date;
 }

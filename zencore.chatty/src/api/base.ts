@@ -9,16 +9,22 @@ export class ApiClientBase {
      * 创建API客户端实例
      * @param baseURL - API基础URL
      * @param timeout - 请求超时时间（毫秒）
+     * @param rejectUnauthorized - 是否拒绝无效证书（默认true，设为false可忽略证书错误）
+     * @remarks 在前端环境中，证书验证由浏览器控制，此参数主要影响Node.js环境
      */
     constructor(baseURL: string = 'https://localhost:5637', timeout: number = 10000) {
         this.baseURL = baseURL;
-        this.client = axios.create({
+        
+        // 创建axios配置对象
+        const axiosConfig: any = {
             baseURL,
             timeout,
             headers: {
                 'Content-Type': 'application/json',
             },
-        });
+        };
+        
+        this.client = axios.create(axiosConfig);
 
         // 请求拦截器
         this.client.interceptors.request.use(
@@ -43,7 +49,27 @@ export class ApiClientBase {
             },
             (error) => {
                 // 可以在这里处理通用错误
-                console.error('API请求错误:', error);
+                console.error('API请求错误详情:', {
+                    message: error.message,
+                    code: error.code,
+                    status: error.response?.status,
+                    statusText: error.response?.statusText,
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data,
+                    headers: error.config?.headers,
+                    responseData: error.response?.data
+                });
+                
+                // 提取后端响应体中的错误信息
+                const backendError = error.response?.data;
+                if (backendError && typeof backendError === 'object') {
+                    // 优先使用后端返回的具体错误信息
+                    const errorMessage = backendError.content || backendError.message || backendError.error || error.message;
+                    error.message = errorMessage;
+                    error.backendResponse = backendError;
+                }
+                
                 return Promise.reject(error);
             }
         );

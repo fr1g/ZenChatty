@@ -154,23 +154,20 @@ export class DatabaseManager {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         message_guid TEXT UNIQUE NOT NULL,
         chat_type TEXT NOT NULL, -- 'private' or 'group'
-        chat_guid TEXT NOT NULL, -- private_chat_guid or group_guid
-        sender_guid TEXT NOT NULL,
-        message_type TEXT DEFAULT 'text',
+        chat_guid TEXT NOT NULL, -- SDK中的ofChatId
+        sender_guid TEXT NOT NULL, -- SDK中的senderId
+        message_type TEXT DEFAULT 'Normal', -- SDK中的EMessageType
         content TEXT,
-        media_url TEXT,
-        file_name TEXT,
-        file_size INTEGER,
-        is_edited BOOLEAN DEFAULT 0,
-        edited_at DATETIME,
-        is_deleted BOOLEAN DEFAULT 0,
-        deleted_at DATETIME,
-        reply_to_message_guid TEXT,
-        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        delivered_at DATETIME,
-        read_at DATETIME,
-        FOREIGN KEY (sender_guid) REFERENCES users (user_guid),
-        FOREIGN KEY (reply_to_message_guid) REFERENCES messages (message_guid)
+        info TEXT, -- SDK中的附加信息
+        is_mentioning_all BOOLEAN DEFAULT 0, -- SDK中的isMentioningAll
+        is_canceled BOOLEAN DEFAULT 0, -- SDK中的isCanceled
+        is_announcement BOOLEAN DEFAULT 0, -- SDK中的isAnnouncement
+        mentioned_user_guids TEXT, -- SDK中的mentionedUserGuids（JSON字符串）
+        sent_timestamp INTEGER, -- SDK中的sentTimestamp
+        server_caught_timestamp INTEGER, -- SDK中的serverCaughtTimestamp
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (sender_guid) REFERENCES users (user_guid)
       )
     `);
 
@@ -183,7 +180,8 @@ export class DatabaseManager {
         refresh_token TEXT,
         root_token TEXT,
         using_device_id TEXT,
-        expires_at DATETIME,
+        expires_at INTEGER, -- 存储为timestamp数字
+        refresh_token_expires_at INTEGER, -- 存储为timestamp数字
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_guid) REFERENCES users (user_guid)
@@ -224,7 +222,7 @@ export class DatabaseManager {
     // 消息表索引
     await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_guid, chat_type)');
     await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_guid)');
-    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(sent_at)');
+    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(sent_timestamp)');
 
     // 凭据表索引
     await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_credentials_user ON credentials(user_guid)');
@@ -357,14 +355,16 @@ export class DatabaseManager {
   public async saveMessage(message: Message): Promise<number> {
     const sql = `INSERT INTO messages 
       (message_guid, chat_type, chat_guid, sender_guid, message_type, content,
-       media_url, file_name, file_size, is_edited, is_deleted, reply_to_message_guid)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+       info, is_mentioning_all, is_canceled, is_announcement, mentioned_user_guids,
+       sent_timestamp, server_caught_timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     
     const result = await this.executeSql(sql, [
       message.message_guid, message.chat_type, message.chat_guid, message.sender_guid,
-      message.message_type, message.content, message.media_url, message.file_name,
-      message.file_size, message.is_edited ? 1 : 0, message.is_deleted ? 1 : 0,
-      message.reply_to_message_guid
+      message.message_type, message.content, message.info || '',
+      message.is_mentioning_all ? 1 : 0, message.is_canceled ? 1 : 0,
+      message.is_announcement ? 1 : 0, message.mentioned_user_guids || null,
+      message.sent_timestamp, message.server_caught_timestamp
     ]);
     
     return result.insertId || 0;
@@ -374,8 +374,8 @@ export class DatabaseManager {
     const sql = `SELECT m.*, u.display_name as sender_display_name, u.avatar_url as sender_avatar
                  FROM messages m
                  JOIN users u ON m.sender_guid = u.user_guid
-                 WHERE m.chat_guid = ? AND m.is_deleted = 0
-                 ORDER BY m.sent_at DESC
+                 WHERE m.chat_guid = ?
+                 ORDER BY m.sent_timestamp DESC
                  LIMIT ? OFFSET ?`;
     const rows = await this.query(sql, [chatGuid, limit, offset]);
     return rows.map(row => MessageModel.fromRow(row));
@@ -399,6 +399,12 @@ export class DatabaseManager {
     const sql = 'SELECT * FROM credentials WHERE user_guid = ?';
     const rows = await this.query(sql, [userGuid]);
     return rows.length > 0 ? rows[0] : null;
+  }
+
+  public async getAllCredentials(): Promise<any[]> {
+    const sql = 'SELECT * FROM credentials ORDER BY updated_at DESC';
+    const rows = await this.query(sql);
+    return rows;
   }
 
   // PrivateChat operations

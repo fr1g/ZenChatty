@@ -42,3 +42,18 @@ export class BasicResponse {
     public success: boolean = false;
     public message: string = '';
 }
+
+export interface LoginDataForm {
+    login: string;
+    passwd: string;
+    deviceId: string;
+}
+
+export interface RegDataForm {
+    customUserId: string | undefined;
+    passwd: string;
+    email: string;
+    displayName: string;
+    gender: EGender;
+    birthday: undefined | Date;
+}

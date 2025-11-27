@@ -28,6 +28,9 @@ public class AuthService
     // 用户注册
     public async Task<(UserAuthObject?, User?, string)> RegisterAsync(RegisterRequest request)
     {
+        Console.WriteLine("incoming new register");
+        
+        Console.WriteLine($"==={request.UniqueCustomId}");
 
         if (await _context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower()))
             return (null, null, "Email occupied");
@@ -43,7 +46,7 @@ public class AuthService
         // 创建用户 - 使用Email作为主要标识
         var user = new User(request.Email.ToLower())
         {
-            DisplayName = request.DisplayName,
+            DisplayName = request.DisplayName.IsNullOrEmpty() ? customId : request.DisplayName,
             Bio = request.Bio,
             Gender = Enum.Parse<EGender>(request.Gender),
             Birth = request.Birthday,
@@ -74,7 +77,7 @@ public class AuthService
     public async Task<(AuthResponse?, string)> LoginAsync(LoginRequest request)
     {
         var username = request.Username.ToLower();
-        
+        Console.WriteLine($"login: {username}");
         // 1. 先在Users表查询用户
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email.ToLower() == username || 
@@ -128,7 +131,6 @@ public class AuthService
                     existingSession.LastAccessedAt = DateTime.UtcNow;
                     deviceSession = existingSession;
                     // 保存对现有会话的更改
-                    await _context.SaveChangesAsync();
                 }
                 else
                 {
@@ -145,10 +147,10 @@ public class AuthService
                     Console.WriteLine("xxx");
                     deviceSession = await CreateDeviceSession(authObject, request.DeviceId);
                     _context.DeviceSessions.Add(deviceSession); // >?
-                    await _context.SaveChangesAsync();
-                    
                 }
-                
+
+                await _context.SaveChangesAsync();
+
                 var accessToken = GenerateAccessToken(user, deviceSession.DeviceId);
                 
                 return (

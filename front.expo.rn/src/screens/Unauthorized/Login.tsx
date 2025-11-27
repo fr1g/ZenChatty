@@ -1,14 +1,16 @@
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Controller, useForm } from 'react-hook-form';
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
-import { CoreRedux, LoginRequest } from "zen-core-chatty-ts";
+import { CoreRedux, LoginDataForm, LoginRequest, Credential } from "zen-core-chatty-ts";
 import { RootState } from "../../redux/StoreProvider";
 import zenCoreClient from "../../api/ZenCoreClientInstance";
 import { SQLiteStorageAdapter } from "../../database/SQLiteStorageAdapter";
+import { ClientConfig } from "../../App";
+import DeviceInfo from 'react-native-device-info';
 
 const { loginUser } = CoreRedux;
 
@@ -34,6 +36,25 @@ export default function Login() {
 function LoginMain({ bottomInset, switching }: { bottomInset: number, switching: (val: boolean) => void }) {
     const dispatch = useDispatch();
     const authState = useSelector((state: RootState) => state.auth);
+    const [deviceId, setDeviceId] = useState<string>('');
+    
+    // 获取设备IMEI
+    useEffect(() => {
+        const getDeviceId = async () => {
+            try {
+                const imei = await DeviceInfo.getUniqueId();
+                setDeviceId(imei);
+                console.log('Device IMEI:', imei);
+            } catch (error) {
+                console.error('Failed to get device IMEI:', error);
+                // 如果获取失败，使用备用标识符
+                const uniqueId = await DeviceInfo.getUniqueId();
+                setDeviceId(uniqueId);
+            }
+        };
+        
+        getDeviceId();
+    }, []);
     
     const {
         control,
@@ -42,7 +63,7 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
         watch
     } = useForm<LoginRequest>({
         defaultValues: {
-            email: "",
+            username: "",
             password: "",
         },
         mode: "all"
@@ -59,37 +80,78 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
 
     const onSubmit = async (data: LoginRequest) => {
         try {
-            const result = await dispatch(loginUser(data) as any).unwrap();
+            // 检查设备ID是否已获取
+            if (!deviceId) {
+                Alert.alert('设备信息错误', '无法获取设备信息，请稍后重试');
+                return;
+            }
             
-            if (result.success) {
-                console.log('Login successful:', result);
-                
-                // 登录成功后，获取用户信息并缓存到SQLite
+            // 创建存储适配器实例，避免重复创建
+            const storageAdapter = new SQLiteStorageAdapter();
+            
+            // 创建存储函数，用于在SDK获取到Credential后自动存储
+            const storageMethod = async (credential: any) => {
                 try {
-                    // 设置认证令牌
-                    zenCoreClient.setAuthToken(result.credential?.token);
-                    
-                    // 调用AuthApiClient.getUserInfo()获取用户信息
-                    const userInfo = await zenCoreClient.auth.getUserInfo();
-                    console.log('User info retrieved:', userInfo);
-                    
-                    // 缓存用户信息到SQLite
-                    const storageAdapter = new SQLiteStorageAdapter();
-                    await storageAdapter.cacheCurrentUserInfo(userInfo);
-                    console.log('User info cached to SQLite successfully');
-                    
-                } catch (cacheError: any) {
-                    console.warn('Failed to cache user info:', cacheError);
-                    // 缓存失败不影响登录流程，仅记录警告
+                    await storageAdapter.saveCredential({
+                        user_guid: credential.user_guid || credential.UserGuid,
+                        access_token: credential.access_token || credential.AccessToken,
+                        refresh_token: credential.refresh_token || credential.RefreshToken,
+                        root_token: credential.root_token || credential.RootToken,
+                        using_device_id: credential.using_device_id || credential.UsingDeviceId,
+                        expires_at: credential.expires_at ? new Date(credential.expires_at) : 
+                                 credential.AccessTokenExpiresAtTimestamp ? new Date(credential.AccessTokenExpiresAtTimestamp) : undefined
+                    });
+                    console.log('Credential automatically saved by SDK storage method');
+                } catch (error) {
+                    console.warn('Failed to save credential via SDK storage method:', error);
                 }
+            };
+            
+            // 修复字段映射问题：将 LoginRequest 正确转换为 LoginDataForm
+            const loginDataForm: LoginDataForm = {
+                login: data.username!, // 将 username 映射到 login
+                passwd: data.password!, // 将 password 映射到 passwd
+                deviceId: deviceId // 使用设备IMEI作为deviceId
+            };
+            
+            const result 
+                = await dispatch(loginUser({loginData: loginDataForm, clientConfig: ClientConfig, storageMethod}) as any)
+                .unwrap() as Credential;
+            console.log(`X: Login result: ${JSON.stringify(result as Credential)}`);
+            if(!result) throw new Error("invalid response");
+            // 登录成功后，获取用户信息并缓存到SQLite
+            try {
+
+                // 设置认证令牌
+                zenCoreClient.setAuthToken(result?.AccessToken);
                 
-                // 登录成功，Redux 会自动更新状态，App.tsx 会检测到认证状态变化
-            } else {
-                Alert.alert('Login Failed', result.error || 'Unknown error occurred');
+                // 调用AuthApiClient.getUserInfo()获取用户信息
+                const userInfo = await zenCoreClient.auth.getUserInfo();
+                console.log('User info retrieved:', userInfo);
+                // 缓存用户信息到SQLite（使用已创建的storageAdapter实例）
+                await storageAdapter.cacheCurrentUserInfo(userInfo);
+                console.log('User info cached to SQLite successfully');
+                
+            } catch (cacheError: any) {
+                console.warn('Failed to cache user info:', cacheError);
+                // 缓存失败不影响登录流程，仅记录警告
             }
         } catch (error: any) {
-            console.error('Login error:', error);
-            Alert.alert('Login Error', error.message || 'An error occurred during login');
+            console.error('Login error details:', {
+                message: error.message,
+                stack: error.stack,
+                response: error.response,
+                status: error.status,
+                backendResponse: error.backendResponse
+            });
+            
+            // 优先使用后端响应体中的错误信息
+            const backendError = error.backendResponse;
+            const errorMessage = backendError && typeof backendError === 'object'
+                ? backendError.content || backendError.message || backendError.error || error.message
+                : error.message || 'Unknown error';
+            
+            Alert.alert('Login Error', `Login failed: ${errorMessage}`);
         }
     }
 
@@ -118,9 +180,9 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
                         value={value}
                     />
                 )}
-                name="email"
+                name="username"
             />
-            {errors.email && <Text>This is required.</Text>}
+            {errors.username && <Text>This is required.</Text>}
         </View>
         <View className="w-full">
             <Text className="dark:text-white text-black text-xl align-middle">Password</Text>
@@ -187,24 +249,31 @@ function FindPassword({ bottomInset, switching }: { bottomInset: number, switchi
 
         </Text>
         <View className="w-full">
-            <Text className="dark:text-white text-black text-xl align-middle">Email or UID</Text>
+            <Text className="dark:text-white text-black text-xl align-middle">Email when you registered</Text>
             <Controller
                 control={control}
                 rules={{
-                    required: true,
+                    required: "Email is required",
+                    pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: "Please enter a valid email address"
+                    }
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
                         className="bg-slate-400 w-full rounded-lg text-lg px-1.5"
-                        placeholder="Who are you?"
+                        placeholder="Enter your registered email"
                         onBlur={() => { setChanged(_ => !_); return onBlur }}
                         onChangeText={onChange}
                         value={value}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
                     />
                 )}
                 name="email"
             />
-            {errors.email && <Text>This is required.</Text>}
+            {errors.email && <Text className="text-red-500">{errors.email.message as string}</Text>}
         </View>
         <View className="w-full">
             <Text className="dark:text-white text-black text-xl align-middle">Verification Code</Text>

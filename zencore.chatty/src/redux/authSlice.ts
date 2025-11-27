@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AuthActs, AuthStoreMgrActs } from '../actions/authRelated';
 import { Credential } from '../models/front';
 import { AuthError } from '../actions/authRelated';
-import { LoginDataForm, RegDataForm } from '../actions/authRelated';
+import { LoginDataForm, RegDataForm } from '../models/auth';
 
 // 异步 thunk 用于登录
 export const loginUser = createAsyncThunk(
@@ -23,10 +23,22 @@ export const loginUser = createAsyncThunk(
       let credential = await AuthActs.login(loginData, clientConfig, storageMethod);
       return credential;
     } catch (error) {
+      // 记录详细错误信息到console
+      console.error('登录失败 - 详细错误信息:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        loginData: { username: loginData.login, password: '***' } // 隐藏密码
+      });
+      
       if (error instanceof AuthError) {
-        return rejectWithValue(error.message);
+        return rejectWithValue(`登录失败: ${error.message}`);
       }
-      return rejectWithValue('登录失败，请检查网络连接');
+      
+      // 返回详细的错误信息
+      const errorMessage = error instanceof Error 
+        ? `登录失败: ${error.message}` 
+        : '登录失败，请检查网络连接';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -48,10 +60,26 @@ export const registerUser = createAsyncThunk(
       const result = await AuthActs.register(registerData, clientConfig);
       return result;
     } catch (error) {
+      // 记录详细错误信息到console
+      console.error('注册失败 - 详细错误信息:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        registerData: { 
+          username: registerData.customUserId, 
+          email: registerData.email,
+          password: '***' // 隐藏密码
+        }
+      });
+      
       if (error instanceof AuthError) {
-        return rejectWithValue(error.message);
+        return rejectWithValue(`注册失败: ${error.message}`);
       }
-      return rejectWithValue('注册失败，请检查网络连接');
+      
+      // 返回详细的错误信息
+      const errorMessage = error instanceof Error 
+        ? `注册失败: ${error.message}` 
+        : '注册失败，请检查网络连接';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -82,10 +110,25 @@ export const refreshToken = createAsyncThunk(
       );
       return newCredential;
     } catch (error) {
+      // 记录详细错误信息到console
+      console.error('Token刷新失败 - 详细错误信息:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        credential: { 
+          access_token: credential.AccessToken ?? 'null',
+          refresh_token: credential.RefreshToken ?? 'null'
+        }
+      });
+      
       if (error instanceof AuthError) {
-        return rejectWithValue(error.message);
+        return rejectWithValue(`Token刷新失败: ${error.message}`);
       }
-      return rejectWithValue('Token 刷新失败');
+      
+      // 返回详细的错误信息
+      const errorMessage = error instanceof Error 
+        ? `Token刷新失败: ${error.message}` 
+        : 'Token刷新失败，请检查网络连接';
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -109,10 +152,25 @@ export const logoutUser = createAsyncThunk(
       await AuthActs.logoff(credential, storageMethod, clientConfig);
       return true;
     } catch (error) {
+      // 记录详细错误信息到console
+      console.error('登出失败 - 详细错误信息:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        credential: { 
+          access_token: credential.AccessToken ?? 'null',
+          refresh_token: credential.RefreshToken ?? 'null'
+        }
+      });
+      
       if (error instanceof AuthError) {
-        return rejectWithValue(error.message);
+        return rejectWithValue(`登出失败: ${error.message}`);
       }
-      return rejectWithValue('登出失败');
+      
+      // 返回详细的错误信息
+      const errorMessage = error instanceof Error 
+        ? `登出失败: ${error.message}` 
+        : '登出失败，请检查网络连接';
+      return rejectWithValue(errorMessage);
     }
   }
 );

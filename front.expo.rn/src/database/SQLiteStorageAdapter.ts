@@ -127,6 +127,13 @@ export class SQLiteStorageAdapter {
   }
 
   /**
+   * 获取所有认证凭据
+   */
+  public async getAllCredentials(): Promise<any[]> {
+    return await this.dbManager.getAllCredentials();
+  }
+
+  /**
    * 删除认证凭据
    */
   public async deleteCredential(userGuid: string): Promise<void> {
@@ -276,18 +283,19 @@ export class SQLiteStorageAdapter {
   public async saveMessages(chatGuid: string, messages: any[]): Promise<void> {
     for (const message of messages) {
       await this.dbManager.saveMessage({
-        message_guid: message.message_guid,
-        chat_type: message.chat_type,
+        message_guid: message.traceId,
+        chat_type: message.ofChat?.type || 'private',
         chat_guid: chatGuid,
-        sender_guid: message.sender_guid,
-        message_type: message.message_type || 'text',
+        sender_guid: message.senderId,
+        message_type: message.type || 'Normal',
         content: message.content,
-        media_url: message.media_url,
-        file_name: message.file_name,
-        file_size: message.file_size,
-        is_edited: message.is_edited || false,
-        is_deleted: message.is_deleted || false,
-        reply_to_message_guid: message.reply_to_message_guid
+        info: message.info || '',
+        is_mentioning_all: message.isMentioningAll || false,
+        is_canceled: message.isCanceled || false,
+        is_announcement: message.isAnnouncement || false,
+        mentioned_user_guids: message.mentionedUserGuids ? JSON.stringify(message.mentionedUserGuids) : undefined,
+        sent_timestamp: message.sentTimestamp || Date.now(),
+        server_caught_timestamp: message.serverCaughtTimestamp || Date.now()
       });
     }
   }
@@ -298,19 +306,19 @@ export class SQLiteStorageAdapter {
   public async getMessages(chatGuid: string, limit: number = 50, offset: number = 0): Promise<any[]> {
     const messages = await this.dbManager.getMessagesByChatGuid(chatGuid, limit, offset);
     return messages.map(message => ({
-      message_guid: message.message_guid,
+      traceId: message.message_guid,
       chat_type: message.chat_type,
-      chat_guid: message.chat_guid,
-      sender_guid: message.sender_guid,
-      message_type: message.message_type,
+      ofChatId: message.chat_guid,
+      senderId: message.sender_guid,
+      type: message.message_type,
       content: message.content,
-      media_url: message.media_url,
-      file_name: message.file_name,
-      file_size: message.file_size,
-      is_edited: message.is_edited,
-      is_deleted: message.is_deleted,
-      reply_to_message_guid: message.reply_to_message_guid,
-      sent_at: message.sent_at,
+      info: message.info,
+      isMentioningAll: message.is_mentioning_all,
+      isCanceled: message.is_canceled,
+      isAnnouncement: message.is_announcement,
+      mentionedUserGuids: message.mentioned_user_guids ? JSON.parse(message.mentioned_user_guids) : [],
+      sentTimestamp: message.sent_timestamp,
+      serverCaughtTimestamp: message.server_caught_timestamp,
       sender_display_name: (message as any).sender_display_name,
       sender_avatar: (message as any).sender_avatar
     }));

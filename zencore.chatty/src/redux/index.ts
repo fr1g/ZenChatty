@@ -1,6 +1,7 @@
 // Redux Toolkit 相关导出
 import type { RootState, AppDispatch } from './store';
 export { store } from './store';
+export type { RootState, AppDispatch };
 export { default as authReducer } from './authSlice';
 export { 
   loginUser, 

@@ -545,7 +545,6 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
 
     /// <summary>
     /// 向指定用户发送群聊退出消息
-    /// if i have rich time to merge, move this usage to ChatAgent.CreatePrivateChatFromGroupAsync
     /// </summary>
     private async Task SendGroupLeaveMessageAsync(Guid recipientId, string leavingUserName, string groupName,
         string groupChatId)

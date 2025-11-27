@@ -5,8 +5,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
-import { RegisterRequest } from "zen-core-chatty-ts";
-import registerUser from 'zen-core-chatty-ts'
+import { CoreRedux, RegisterRequest, RegDataForm } from "zen-core-chatty-ts";
+import { ClientConfig } from "../../App";
+
+const { registerUser } = CoreRedux;
 
 
 export default function Register() {
@@ -75,26 +77,51 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
     // State for agreement checkbox
     const [isAgreed, setIsAgreed] = useState(false);
 
-    const onSubmit = async (data: RegisterRequest & { confirmPassword: string }) => {
+    const onSubmit = async (data: RegisterRequest & { confirmPassword: string, verificationCode: string }) => {
         if (!isAgreed) {
             Alert.alert('Agreement Required', 'Please agree to the terms and conditions');
             return;
         }
 
         try {
-            const { confirmPassword, ...registerData } = data;
-            const result = await dispatch(registerUser(registerData) as any).unwrap();
+            const { confirmPassword, verificationCode, ...registerData } = data;
+            // 修复字段映射：将 uniqueCustomId 映射到 customUserId
+            const regDataForm: RegDataForm = {
+                customUserId: registerData.uniqueCustomId,
+                passwd: registerData.password || '',
+                email: registerData.email || '',
+                displayName: registerData.displayName || '',
+                gender: registerData.gender || 0,
+                birthday: registerData.birthday
+            };
+            const result = await dispatch(registerUser({registerData: regDataForm, clientConfig: ClientConfig}) as any).unwrap();
 
             if (result.success) {
                 console.log('Registration successful:', result);
                 Alert.alert('Registration Successful', 'Your account has been created successfully');
                 // 注册成功，可以跳转到登录页面或其他操作
             } else {
-                Alert.alert('Registration Failed', result.error || 'Unknown error occurred');
+                console.error('Registration failed with result:', result);
+                // 优先显示后端返回的具体错误信息
+                const errorMessage = result.error || 'Unknown error occurred. Please check console for details.';
+                Alert.alert('Registration Failed', errorMessage);
             }
         } catch (error: any) {
-            console.error('Registration error:', error);
-            Alert.alert('Registration Error', error.message || 'An error occurred during registration');
+            console.error('Registration error details:', {
+                message: error.message,
+                stack: error.stack,
+                response: error.response,
+                status: error.status,
+                backendResponse: error.backendResponse
+            });
+            
+            // 优先使用后端响应体中的错误信息
+            const backendError = error.backendResponse;
+            const errorMessage = backendError && typeof backendError === 'object'
+                ? backendError.content || backendError.message || backendError.error || error.message
+                : error.message || `Unknown error: ${error}`;
+            
+            Alert.alert('Registration Error', `Registration failed: ${errorMessage}`);
         }
     };
 
@@ -144,7 +171,7 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
                 render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
                         className="bg-slate-400 w-full rounded-lg text-lg px-1.5"
-                        placeholder="Who are you?"
+                        placeholder="This is vital"
                         onBlur={() => { setChanged(_ => !_); return onBlur }}
                         onChangeText={onChange}
                         value={value}

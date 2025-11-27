@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Provider } from 'react-redux';
-import { store } from 'zen-core-chatty-ts';
+import { View, Text } from 'react-native';
+import { store, RootState, AppDispatch } from 'zen-core-chatty-ts';
 import { initializeStorage } from './storageAdapter';
 
 interface StoreProviderProps {
@@ -18,7 +19,7 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
         console.log('存储适配器初始化完成');
       } catch (error) {
         console.error('存储适配器初始化失败:', error);
-        // 即使初始化失败，也继续渲染应用
+        // to be updated: critical error: the storage is the lifeline 
         setIsStorageInitialized(true);
       }
     };
@@ -26,22 +27,19 @@ export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
     initStorage();
   }, []);
 
-  // 如果存储适配器尚未初始化，可以显示加载状态
   if (!isStorageInitialized) {
     return (
-      <div style={{ 
-        display: 'flex', 
+      <View style={{ 
+        flex: 1, 
         justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
+        alignItems: 'center' 
       }}>
-        <div>正在初始化存储系统...</div>
-      </div>
+        <Text>Loading...</Text>
+      </View>
     );
   }
 
   return <Provider store={store}>{children}</Provider>;
 };
 
-export { store };
-export type { RootState, AppDispatch } from 'zen-core-chatty-ts';
+export { store, RootState, AppDispatch };

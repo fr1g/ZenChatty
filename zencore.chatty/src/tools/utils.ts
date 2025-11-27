@@ -181,35 +181,6 @@ export class ValidationUtils {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   }
-
-  /**
-   * 验证密码强度
-   */
-  static validatePassword(password: string): {
-    isValid: boolean;
-    strength: 'weak' | 'medium' | 'strong';
-    message: string;
-  } {
-    if (password.length < 6) {
-      return { isValid: false, strength: 'weak', message: '密码长度至少6位' };
-    }
-
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    const criteriaMet = [hasUpperCase, hasLowerCase, hasNumbers, hasSpecialChar]
-      .filter(Boolean).length;
-
-    if (criteriaMet >= 3) {
-      return { isValid: true, strength: 'strong', message: '密码强度强' };
-    } else if (criteriaMet >= 2) {
-      return { isValid: true, strength: 'medium', message: '密码强度中等' };
-    } else {
-      return { isValid: true, strength: 'weak', message: '密码强度弱' };
-    }
-  }
 }
 
 /**
@@ -275,6 +246,18 @@ export const Tools = {
    */
   bear(token: string): string {
     return `Bearer ${token}`;
+  },
+
+  dotnetDateParse(str: string): Date {
+    const normalizedString = str.replace(
+      /\.(\d{1,7})\d*Z$/,
+      (_, fractional) => {
+        const milliseconds = fractional.padEnd(3, '0').substring(0, 3);
+        return `.${milliseconds}Z`;
+      }
+    );
+
+    return new Date(normalizedString);
   },
 
   /**
