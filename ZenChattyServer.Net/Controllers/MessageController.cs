@@ -57,7 +57,7 @@ public class MessageController : ControllerBase
 
             // 验证消息内容
             var contentValidation = _validationService.ValidateMessageContent(request.Content);
-            if (contentValidation.Result != EMessageSendResult.Success)
+            if (contentValidation.ResultCanBe != EMessageSendResult.Success)
             {
                 return BadRequest(contentValidation);
             }
@@ -74,6 +74,15 @@ public class MessageController : ControllerBase
             {
                 case PrivateChat privateChat:
                     validationResult = await _validationService.ValidatePrivateChatMessageAsync(privateChat.UniqueMark, userId);
+                    
+                    if (validationResult.ResultCanBe == EMessageSendResult.Success)
+                    {
+                        // 验证非好友关系的消息类型
+                        var messageTypeValidationResult = await _validationService.ValidateMessageTypeForNonFriendAsync(
+                            privateChat.UniqueMark, userId, request.MessageType, request.ViaGroupChatId);
+                        if (messageTypeValidationResult.ResultCanBe != EMessageSendResult.Success)
+                            return BadRequest(messageTypeValidationResult);
+                    }
                     break;
                 case GroupChat groupChat:
                     validationResult = await _validationService.ValidateGroupChatMessageAsync(groupChat.UniqueMark, userId);
@@ -82,7 +91,7 @@ public class MessageController : ControllerBase
                     return BadRequest(SendMessageResponse.InternalError("Invalid chat type"));
             }
 
-            if (validationResult.Result != EMessageSendResult.Success)
+            if (validationResult.ResultCanBe != EMessageSendResult.Success)
             {
                 return BadRequest(validationResult);
             }

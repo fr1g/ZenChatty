@@ -22,6 +22,7 @@ public class PrivacySettings
     public EPrivacyVisibilityRange ContactVisibility { get; set; } = EPrivacyVisibilityRange.None;
     public EPrivacyVisibilityRange BioVisibility { get; set; } = EPrivacyVisibilityRange.FriendsAndGroups;
     public EPrivacyVisibilityRange GenderVisibility { get; set; } = EPrivacyVisibilityRange.Everyone;
+    public EPrivacyVisibilityRange BirthdayVisibility { get; set; } = EPrivacyVisibilityRange.Everyone;
 
     public void Migrate(PrivacySettings settings)
     {
@@ -33,6 +34,7 @@ public class PrivacySettings
         this.ContactVisibility = settings.ContactVisibility;
         this.BioVisibility = settings.BioVisibility;
         this.GenderVisibility = settings.GenderVisibility;
+        this.BirthdayVisibility = settings.BirthdayVisibility;
     }
     
 }

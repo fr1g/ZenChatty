@@ -1,7 +1,7 @@
 import { EMessageType } from "./enums";
 
 export class CreatePrivateChatRequest {
-    public receiverCustomId: string = '';
+    public receiverId: string = '';
     public isInformal: boolean = false;
     public displayName?: string;
 }

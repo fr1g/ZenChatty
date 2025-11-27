@@ -27,7 +27,7 @@ export class RegisterRequest {
     public displayName?: string;
     public email?: string;
     public gender?: string;
-    public birthday?: string;
+    public birthday?: Date;
     public bio?: string;
 }
 

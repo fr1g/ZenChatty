@@ -5,42 +5,33 @@ namespace ZenChattyServer.Net.Models.Response;
 /// <summary>
 /// 消息发送响应
 /// </summary>
-public class SendMessageResponse
+public class SendMessageResponse(EMessageSendResult resultCanBe, Guid? messageId = null, string? errorMessage = null)
 {
     /// <summary>
-    /// 发送结果
+    /// 发送结果(can be)
     /// </summary>
-    public EMessageSendResult Result { get; set; }
-    
+    public EMessageSendResult ResultCanBe { get; set; } = resultCanBe;
+
     /// <summary>
     /// 消息ID（发送成功时返回）
     /// </summary>
-    public Guid? MessageId { get; set; }
-    
+    public Guid? MessageId { get; set; } = messageId;
+
     /// <summary>
     /// 错误消息
     /// </summary>
-    public string? ErrorMessage { get; set; }
-    
+    public string? ErrorMessage { get; set; } = errorMessage;
+
     /// <summary>
     /// 发送时间
     /// </summary>
-    public DateTime? SentAt { get; set; }
-    
+    public DateTime? SentAt { get; set; } = DateTime.UtcNow;
+
     /// <summary>
     /// 是否被消息队列缓存
     /// </summary>
-    public bool IsQueued { get; set; }
-    
-    public SendMessageResponse(EMessageSendResult result, Guid? messageId = null, string? errorMessage = null)
-    {
-        Result = result;
-        MessageId = messageId;
-        ErrorMessage = errorMessage;
-        SentAt = DateTime.UtcNow;
-        IsQueued = result == EMessageSendResult.Success;
-    }
-    
+    public bool IsQueued { get; set; } = resultCanBe == EMessageSendResult.Success;
+
     public static SendMessageResponse Success(Guid messageId) => new(EMessageSendResult.Success, messageId);
     public static SendMessageResponse Unauthorized(string message = "未授权访问") => new(EMessageSendResult.Unauthorized, null, message);
     public static SendMessageResponse Forbidden(string message = "禁止访问") => new(EMessageSendResult.Forbidden, null, message);

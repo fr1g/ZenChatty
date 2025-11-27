@@ -16,7 +16,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
     public async Task<ActionResult<BasicResponse>> Register([FromBody] RegisterRequest request)
     {
         var authObject = await authService.RegisterAsync(request);
-        if (authObject == null)
+        if (authObject.Item1 == null)
         {
             return BadRequest(new BasicResponse 
             { 
@@ -27,7 +27,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
         
         return Ok(new BasicResponse 
         { 
-            content = "success",
+            content = authObject.Item2!.LocalId.ToString(),
             success = true 
         });
     }

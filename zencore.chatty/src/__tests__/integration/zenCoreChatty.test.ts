@@ -1,14 +1,14 @@
-import { ZenCoreChattyClient } from '../../api';
+import { ZenCoreClient } from '../../api';
 
-describe('ZenCoreChattyClient Integration', () => {
-    let client: ZenCoreChattyClient;
+describe('ZenCoreClient Integration', () => {
+    let client: ZenCoreClient;
 
     beforeEach(() => {
-        client = new ZenCoreChattyClient('https://localhost:5637');
+        client = new ZenCoreClient('https://localhost:5637');
     });
 
-    test('should create ZenCoreChattyClient instance', () => {
-        expect(client).toBeInstanceOf(ZenCoreChattyClient);
+    test('should create ZenCoreClient instance', () => {
+        expect(client).toBeInstanceOf(ZenCoreClient);
         expect(client.auth).toBeDefined();
         expect(client.user).toBeDefined();
         expect(client.chat).toBeDefined();

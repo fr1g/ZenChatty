@@ -5,7 +5,7 @@ namespace ZenChattyServer.Net.Models.Request;
 public class CreatePrivateChatRequest
 {
     [Required]
-    public string ReceiverCustomId { get; set; } = string.Empty;
+    public string ReceiverId { get; set; } = string.Empty;
     
     public bool IsInformal { get; set; } = false;
     

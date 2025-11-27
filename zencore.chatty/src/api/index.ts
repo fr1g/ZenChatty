@@ -7,7 +7,23 @@ import { GroupApiClient } from './group';
 import { PrivacyApiClient } from './privacy';
 import { ContactApiClient } from './contact';
 
-export class ZenCoreChattyClient {
+export interface ClientInitObject {
+    baseURL: string | null;
+    port: number | null;
+    userToken: string | null;
+    timeout: number | null;
+};
+
+export function CreateZenCoreClient(config: ClientInitObject) {
+    return new ZenCoreClient(
+        config.baseURL ?? 'https://localhost:5637',
+        config.port ?? 5637,
+        config.userToken ?? undefined,
+        config.timeout ?? 10000
+    )
+}
+
+export class ZenCoreClient {
     public readonly auth: AuthApiClient;
     public readonly user: UserApiClient;
     public readonly chat: ChatApiClient;
@@ -17,7 +33,7 @@ export class ZenCoreChattyClient {
     public readonly privacy: PrivacyApiClient;
     public readonly contact: ContactApiClient;
 
-    constructor(baseURL: string = 'https://localhost:5637', port: number = 5637, timeout: number = 10000) {
+    constructor(baseURL: string = 'https://localhost:5637', port: number = 5637, userToken: string | undefined = undefined, timeout: number = 10000) {
 
         let assembled = baseURL.match(/:[0-9]/g) ? baseURL : baseURL + ":" + port;
 
@@ -29,6 +45,9 @@ export class ZenCoreChattyClient {
         this.group = new GroupApiClient(assembled, timeout);
         this.privacy = new PrivacyApiClient(assembled, timeout);
         this.contact = new ContactApiClient(assembled, timeout);
+
+        if (userToken) this.setAuthToken(userToken);
+
     }
 
     public setAuthToken(token: string): void {

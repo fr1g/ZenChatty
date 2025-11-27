@@ -26,17 +26,17 @@ public class AuthService
     }
     
     // 用户注册
-    public async Task<UserAuthObject?> RegisterAsync(RegisterRequest request)
+    public async Task<(UserAuthObject?, User?, string)> RegisterAsync(RegisterRequest request)
     {
 
         if (await _context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower()))
-            return null;
+            return (null, null, "Email occupied");
         
         if (!string.IsNullOrEmpty(request.UniqueCustomId) && 
             await _context.Users.AnyAsync(u => u.CustomId != null && u.CustomId.ToLower() == request.UniqueCustomId.ToLower()))
-            return null;
+            return (null, null, "CustomId occupied");
         
-        string customId = string.IsNullOrEmpty(request.UniqueCustomId) 
+        var customId = string.IsNullOrEmpty(request.UniqueCustomId) 
             ? await GenerateUniqueCustomId() 
             : request.UniqueCustomId.ToLower();
             
@@ -59,18 +59,15 @@ public class AuthService
         _context.UserAuthObjects.Add(authObject);
         await _context.SaveChangesAsync();
         
-        return authObject;
+        return (authObject, user, "Wilkommen!");
     }
 
     // 生成唯一的10位CustomID
     private async Task<string> GenerateUniqueCustomId()
     {
         string customId;
-        do
-        {
-            customId = AuthHelper.DefaultShortIdGenerator();
-        } while (await _context.Users.AnyAsync(u => u.CustomId != null && u.CustomId == customId));
-        
+        do customId = AuthHelper.DefaultShortIdGenerator();
+            while (await _context.Users.AnyAsync(u => u.CustomId != null && u.CustomId == customId));
         return customId;
     }
     

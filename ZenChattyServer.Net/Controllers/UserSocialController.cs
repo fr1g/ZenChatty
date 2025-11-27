@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers;
+using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Request;
@@ -15,6 +17,8 @@ public class UserSocialController(
     UserSocialService userSocialService,
     GroupManageService groupManageService,
     GroupAnnouncementService groupAnnouncementService,
+    ChatHubService chatHub,
+    UserRelatedContext context,
     AuthService authService)
     : AuthedControllerBase(authService)
 {
@@ -36,6 +40,8 @@ public class UserSocialController(
         
         return Ok(result);
     }
+    
+    #endregion
 
     #region 私聊相关接口
 
@@ -124,7 +130,6 @@ public class UserSocialController(
 
     #endregion
     
-
     #region UserGroupActons
     
     /// <summary>
@@ -170,9 +175,7 @@ public class UserSocialController(
         return Ok(announcements);
     }
     #endregion
-
     
-
     #region 隐私设置检查接口
     // here removed a checking api which checks if one is addable - from group or by other ways.
     // anyway, it's useless, since every check should be done during every action.
@@ -186,7 +189,7 @@ public class UserSocialController(
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
         if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var isBlocked = await userSocialService.CheckBlockStatusAsync(refer.user!.LocalId.ToString(), targetUserId);
+        var isBlocked = await RelationshipHelper.CheckBlockStatusAsync(refer.user!.LocalId.ToString(), targetUserId, context);
         
         return Ok(new BasicResponse { 
             content = isBlocked ? "Block relationship exists" : "No block relationship", 
@@ -266,5 +269,106 @@ public class UserSocialController(
 
     #endregion
 
+    #region 好友请求接口
+
+    /// <summary>
+    /// 发送好友请求
+    /// </summary>
+    [HttpPost("friend/request")]
+    public async Task<ActionResult<BasicResponse>> SendFriendRequest(
+        [FromQuery] Guid targetUserId,
+        [FromQuery] string? viaGroupId = null)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        // 这里实现好友请求发送逻辑
+        // 用户需要实现具体的业务逻辑
+        // agile fast adding function, not gonna add new service function.
+        
+        var targetUser = context.Users.FirstOrDefault(user => user.LocalId == targetUserId);
+        if (targetUser == null)
+            return NotFound(new BasicResponse
+            {
+                content = "No such user",
+                success = false
+            });
+        
+        if (RelationshipHelper.IsUserAFriend(context, refer.user!, targetUser))
+            return BadRequest(new BasicResponse
+            {
+                content = "Already friend",
+                success = false
+            });
+        var isViaGroup = !string.IsNullOrEmpty(viaGroupId) && viaGroupId != targetUserId.ToString(); // linq ignored viaGroupId != null && ... so no need
+        
+        Message requestMessage;
+        if (isViaGroup)
+        {
+            var g = await context.GroupChats.FirstOrDefaultAsync(gc => gc.UniqueMark == viaGroupId);
+            if (g is null)
+                return BadRequest(new BasicResponse
+                {
+                    content = "Wrong usage: no such via-group",
+                    success = false
+                });
+            if(!RelationshipHelper.IsUserGroupMate(refer.user!,  targetUser, g))
+                return BadRequest(new BasicResponse
+                {
+                    content = "You're not in same group!",
+                    success = false
+                });
+            
+            var created = await ChatAgent.CreatePrivateChatFromGroupAsync(refer.user!, targetUser, g, context);
+            
+            if(!created.success || created.chat is null) 
+                return BadRequest(new BasicResponse
+                {
+                    content = $"Failed: {created.message}",
+                    success = false
+                });
+            
+            requestMessage = new Message
+            {
+                Content = @$"requestBy:{refer.user!.LocalId};receiver:{targetUserId};thru-group:{viaGroupId};i-wanna-add-u-as-friend",
+                Type = EMessageType.Requesting,
+                OfChat = created.chat!,
+                OfChatId = created.chat.UniqueMark,
+                ViaGroupChatId = viaGroupId,
+                Info = "newfriendrequestthroughgroupchat"
+            };
+        }
+        else
+        {
+            if (!targetUser.Privacies.IsDiscoverableViaSearch) return BadRequest(new BasicResponse
+            {
+                content = "Not discoverable",
+                success = false
+            });
+            var creationInternalRequest = new CreatePrivateChatRequest
+            {
+                ReceiverId = targetUserId.ToString(),
+                IsInformal = true
+            };
+            var created = await userSocialService.CreatePrivateChatAsync(refer.user!.LocalId.ToString(), creationInternalRequest);
+            requestMessage = new Message
+            {
+                Content = @$"requestBy:{refer.user!.LocalId};receiver:{targetUserId};i-wanna-add-u-as-friend",
+                Type = EMessageType.Requesting,
+                OfChat = created.chat!,
+                OfChatId = created.chatId,
+                Info = "newfriendrequestdirectly"
+            };
+        }
+        
+        await ChatAgent.Say(context, requestMessage, chatHub);
+        
+        return Ok(new BasicResponse { 
+            content = "好友请求接口已创建，请实现具体业务逻辑", 
+            success = true 
+        });
+    }
+
     #endregion
+
 }

@@ -1,8 +1,13 @@
 # ZenChatty
 Проект диплома для ПРИ. Мессенжер, Чат-приложение.
 
-## Explain
+## Functions
 
+### todo
+- File upload for frontend
+- Change email address
+
+## Explain
 ### Usage of Artificial Intelligence
 Involved AI usages:
 - Jetbrains Rider AI Assistant

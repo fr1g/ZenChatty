@@ -7,7 +7,7 @@ using ZenChattyServer.Net.Models.Request;
 
 namespace ZenChattyServer.Net.Services;
 
-public class GroupManageService(UserRelatedContext context, ILogger<GroupManageService> logger, ChatHubService chatHub)
+public class GroupManageService(UserRelatedContext context, ILogger<GroupManageService> logger, ChatHubService chatHubService)
 {
     /// <summary>
     /// 设置/取消管理员
@@ -167,39 +167,58 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             if (inviterUser == null)
                 return (false, "邀请人用户不存在");
 
-            // 添加成员并记录邀请人
-            var newMember = new GroupChatMember(targetUser)
+            // 检查两人是否为好友关系
+            if (!RelationshipHelper.IsUserAFriend(context, inviterUser, targetUser))
+                return (false, "只能邀请好友加入群聊");
+
+            // 创建单次有效、48小时有效期的邀请链接
+            var inviteLink = new GroupInviteLink
             {
-                Type = EGroupMemberType.Member,
-                Nickname = string.IsNullOrEmpty(targetUser.DisplayName)
-                    ? (targetUser.CustomId ?? "err_NG_name_null")
-                    : targetUser.DisplayName,
-                InvitedById = inviterUser.LocalId,
-                InvitedBy = inviterUser
+                Id = Guid.NewGuid(),
+                GroupId = groupChat.UniqueMark,
+                CreatedByUserId = inviterUser.LocalId.ToString(),
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddHours(48),
+                TargetUserId = targetUser.LocalId.ToString(),
+                IsUsed = false,
+                InviteCode = GenerateInviteCode()
             };
 
-            groupChat.Members.Add(newMember);
+            context.GroupInviteLinks.Add(inviteLink);
 
-            // 为成员创建Contact对象
-            var contact = new Contact(targetUser, groupChat)
+            // 创建邀请链接消息
+            var message = new Message
             {
-                DisplayName = groupChat.Settings.DisplayName
+                TraceId = Guid.NewGuid().ToString(),
+                SenderId = inviterUser.LocalId,
+                OfChatId = groupChat.UniqueMark,
+                Content = $"邀请链接：{inviteLink.InviteCode} (有效期48小时，单次有效)",
+                Type = EMessageType.Requesting,
+                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
 
-            context.Contacts.Add(contact);
-
-            // 发送邀请通知
-            await SendMemberInvitedMessageAsync(request.GroupId, operatorUserId,
-                request.TargetUserId, request.Reason);
+            // 通过ChatHub发送邀请链接消息
+            await ChatAgent.Say(context, message, chatHubService);
 
             await context.SaveChangesAsync();
-            return (true, "邀请成员成功");
+            return (true, "邀请链接已发送");
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "邀请成员失败");
             return (false, "邀请成员失败");
         }
+    }
+
+    /// <summary>
+    /// 生成邀请码
+    /// </summary>
+    private string GenerateInviteCode()
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, 8)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 
     /// <summary>
@@ -378,7 +397,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        await ChatAgent.Say(context, message, chatHub);
+        await ChatAgent.Say(context, message, chatHubService);
     }
 
     private async Task SendSilentMessageAsync(string groupId, string operatorId,
@@ -396,7 +415,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        await ChatAgent.Say(context, message, chatHub);
+        await ChatAgent.Say(context, message, chatHubService);
     }
 
     public async Task SendGroupSilentMessageAsync(string groupId, string operatorId,
@@ -412,7 +431,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        await ChatAgent.Say(context, message, chatHub);
+        await ChatAgent.Say(context, message, chatHubService);
     }
 
     private async Task SendMemberInvitedMessageAsync(string groupId, string operatorId,
@@ -434,7 +453,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        await ChatAgent.Say(context, message, chatHub);
+        await ChatAgent.Say(context, message, chatHubService);
     }
 
     private async Task SendMemberTitleSetMessageAsync(string groupId, string operatorId,
@@ -450,7 +469,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             Type = EMessageType.Event,
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
-        await ChatAgent.Say(context, message, chatHub);
+        await ChatAgent.Say(context, message, chatHubService);
     }
 
     /// <summary>
@@ -470,7 +489,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
     public async Task AddMessageAsync(Message message)
     {
         // await chatHub.SendMessageAsUserAsync(message); // they said better using function Say
-        await ChatAgent.Say(context, message, chatHub); 
+        await ChatAgent.Say(context, message, chatHubService); 
         
     }
 
@@ -526,6 +545,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
 
     /// <summary>
     /// 向指定用户发送群聊退出消息
+    /// if i have rich time to merge, move this usage to ChatAgent.CreatePrivateChatFromGroupAsync
     /// </summary>
     private async Task SendGroupLeaveMessageAsync(Guid recipientId, string leavingUserName, string groupName,
         string groupChatId)
@@ -554,7 +574,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                     SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
                 };
 
-                await ChatAgent.Say(context, message, chatHub);
+                await ChatAgent.Say(context, message, chatHubService);
             }
             else
             {
@@ -607,7 +627,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
                             };
 
-                            await ChatAgent.Say(context, message, chatHub);
+                            await ChatAgent.Say(context, message, chatHubService);
                         }
                     }
                 }
@@ -624,7 +644,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                         SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
                     };
 
-                    await ChatAgent.Say(context, message, chatHub);
+                    await ChatAgent.Say(context, message, chatHubService);
                 }
             }
         }

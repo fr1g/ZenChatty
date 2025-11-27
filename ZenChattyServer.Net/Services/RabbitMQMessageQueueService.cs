@@ -22,7 +22,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     private readonly ILogger<RabbitMQMessageQueueService> _logger;
     private readonly RabbitMQConfig _config;
     private readonly MessageCacheService _messageCacheService;
-    private readonly string _queueName = "chat_messages";
+    private readonly string _queueName;
     private bool _disposed = false;
 
     public RabbitMQMessageQueueService(
@@ -35,6 +35,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         _context = context;
         _logger = logger;
         _messageCacheService = messageCacheService;
+        _queueName = _config.QueueName; // 使用配置中的队列名称
 
         // 创建连接工厂
         var factory = new ConnectionFactory

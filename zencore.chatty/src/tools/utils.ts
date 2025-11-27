@@ -10,19 +10,19 @@ export class ErrorHandler {
    * 检查是否为网络错误
    */
   static isNetworkError(error: any): boolean {
-    return error?.code === 'NETWORK_ERROR' || 
-           error?.message?.includes('network') ||
-           error?.name === 'NetworkError';
+    return error?.code === 'NETWORK_ERROR' ||
+      error?.message?.includes('network') ||
+      error?.name === 'NetworkError';
   }
 
   /**
    * 检查是否为认证错误
    */
   static isAuthError(error: any): boolean {
-    return error?.status === 401 || 
-           error?.code === 'UNAUTHORIZED' ||
-           error?.message?.includes('unauthorized') ||
-           error?.message?.includes('token');
+    return error?.status === 401 ||
+      error?.code === 'UNAUTHORIZED' ||
+      error?.message?.includes('unauthorized') ||
+      error?.message?.includes('token');
   }
 
   /**
@@ -32,7 +32,7 @@ export class ErrorHandler {
     if (this.isNetworkError(error)) {
       return '网络连接失败，请检查网络设置';
     }
-    
+
     if (this.isAuthError(error)) {
       return '认证失败，请重新登录';
     }
@@ -53,20 +53,20 @@ export class ErrorHandler {
     delay: number = 1000
   ): Promise<T> {
     let lastError: any;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         lastError = error;
-        
+
         if (attempt < maxRetries) {
           console.warn(`操作失败，第${attempt}次重试...`, error);
           await new Promise(resolve => setTimeout(resolve, delay * attempt));
         }
       }
     }
-    
+
     throw lastError;
   }
 }
@@ -124,8 +124,8 @@ export class DateTimeUtils {
   static isToday(date: Date): boolean {
     const today = new Date();
     return date.getDate() === today.getDate() &&
-           date.getMonth() === today.getMonth() &&
-           date.getFullYear() === today.getFullYear();
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
   }
 }
 
@@ -255,11 +255,11 @@ export class FileUtils {
    */
   static formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
-    
+
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }
@@ -273,21 +273,25 @@ export const Tools = {
   StringUtils,
   ValidationUtils,
   FileUtils,
-  
+
+  isNoneOrEmpty(str: string | null | undefined | never): boolean {
+    return (!str);
+  },
+
   /**
    * Bearer token 格式化
    */
   bear(token: string): string {
     return `Bearer ${token}`;
   },
-  
+
   /**
    * 深度克隆对象
    */
   deepClone<T>(obj: T): T {
     return JSON.parse(JSON.stringify(obj));
   },
-  
+
   /**
    * 防抖函数
    */
@@ -301,7 +305,7 @@ export const Tools = {
       timeoutId = setTimeout(() => func.apply(null, args), delay);
     };
   },
-  
+
   /**
    * 节流函数
    */

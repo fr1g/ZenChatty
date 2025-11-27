@@ -6,8 +6,8 @@ public class UserAuthObject
     
     public virtual User User { get; set; } = new();
     public string EncryptedPassword { get; set; } = string.Empty;
-    public string LastGeneratedAuthToken { get; set; } = string.Empty;
-    public virtual List<DeviceSession> DeviceSessions { get; set; } = new();
+    public string LastGeneratedAuthToken { get; set; } = string.Empty; // is this useless? !!!
+    public virtual List<DeviceSession> DeviceSessions { get; set; } = []; // yes... the refreshTokens are oriented to devices, and already saved here...
     
     public UserAuthObject() { }
     

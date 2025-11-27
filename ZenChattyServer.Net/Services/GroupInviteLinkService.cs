@@ -10,7 +10,7 @@ namespace ZenChattyServer.Net.Services;
 public class GroupInviteLinkService(
     UserRelatedContext context,
     ILogger<GroupInviteLinkService> logger,
-    ChatHubService chatAgent)
+    ChatHubService chatHub)
 {
     /// <summary>
     /// 创建群邀请链接
@@ -97,10 +97,18 @@ public class GroupInviteLinkService(
                 !AuthHelper.CanManageGroup(inviterMember))
                 return (false, "邀请人已不是管理员或已退群，邀请链接无效", null);
 
-            // 检查链接是否针对特定用户
-            if (!string.IsNullOrEmpty(link.TargetUserId))
+            // 检查群聊设置和邀请链接权限
+            if (groupChat.Settings?.IsInviteOnly == true)
             {
-                if (link.TargetUserId != targetUserId)
+                // 如果是仅邀请模式，只允许特定用户的邀请链接
+                if (!string.IsNullOrEmpty(link.TargetUserId) && link.TargetUserId != targetUserId)
+                    return (false, "此邀请链接不是为您创建的", null);
+            }
+            else
+            {
+                // 如果不是仅邀请模式，任意用户都可以使用不限consumer的邀请链接
+                // 如果邀请链接有特定目标用户，仍然需要验证
+                if (!string.IsNullOrEmpty(link.TargetUserId) && link.TargetUserId != targetUserId)
                     return (false, "此邀请链接不是为您创建的", null);
             }
 
@@ -266,6 +274,6 @@ public class GroupInviteLinkService(
             SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
         };
 
-        await ChatAgent.Say(context, message, chatAgent);
+        await ChatAgent.Say(context, message, chatHub);
     }
 }

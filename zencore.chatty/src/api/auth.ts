@@ -1,5 +1,6 @@
 import { ApiClientBase } from './base';
 import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, BasicResponse, UserInfo } from '../models/auth';
+import { Tools } from '../tools';
 
 export class AuthApiClient extends ApiClientBase {
     /**
@@ -31,9 +32,12 @@ export class AuthApiClient extends ApiClientBase {
 
     /**
      * 用户登出
+     * @param deviceId ID of current device and will attached to header: X-Device-Id
      * @returns 基础响应
      */
-    public async logout(): Promise<BasicResponse> {
+    public async logout(deviceId: string): Promise<BasicResponse> {
+        // this.client.head.
+        this.setDeviceIdInHeader(deviceId);
         return await this.post<BasicResponse>('/api/auth/logout');
     }
 
@@ -54,7 +58,7 @@ export class AuthApiClient extends ApiClientBase {
     }
 
     /**
-     * 禁用用户
+     * 禁用用户 @deprecated ??????
      * @param userId - 用户ID
      * @returns 基础响应
      */

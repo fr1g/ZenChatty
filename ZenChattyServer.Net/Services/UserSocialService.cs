@@ -13,17 +13,17 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 创建私聊会话
     /// </summary>
-    public async Task<(bool success, string chatId, string message)> CreatePrivateChatAsync(
+    public async Task<(bool success, string chatId, string message, Chat? chat)> CreatePrivateChatAsync(
         string initiatorUserId, CreatePrivateChatRequest request)
     {
         try
         {
             // 查找接收者
             var receiver = await context.Users
-                .FirstOrDefaultAsync(u => u.CustomId == request.ReceiverCustomId);
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == request.ReceiverId);
                 
             if (receiver == null)
-                return (false, "", "User does not exist");
+                return (false, "", "User does not exist", null);
 
             // 检查是否已经是好友（已有Contact关系）
             var existingContact = await context.Contacts
@@ -35,12 +35,12 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                     ((PrivateChat)c.Object).ReceiverId.ToString() == receiver.LocalId.ToString());
 
             if (existingContact != null)
-                return (true, existingContact.ObjectId, "Private chat already exists");
+                return (true, existingContact.ObjectId, "Private chat already exists", null);
 
             // 创建私聊会话
             var initiator = await context.Users.FindAsync(Guid.Parse(initiatorUserId));
             if (initiator == null)
-                return (false, "", "Initiator user does not exist");
+                return (false, "", "Initiator user does not exist", null);
 
             var privateChat = new PrivateChat(initiator, receiver)
             {
@@ -52,7 +52,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             // 为双方创建Contact对象
             var contact1 = new Contact(initiator, privateChat)
             {
-                DisplayName = request.DisplayName ?? receiver.DisplayName ?? receiver.CustomId
+                DisplayName = receiver.DisplayName ?? receiver.CustomId
             };
 
             var contact2 = new Contact(receiver, privateChat)
@@ -67,12 +67,12 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             // 发送自动打招呼消息
             await SendGreetingMessageAsync(privateChat.UniqueMark, initiatorUserId);
 
-            return (true, privateChat.UniqueMark, "Private chat created successfully");
+            return (true, privateChat.UniqueMark, "Private chat created successfully", privateChat);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "创建私聊失败");
-            return (false, "", "Failed to create private chat");
+            return (false, "", "Failed to create private chat", null);
         }
     }
 
@@ -161,11 +161,18 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
         // 性别可见性检查
         if (privacy.GenderVisibility != EPrivacyVisibilityRange.Everyone &&
             (privacy.GenderVisibility != EPrivacyVisibilityRange.FriendsAndGroups || (!isFriend && !isInSameGroup)) &&
-            (privacy.GenderVisibility != EPrivacyVisibilityRange.Friends || !isFriend)) return response;
+            (privacy.GenderVisibility != EPrivacyVisibilityRange.Friends || !isFriend))
+        {
+            response.Gender = targetUser.Gender;
+        }
         
-        response.Gender = targetUser.Gender;
-        response.Birth = targetUser.Birth;
-
+        if (privacy.BirthdayVisibility != EPrivacyVisibilityRange.Everyone &&
+            (privacy.BirthdayVisibility != EPrivacyVisibilityRange.FriendsAndGroups || (!isFriend && !isInSameGroup)) &&
+            (privacy.BirthdayVisibility != EPrivacyVisibilityRange.Friends || !isFriend))
+        {
+            response.Birth = targetUser.Birth;
+        }
+        
         return response;
     }
 
@@ -303,106 +310,16 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     }
 
     /// <summary>
-    /// 检查用户隐私设置是否允许接收好友请求或群聊邀请
-    /// </summary>
-    public async Task<(bool allowed, string message)> CheckPrivacySettingsForRequestAsync(
-        string targetUserId, string requesterUserId, bool isGroupInvite = false)
-    {
-        try
-        {
-            var targetUser = await context.Users
-                .Include(u => u.Privacies)
-                .FirstOrDefaultAsync(u => u.LocalId.ToString() == targetUserId);
-
-            var requester = await context.Users
-                .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
-                
-            if (requester == null || targetUser == null)
-                return (false, "Requester or Target user does not exist");
-
-            // 检查是否被拉黑
-            var isBlocked = await CheckBlockStatusAsync(targetUserId, requesterUserId);
-            if (isBlocked)
-            {
-                Console.WriteLine("blocked");
-                return (false, "You have been blocked by the other party, cannot send request");
-            }
-
-            // 检查隐私设置
-            var privacy = targetUser.Privacies;
-            
-            if (isGroupInvite)
-            {
-                // 群聊邀请检查
-                if (!privacy.IsInvitableToGroup)
-                    return (false, "The other party does not allow being invited to group chats");
-            }
-            else
-            {
-                // 好友请求检查
-                if (!privacy.IsAddableFromGroup)
-                {
-                    Console.WriteLine("not allowed");
-                    return (false, "The other party does not allow adding friends through group chats");
-                }
-            }
-
-            return (true, "Request allowed");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "检查隐私设置失败");
-            return (false, "检查隐私设置失败");
-        }
-    }
-
-    /// <summary>
-    /// 检查两个用户之间的拉黑状态
-    /// </summary>
-    public async Task<bool> CheckBlockStatusAsync(string userId1, string userId2)
-    {
-        try
-        {
-            // 检查userId1是否拉黑了userId2
-            var contact1 = await context.Contacts
-                .Include(c => c.Host)
-                .Include(c => c.Object)
-                .FirstOrDefaultAsync(c => 
-                    c.Host.LocalId.ToString() == userId1 && 
-                    c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId2) &&
-                    c.IsBlocked);
-
-            // 检查userId2是否拉黑了userId1
-            var contact2 = await context.Contacts
-                .Include(c => c.Host)
-                .Include(c => c.Object)
-                .FirstOrDefaultAsync(c => 
-                    c.Host.LocalId.ToString() == userId2 && 
-                    c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId1) &&
-                    c.IsBlocked);
-
-            return contact1 != null || contact2 != null;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to check block status");
-            return false;
-        }
-    }
-
-    /// <summary>
     /// 添加好友
     /// </summary>
     public async Task<(bool success, string chatId, string message)> AddFriendAsync(
-        string initiatorUserId, string targetUserId)
+        string initiatorUserId, string targetUserId, bool isViaDirAdd = false)
     {
         try
         {
             User? targetUser = null;
             
-            // 首先尝试按Guid格式查找
+            // 首先尝试按Guid格式查找 // 完全就是按guid查找啊还能咋办
             if (Guid.TryParse(targetUserId, out var targetUserGuid))
             {
                 targetUser = await context.Users
@@ -427,15 +344,24 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             if (existingPrivateChat != null)
                 return (false, "", "已经是好友关系");
 
+            
             // 检查隐私设置
-            var privacyCheck = await CheckPrivacySettingsForRequestAsync(targetUser.LocalId.ToString(), initiatorUserId);
-            if (!privacyCheck.allowed)
-                return (false, "", privacyCheck.message);
+            if(!isViaDirAdd)
+            {
+                var privacyCheck = await RelationshipHelper.CheckPrivacySettingsForRequestAsync(targetUser.LocalId.ToString(), initiatorUserId, context);
+                if (!privacyCheck.allowed)
+                    return (false, "", privacyCheck.message);
+            } // if is via directly add, skip the privacy check.
+            /* Why?
+             * - This function will be called for public-search friend adding, in-group (if allows private chat initiated via the group) friend adding, and nearby adding
+             * - awwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww
+             * - i dont fucking know!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+             */
             
             Console.WriteLine("stage 0");
 
             // 检查是否被拉黑
-            var isBlocked = await CheckBlockStatusAsync(targetUser.LocalId.ToString(), initiatorUserId);
+            var isBlocked = await RelationshipHelper.CheckBlockStatusAsync(targetUser.LocalId.ToString(), initiatorUserId, context);
             
             if (isBlocked)
                 return (false, "", "blocked by target");

@@ -26,8 +26,8 @@ export class User {
         localId: string = "ungiven",
 
         registeredAt: Date = new Date(),
-        avatarFileLocator: string = 'img:xdefaultavtr.jpg',
-        backgroundFileLocator: string = 'img:xdefaultback.jpg',
+        avatarFileLocator: string = '',
+        backgroundFileLocator: string = '',
         bio: string = "unset bio.",
         phoneNumber: string | undefined = "+unsetnumber",
         status: EUserStatus = EUserStatus.Online,

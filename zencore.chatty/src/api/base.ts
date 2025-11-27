@@ -23,11 +23,12 @@ export class ApiClientBase {
         // 请求拦截器
         this.client.interceptors.request.use(
             (config) => {
-                // 可以在这里添加认证token等
-                const token = localStorage?.getItem('accessToken');
-                if (token) {
-                    config.headers.Authorization = Tools.bear(token);
-                }
+                // 可以在这里添加认证token等 // idiot
+                // const token = localStorage?.getItem('accessToken'); // this m0therfvcker MIGHT NEVER HAVE LOCALSTORAGE
+                // if (token) {
+                //     config.headers.Authorization = Tools.bear(token);
+                // }
+                // if(!config.headers.Authorization) throw new Error() // well this is stupid
                 return config;
             },
             (error) => {
@@ -60,7 +61,11 @@ export class ApiClientBase {
      * 清除认证token
      */
     public clearAuthToken(): void {
-        delete this.client.defaults.headers.common['Authorization'];
+        delete this.client.defaults.headers.common['Authorization']; // really... strict mode will reject it...
+    }
+
+    public setDeviceIdInHeader(deviceId: string) {
+        this.client.defaults.headers.common['X-Device-Id'] = deviceId;
     }
 
     /**

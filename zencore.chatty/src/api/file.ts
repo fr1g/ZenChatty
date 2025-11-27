@@ -1,6 +1,7 @@
 import { ApiClientBase } from './base';
 import { BasicResponse } from '../models/auth';
 import { FileUploadRequest, FileUploadResponse, FileInfoResponse } from '../models/requests';
+import { Tools } from '../tools';
 
 export class FileApiClient extends ApiClientBase {
     /**
@@ -41,8 +42,9 @@ export class FileApiClient extends ApiClientBase {
         });
     }
 
-    public imageFileByUrl(locator: string): string{
-        return `${this.baseURL}/api/file/download/${locator}`;
+    public imageFileByUrl(locator: string): string {
+        if (Tools.isNoneOrEmpty(locator)) return '';
+        return `${this.baseURL}/api/file/get-img/${locator}`;
     }
 
     /**

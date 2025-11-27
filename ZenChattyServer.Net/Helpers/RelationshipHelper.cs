@@ -6,6 +6,88 @@ namespace ZenChattyServer.Net.Helpers;
 
 public class RelationshipHelper
 {
+    public static async Task<bool> CheckBlockStatusAsync(string userId1, string userId2, UserRelatedContext context)
+    {
+        try
+        {
+            // 检查userId1是否拉黑了userId2
+            var contact1 = await context.Contacts
+                .Include(c => c.Host)
+                .Include(c => c.Object)
+                .FirstOrDefaultAsync(c => 
+                    c.Host.LocalId.ToString() == userId1 && 
+                    c.Object is PrivateChat && 
+                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId2) &&
+                    c.IsBlocked);
+
+            // 检查userId2是否拉黑了userId1
+            var contact2 = await context.Contacts
+                .Include(c => c.Host)
+                .Include(c => c.Object)
+                .FirstOrDefaultAsync(c => 
+                    c.Host.LocalId.ToString() == userId2 && 
+                    c.Object is PrivateChat && 
+                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId1) &&
+                    c.IsBlocked);
+
+            return contact1 != null || contact2 != null;
+        }
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync($"检查is blocked失败: {ex.Message}");
+            return false;
+        }
+    }
+    public static async Task<(bool allowed, string message)> CheckPrivacySettingsForRequestAsync(
+        string targetUserId, string requesterUserId, UserRelatedContext context, bool isGroupInvite = false)
+    {
+        try
+        {
+            var targetUser = await context.Users
+                .Include(u => u.Privacies)
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == targetUserId);
+
+            var requester = await context.Users
+                .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
+                
+            if (requester == null || targetUser == null)
+                return (false, "Requester or Target user does not exist");
+
+            // 检查是否被拉黑
+            var isBlocked = await CheckBlockStatusAsync(targetUserId, requesterUserId, context);
+            if (isBlocked)
+            {
+                Console.WriteLine("blocked");
+                return (false, "You have been blocked by the other party, cannot send request");
+            }
+
+            // 检查隐私设置
+            var privacy = targetUser.Privacies;
+            
+            if (isGroupInvite)
+            {
+                // 群聊邀请检查
+                if (!privacy.IsInvitableToGroup)
+                    return (false, "The other party does not allow being invited to group chats");
+            }
+            else
+            {
+                // 好友请求检查
+                if (!privacy.IsAddableFromGroup)
+                {
+                    Console.WriteLine("not allowed");
+                    return (false, "The other party does not allow adding friends through group chats");
+                }
+            }
+
+            return (true, "Request allowed");
+        }
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync($"检查隐私设置失败: {ex.Message}");
+            return (false, "检查隐私设置失败");
+        }
+    }
 
     public static bool IsUserAFriend(UserRelatedContext context, User looker, User looking)
     {
@@ -36,57 +118,14 @@ public class RelationshipHelper
                 
         return privateChat != null;
     }
-
-    /// <summary>
-    /// 根据用户的隐私设置，判断是否可以查看个人信息
-    /// 如果是informal私聊，根据隐私设置决定是否可以查看个人信息
-    /// </summary>
-    public static bool CanViewPersonalInfo(UserRelatedContext context, User looker, User looking, PrivacySettings privacySettings)
-    {
-        // 如果是好友关系，可以查看个人信息
-        if (IsUserAFriend(context, looker, looking))
-            return true;
-
-        // 检查是否存在informal私聊
-        var privateChat = context.PrivateChats
-            .Include(pc => pc.InitBy)
-            .Include(pc => pc.Receiver)
-            .FirstOrDefault(pc => 
-                ((pc.InitBy.LocalId == looker.LocalId && pc.Receiver.LocalId == looking.LocalId) ||
-                 (pc.InitBy.LocalId == looking.LocalId && pc.Receiver.LocalId == looker.LocalId)) &&
-                pc.IsInformal);
-
-        // 如果存在informal私聊，根据隐私设置决定是否可以查看个人信息
-        if (privateChat != null)
-        {
-            // 如果隐私设置允许通过群聊查看个人信息，则可以查看
-            return privacySettings.AllowViewInfoFromGroupChat;
-        }
-
-        // 默认情况下，非好友关系不能查看个人信息
-        return false;
-    }
-
-    /// <summary>
-    /// 判断两个用户是否在同一个群组中互为群友
-    /// </summary>
+    
     public static bool IsUserGroupMate(User looker, User looking, GroupChat via)
     {
-        // 首先确认looker和looking都在同一个群组中
-        bool lookerInGroup = IsUserGroupMember(looker, via);
-        bool lookingInGroup = IsUserGroupMember(looking, via);
-        
-        return lookerInGroup && lookingInGroup;
+        return IsUserGroupMember(looker, via) && IsUserGroupMember(looking, via);
     }
     
-    /// <summary>
-    /// 判断用户是否为群组成员
-    /// 只需要确认被查询User是否在被查询群聊的GroupMember List中
-    /// </summary>
     public static bool IsUserGroupMember(User looking, GroupChat via)
     {
-        if (via?.Members == null) return false;
-        
-        return via.Members.Any(member => member.TheGuy.LocalId == looking.LocalId);
+        return via?.Members != null && via.Members.Any(member => member.TheGuy.LocalId == looking.LocalId);
     }
 }

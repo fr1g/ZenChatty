@@ -30,6 +30,13 @@ public class ChatHub(
                 await Groups.AddToGroupAsync(Context.ConnectionId, chat.UniqueMark);
             }
 
+            var user = context.Users.First(u => u.LocalId == userId);
+            if (user.Status == EUserStatus.Offline)
+            {
+                user.Status = EUserStatus.Online;
+                context.Users.Update(user);
+                await context.SaveChangesAsync();
+            }
             logger.LogInformation("用户 {UserId} 已连接到聊天中心，连接ID: {ConnectionId}", userId, Context.ConnectionId);
         }
 
@@ -50,7 +57,14 @@ public class ChatHub(
             {
                 await Groups.RemoveFromGroupAsync(Context.ConnectionId, chat.UniqueMark);
             }
-
+            
+            var user = context.Users.First(u => u.LocalId == userId);
+            if (user.Status == EUserStatus.Online)
+            {
+                user.Status = EUserStatus.Offline;
+                context.Users.Update(user);
+                await context.SaveChangesAsync();
+            }
             logger.LogInformation("用户 {UserId} 已断开连接，连接ID: {ConnectionId}", userId, Context.ConnectionId);
         }
 
@@ -70,7 +84,7 @@ public class ChatHub(
         {
             // 1. 验证消息内容
             var contentValidation = validationService.ValidateMessageContent(request.Content);
-            if (contentValidation.Result != EMessageSendResult.Success)
+            if (contentValidation.ResultCanBe != EMessageSendResult.Success)
                 return contentValidation;
 
             // 2. 确定聊天类型并验证权限
@@ -100,7 +114,7 @@ public class ChatHub(
                     request.ChatUniqueMark, userId.Value);
             }
 
-            if (validationResult.Result != EMessageSendResult.Success)
+            if (validationResult.ResultCanBe != EMessageSendResult.Success)
                 return validationResult;
 
             // 3. 创建消息对象

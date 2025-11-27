@@ -217,7 +217,7 @@ public class GroupManageController(
     /// <summary>
     /// 邀请成员加入群聊
     /// </summary>
-    [HttpPost("debug/group-management/invite-member")]
+    [HttpPost("debug/group-management/invite-member")] // !!!!!
     public async Task<ActionResult<BasicResponse>> InviteGroupMember([FromBody] GroupManagementRequest request)
     {
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), _authService);
@@ -431,7 +431,7 @@ public class GroupManageController(
                 TraceId = Guid.NewGuid().ToString(),
                 SenderId = Guid.Parse(operatorId),
                 OfChatId = groupId,
-                Content = $"群设置已更新: {GetSettingsChangeDescription(request)}",
+                Content = $"群设置已更新: {GetSettingsChangeDescription(request, operatorId)}",
                 Type = EMessageType.Event,
                 SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
             };
@@ -474,30 +474,30 @@ public class GroupManageController(
     /// <summary>
     /// 获取设置变更描述
     /// </summary>
-    private string GetSettingsChangeDescription(UpdateGroupSettingsRequest request)
+    private string GetSettingsChangeDescription(UpdateGroupSettingsRequest request, string operatorCustomId)
     {
         var changes = new List<string>();
 
         if (!string.IsNullOrEmpty(request.DisplayName))
-            changes.Add($"群名称: {request.DisplayName}");
+            changes.Add($"{operatorCustomId} Updated: 群名称: {request.DisplayName}");
 
         if (!string.IsNullOrEmpty(request.AvatarFileLocator))
-            changes.Add("群头像已更新");
+            changes.Add($"{operatorCustomId} Updated: 群头像已更新");
 
         if (request.IsAllSilent)
-            changes.Add("开启全体禁言");
+            changes.Add($"{operatorCustomId} Updated: All-Silent ON");
         else
-            changes.Add("关闭全体禁言");
+            changes.Add($"{operatorCustomId} Updated: All-Silent OFF");
 
-        if (request.IsInviteOnly)
-            changes.Add("仅邀请加入");
+        if (request.IsInviteOnly) // todo ? open invite: unlimited invite link; narrow invite: only by using receiver-declared invite link
+            changes.Add($"{operatorCustomId} Updated: 仅邀请加入");
         else
-            changes.Add("开放加入");
+            changes.Add($"{operatorCustomId} Updated: 开放加入");
 
         if (request.IsPrivateChatAllowed)
-            changes.Add("允许私聊");
+            changes.Add($"{operatorCustomId} Updated: 允许私聊");
         else
-            changes.Add("禁止私聊");
+            changes.Add($"{operatorCustomId} Updated: 禁止私聊");
 
         return string.Join(", ", changes);
     }
