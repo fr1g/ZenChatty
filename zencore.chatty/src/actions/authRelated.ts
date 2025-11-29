@@ -96,7 +96,7 @@ export const AuthActs = {
     findPasswd() { // even not avaliable in backend...
         // todo later
     }, // fvck it. no longer wanted to write a find&login method
-    async logoff(credential: Credential, storageMethod: (object: any) => any, clientConfig: ClientInitObject | undefined = undefined) {
+    async logoff(credential: Credential, storageMethod: (object: any, wipe: boolean) => any, clientConfig: ClientInitObject | undefined = undefined) {
         let client: ZenCoreClient;
         if (clientConfig) client = CreateZenCoreClient(clientConfig);
         else client = new ZenCoreClient();
@@ -104,7 +104,7 @@ export const AuthActs = {
         await client.auth.logout(credential.UsingDeviceId);
         AuthStoreMgrActs.clearCredential(credential, storageMethod);
     },
-    logoffByUserId(userId: string, readMethod: () => Credential | Credential[], storageMethod: (object: any) => any, clientConfig: ClientInitObject | undefined = undefined) {
+    logoffByUserId(userId: string, readMethod: () => Credential | Credential[], storageMethod: (object: any, wipe: boolean) => any, clientConfig: ClientInitObject | undefined = undefined) {
         const userCred = AuthStoreMgrActs.readCredential(readMethod, userId);
         let client: ZenCoreClient;
         if (clientConfig) client = CreateZenCoreClient(clientConfig);

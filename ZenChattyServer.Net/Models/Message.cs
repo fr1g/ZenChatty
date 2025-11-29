@@ -22,7 +22,7 @@ public class Message(User sender, Chat ofChat, string content)
 
     public EMessageType Type { get; set; } = EMessageType.Normal;
     public long SentTimestamp { get; set; }
-    public long ServerCaughtTimestamp { get; set; } = DateTime.Now.ToFileTimeUtc();
+    public long ServerCaughtTimestamp { get; set; } = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     
     public bool IsMentioningAll { get; set; } = false; // if is in private chat, will act like a force attention on object
     public string[]? MentionedUserGuids { get; set; } = null;

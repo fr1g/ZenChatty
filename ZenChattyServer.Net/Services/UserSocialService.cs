@@ -549,7 +549,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 OfChatId = chatId,
                 Content = "We are already friends, let's start chatting now!",
                 Type = EMessageType.Normal,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             await ChatAgent.Say(context, greetingMessage, chatAgent);
@@ -571,7 +571,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 OfChatId = groupId,
                 Content = "Group chat created successfully!",
                 Type = EMessageType.Event,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             await ChatAgent.Say(context, creationMessage, chatAgent);
@@ -593,7 +593,8 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             var contacts = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
-                .Where(c => c.Host.LocalId.ToString() == userId)
+                .Where(c => c.Host.LocalId.ToString() == userId && 
+                           !(c.Object is PrivateChat && ((PrivateChat)c.Object).IsInformal))
                 .OrderByDescending(c => c.LastUsed)
                 .ToListAsync();
 
@@ -617,7 +618,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 OfChatId = groupId,
                 Content = "Group chat has been disabled",
                 Type = EMessageType.Event,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             await ChatAgent.Say(context, disabledMessage, chatAgent);
@@ -695,32 +696,16 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 获取用户隐私设置
     /// </summary>
-    public async Task<PrivacySettingsResponse> GetPrivacySettingsAsync(string userId)
+    public async Task<PrivacySettingsResponse> GetPrivacySettingsAsync(User user)
     {
         try
         {
-            var user = await context.Users
-                .Include(u => u.Privacies)
-                .FirstOrDefaultAsync(u => u.LocalId.ToString() == userId);
-            if (user == null)
-            {
-                return new PrivacySettingsResponse { success = false, message = "用户不存在" };
-            }
-
-            var privacy = user.Privacies;
-            return new PrivacySettingsResponse
-            {
-                success = true,
-                message = "获取隐私设置成功",
-                IsDiscoverableViaSearch = privacy.IsDiscoverableViaSearch ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None,
-                IsAddableFromGroup = privacy.IsAddableFromGroup ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None,
-                IsGroupInviteAllowed = privacy.IsInvitableToGroup ? EPrivacyVisibilityRange.Everyone : EPrivacyVisibilityRange.None
-            };
+            return new PrivacySettingsResponse(user.Privacies);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "获取用户 {UserId} 隐私设置时发生错误", userId);
-            return new PrivacySettingsResponse { success = false, message = "获取隐私设置失败" };
+            logger.LogError(ex, "获取用户 {UserId} 隐私设置时发生错误", user.LocalId);
+            return new PrivacySettingsResponse { Success = false, Message = "获取隐私设置失败" };
         }
     }
 

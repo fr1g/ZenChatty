@@ -22,6 +22,8 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     private readonly ILogger<RabbitMQMessageQueueService> _logger;
     private readonly RabbitMQConfig _config;
     private readonly MessageCacheService _messageCacheService;
+    private readonly ChatHubService _chatHubService;
+    private readonly ContactService _contactService;
     private readonly string _queueName;
     private bool _disposed = false;
 
@@ -29,12 +31,16 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         UserRelatedContext context,
         IOptions<RabbitMQConfig> config,
         ILogger<RabbitMQMessageQueueService> logger,
-        MessageCacheService messageCacheService)
+        MessageCacheService messageCacheService,
+        ChatHubService chatHubService,
+        ContactService contactService)
     {
         _config = config.Value;
         _context = context;
         _logger = logger;
         _messageCacheService = messageCacheService;
+        _chatHubService = chatHubService;
+        _contactService = contactService;
         _queueName = _config.QueueName; // 使用配置中的队列名称
 
         // 创建连接工厂
@@ -172,7 +178,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
                 TraceId = messageData.MessageId,
                 Type = messageData.MessageType,
                 SentTimestamp = messageData.SentTimestamp,
-                ServerCaughtTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
+                ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Info = messageData.Info ?? "",
                 IsMentioningAll = messageData.IsMentioningAll,
                 MentionedUserGuids = messageData.MentionedUserGuids
@@ -187,6 +193,9 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 
             // 更新未读计数（排除发送者自己）
             await IncreaseUnreadCountForChatAsync(messageData.ChatUniqueMark, messageData.SenderId, messageData);
+
+            // 推送消息给所有相关用户（排除发送者）
+            await PushMessageToClientsAsync(messageData.ChatUniqueMark, messageData.SenderId, message);
 
             _logger.LogInformation("Message saved to DB and cached, ID: {MessageId}", messageData.MessageId);
         }
@@ -236,6 +245,29 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "更新未读计数失败，聊天: {ChatId}", chatUniqueMark);
+        }
+    }
+
+    /// <summary>
+    /// 推送消息给所有相关用户（排除发送者）
+    /// </summary>
+    private async Task PushMessageToClientsAsync(string chatUniqueMark, Guid senderId, Message message)
+    {
+        try
+        {
+            // 获取发送者的总未读计数（用于推送）
+            var totalUnreadCount = await _contactService.GetTotalUnreadCountAsync(senderId);
+            
+            // 使用ChatHubService推送消息
+            await _chatHubService.PushUpdatedContactAndMessageAsync(chatUniqueMark, senderId, message, totalUnreadCount);
+            
+            _logger.LogDebug("消息已推送给聊天 {ChatId} 的所有用户（排除发送者 {SenderId}）", 
+                chatUniqueMark, senderId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "推送消息给客户端失败，聊天: {ChatId}, 消息ID: {MessageId}", 
+                chatUniqueMark, message.TraceId);
         }
     }
 

@@ -433,7 +433,7 @@ public class GroupManageController(
                 OfChatId = groupId,
                 Content = $"群设置已更新: {GetSettingsChangeDescription(request, operatorId)}",
                 Type = EMessageType.Event,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             await groupManageService.AddMessageAsync(message);
@@ -459,7 +459,7 @@ public class GroupManageController(
                 OfChatId = groupId,
                 Content = "群聊已启用",
                 Type = EMessageType.Event,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             await groupManageService.AddMessageAsync(message);

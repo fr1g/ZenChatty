@@ -128,7 +128,7 @@ public class ChatHub(
                 TraceId = Guid.NewGuid().ToString(),
                 Type = request.MessageType,
                 SentTimestamp = request.SentTimestamp,
-                ServerCaughtTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
+                ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Info = request.Info ?? "",
                 IsMentioningAll = request.IsMentioningAll,
                 MentionedUserGuids = request.MentionedUserIds?.Select(id => id.ToString()).ToArray()
@@ -166,7 +166,7 @@ public class ChatHub(
             .Include(c => c.Contacts)
             .FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);
 
-        if (chat != null && chat.Contacts.Any(c => c.HostId == userId.Value))
+        if (chat != null && chat.Contacts.Any(c => c.HostId == userId.Value && !c.IsBlocked))
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, chatUniqueMark);
             logger.LogInformation("用户 {UserId} 加入聊天组 {ChatId}", userId, chatUniqueMark);
@@ -208,22 +208,30 @@ public class ChatHub(
     }
 
     /// <summary>
-    /// 推送完整的Contact和Message对象给所有相关用户
+    /// Push single contact update to given sender with given new message and as inside the given chat, which is queried by chatUniqueMark 
     /// </summary>
     private async Task PushUpdatedContactAndMessageAsync(string chatUniqueMark, Guid senderId, Message message)
     {
         try
         {
-            // 获取聊天中的所有联系人（排除发送者）
             var contacts = await context.Contacts
                 .Include(c => c.Object)
-                .Where(c => c.Object.UniqueMark == chatUniqueMark && c.HostId != senderId)
+                .Where(c => 
+                            c.Object.UniqueMark == chatUniqueMark && 
+                            c.HostId != senderId && 
+                            !c.IsBlocked)
                 .ToListAsync();
 
-            foreach (var contact in contacts)
+            foreach (var contact in contacts) // this in here actually only runs once per call
             {
                 // 获取该用户的总未读计数
                 var totalUnreadCount = await contactService.GetTotalUnreadCountAsync(contact.HostId);
+                
+                // 从数据库中获取该聊天的真实未读计数，而不是内存自增
+                var realUnreadCount = await context.Contacts
+                    .Where(c => c.ContactId == contact.ContactId)
+                    .Select(c => c.LastUnreadCount)
+                    .FirstOrDefaultAsync();
                 
                 // 创建简化的Contact对象（避免循环引用）
                 var simplifiedContact = new
@@ -231,8 +239,8 @@ public class ChatHub(
                     ContactId = contact.ContactId,
                     HostId = contact.HostId,
                     ObjectId = contact.ObjectId,
-                    LastUnreadCount = contact.LastUnreadCount,
-                    LastUsed = contact.LastUsed,
+                    LastUnreadCount = realUnreadCount,
+                    LastUsed = DateTime.Now,
                     AddTime = contact.AddTime,
                     IsPinned = contact.IsPinned,
                     IsBlocked = contact.IsBlocked,
@@ -284,10 +292,12 @@ public class ChatHub(
     {
         try
         {
-            // 获取聊天中的所有联系人（排除发送者）
+            // 获取聊天中的所有联系人（排除发送者和blocked的contact）
             var contacts = await context.Contacts
                 .Include(c => c.Object)
-                .Where(c => c.Object.UniqueMark == chatUniqueMark && c.HostId != senderId)
+                .Where(c => c.Object.UniqueMark == chatUniqueMark && 
+                            c.HostId != senderId && 
+                            !c.IsBlocked)
                 .ToListAsync();
 
             foreach (var contact in contacts)
@@ -295,17 +305,23 @@ public class ChatHub(
                 // 获取该用户的总未读计数
                 var totalUnreadCount = await contactService.GetTotalUnreadCountAsync(contact.HostId);
                 
+                // 从数据库中获取该聊天的真实未读计数
+                var realUnreadCount = await context.Contacts
+                    .Where(c => c.ContactId == contact.ContactId)
+                    .Select(c => c.LastUnreadCount)
+                    .FirstOrDefaultAsync();
+                
                 // 推送未读计数更新给该用户
                 await Clients.User(contact.HostId.ToString()).SendAsync("UpdateUnreadCount", new
                 {
                     ChatUniqueMark = chatUniqueMark,
-                    UnreadCount = contact.LastUnreadCount,
+                    UnreadCount = realUnreadCount,
                     TotalUnreadCount = totalUnreadCount,
                     UpdateTime = DateTime.UtcNow
                 });
 
                 logger.LogDebug("推送未读计数更新给用户 {UserId}, 聊天: {ChatId}, 未读数: {Count}", 
-                    contact.HostId, chatUniqueMark, contact.LastUnreadCount);
+                    contact.HostId, chatUniqueMark, realUnreadCount);
             }
 
             logger.LogInformation("已推送未读计数更新，聊天: {ChatId}, 影响用户数: {UserCount}", 
@@ -446,8 +462,8 @@ public class ChatHub(
             {
                 TraceId = Guid.NewGuid().ToString(),
                 Type = messageType,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
-                ServerCaughtTimestamp = DateTime.UtcNow.ToFileTimeUtc(),
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Info = "",
                 IsMentioningAll = false,
                 MentionedUserGuids = null

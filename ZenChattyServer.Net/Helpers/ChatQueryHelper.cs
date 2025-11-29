@@ -124,7 +124,7 @@ public class ChatQueryHelper
             .AsNoTracking()
             .Where(m => m.OfChat.UniqueMark == chatUniqueMark)
             .OrderByDescending(m => m.SentTimestamp)
-            .Select(m => new { SentAt = DateTime.FromFileTimeUtc(m.SentTimestamp), m.Content })
+            .Select(m => new { SentAt = DateTimeOffset.FromUnixTimeMilliseconds(m.SentTimestamp).UtcDateTime, m.Content })
             .FirstOrDefaultAsync();
 
         return new ChatStats

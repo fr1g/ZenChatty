@@ -1,13 +1,13 @@
 import './global.css';
 
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
-import { useColorScheme } from 'react-native';
+import { Alert, useColorScheme } from 'react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 
 import 'react-native-gesture-handler';
 
-import { BasicResponse, ClientInitObject, CreateZenCoreClient, ZenCoreClient, Tools } from 'zen-core-chatty-ts';
+import { BasicResponse, ClientInitObject, CreateZenCoreClient, ZenCoreClient, Tools, fetchUserInfo, User, setUser } from 'zen-core-chatty-ts';
 import DefaultView from './navigation/MainNavigator';
 import UnauthorizedView from './navigation/Unauthorized';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -43,8 +43,11 @@ function AppContent({ theme }: { theme: any }) {
     // 应用启动时从SQLite恢复认证状态
     useEffect(() => {
         const restoreAuthState = async () => {
+            let guid = "";
+            let client: ZenCoreClient;
+            let storageAdapter: SQLiteStorageAdapter | null = null;
             try {
-                const storageAdapter = new SQLiteStorageAdapter();
+                storageAdapter = new SQLiteStorageAdapter();
                 await storageAdapter.initialize();
                 
                 console.log('=== 开始恢复认证状态 ===');
@@ -53,11 +56,18 @@ function AppContent({ theme }: { theme: any }) {
                 console.log('检查凭据表...');
                 const credentials = await storageAdapter.getAllCredentials();
                 console.log(`凭据表记录数: ${credentials.length}`);
+
+                if(credentials.length <= 0){
+                    console.log('没有有效凭据，跳过恢复');
+                    setIsLoading(false);
+                    return;
+                }
+
+
                 const checker = (CreateZenCoreClient(ClientConfig));
                 checker.setAuthToken(credentials[0].access_token);
-                let isValid = (await checker.auth.validateToken() as BasicResponse).success;
                 
-                if (credentials.length > 0 && isValid) {
+                if (credentials.length > 0) {
                     // 使用第一条有效的凭据（通常只有一个用户登录）
                     const credential = credentials[0];
                     
@@ -72,8 +82,11 @@ function AppContent({ theme }: { theme: any }) {
                         expiresAt: expiresAt,
                         isValid: expiresAt > now
                     });
+
+                    guid = credential.user_guid;
                     
-                    if (expiresAt > now) {
+                    let isValid = (await checker.auth.validateToken() as BasicResponse).success;
+                    if (expiresAt > now && isValid) {
                         // 凭据有效，恢复登录状态
                         const restoredCredential = {
                             UserGuid: credential.user_guid,
@@ -99,7 +112,7 @@ function AppContent({ theme }: { theme: any }) {
                         if (refreshTokenExpiresAt > now) {
                             // refresh token仍然有效，尝试刷新access token
                             try {
-                                const client = CreateZenCoreClient(ClientConfig);
+                                client = CreateZenCoreClient(ClientConfig);
                                 const refreshRequest = {
                                     refreshToken: credential.refresh_token,
                                     deviceId: credential.using_device_id
@@ -152,16 +165,33 @@ function AppContent({ theme }: { theme: any }) {
                     console.log('没有找到有效的凭据记录');
                 }
                 
-                // 检查用户信息缓存（用于显示用户界面）
+                // might useless stuff
                 const cachedUserInfo = await storageAdapter.getCachedCurrentUserInfo();
                 if (cachedUserInfo) {
                     console.log('找到缓存的用户信息:', cachedUserInfo);
                 } else {
                     console.log('没有找到缓存的用户信息');
                 }
+
+                client = CreateZenCoreClient(ClientConfig);
+                // 早就你妈throw了能到这里怎么可能还是undefined我真他妈操了
+                let userInfo: User = await client!.auth.getUserInfo();
+                dispatch(setUser(userInfo));
                 
             } catch (error) {
-                console.error('恢复认证状态失败:', error);
+                console.error('Error on auth reconfigure OR setting current info of user:', error);
+                
+                // 恢复认证失败后，清除本地SQLite中保存的无效token
+                try {
+                    if ((error as Error).message.toLowerCase().includes('invalid')) {
+                        Alert.alert("Log out", "Your status has expired.");
+                        await storageAdapter!.deleteCredential(guid);
+                        console.log('无效凭据已成功清除: ', guid);
+                    }
+                } catch (cleanupError) {
+                    console.error('清除无效凭据失败:', cleanupError);
+                }
+                // 
             } finally {
                 setIsLoading(false);
             }

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
-import { CoreRedux, LoginDataForm, LoginRequest, Credential } from "zen-core-chatty-ts";
+import { CoreRedux, LoginDataForm, LoginRequest, Credential, setUser } from "zen-core-chatty-ts";
 import { RootState } from "../../redux/StoreProvider";
 import zenCoreClient from "../../api/ZenCoreClientInstance";
 import { SQLiteStorageAdapter } from "../../database/SQLiteStorageAdapter";
@@ -131,6 +131,8 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
                 // 缓存用户信息到SQLite（使用已创建的storageAdapter实例）
                 await storageAdapter.cacheCurrentUserInfo(userInfo);
                 console.log('User info cached to SQLite successfully');
+
+                await dispatch(setUser(userInfo));
                 
             } catch (cacheError: any) {
                 console.warn('Failed to cache user info:', cacheError);

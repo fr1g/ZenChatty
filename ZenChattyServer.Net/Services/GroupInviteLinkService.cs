@@ -271,7 +271,7 @@ public class GroupInviteLinkService(
             OfChatId = groupId,
             Content = $"用户 {targetId} 通过邀请链接加入群聊",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         await ChatAgent.Say(context, message, chatHub);

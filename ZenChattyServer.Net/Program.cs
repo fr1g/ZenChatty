@@ -47,14 +47,12 @@ builder.Services.AddScoped<UserSocialService>();
 builder.Services.AddScoped<GroupManageService>();
 builder.Services.AddScoped<GroupInviteLinkService>();
 builder.Services.AddScoped<GroupAnnouncementService>();
+builder.Services.AddScoped<ContactService>();
 builder.Services.AddDbContext<UserRelatedContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // 添加SignalR服务
 builder.Services.AddSignalR();
-
-// 添加消息批量存储服务
-builder.Services.AddHostedService<MessageBatchStorageService>();
 
 // 配置RabbitMQ
 builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
@@ -78,7 +76,6 @@ catch (Exception e)
     return;
 }
 
-// HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -90,24 +87,6 @@ if (app.Environment.IsDevelopment())
     userContext.Database.EnsureDeleted();
     userContext.Database.EnsureCreated();
     
-    var testUser = new User("testify@me.org");
-    userContext.Add(testUser);
-    userContext.SaveChanges();
-        
-    var getFromDb = userContext.Users.Include(user => user.Privacies).FirstOrDefault(user => user.Email == testUser.Email);
-    Console.WriteLine(getFromDb!.Bio);
-    Console.WriteLine(getFromDb!.Privacies.BioVisibility);
-        
-    // Test creating a private chat
-    var anotherUser = new User("another@test.org");
-    userContext.Add(anotherUser);
-    userContext.SaveChanges();
-        
-    var privateChat = new PrivateChat(testUser, anotherUser);
-    userContext.Add(privateChat);
-    userContext.SaveChanges();
-        
-    Console.WriteLine($"Created private chat with ID: {privateChat.UniqueMark}");
 }
 
 app.UseHttpsRedirection();
@@ -117,4 +96,18 @@ app.MapControllers();
 // 添加SignalR Hub路由
 app.MapHub<ChatHub>("/chatHub");
 
-app.Run();
+// 启动RabbitMQ消费者服务
+try
+{
+    using var scope = app.Services.CreateScope();
+    var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+    await messageQueueService.StartConsumingAsync();
+    Console.WriteLine("RabbitMQ消费者服务已启动");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"启动RabbitMQ消费者服务失败: {ex.Message}");
+    throw;
+}
+
+await app.RunAsync();

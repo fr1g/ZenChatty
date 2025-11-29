@@ -114,7 +114,7 @@ public class ChatService
         var message = new Message(sender, chat, content)
         {
             Type = messageType,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         _context.Messages.Add(message);

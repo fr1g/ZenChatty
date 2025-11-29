@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers;
 using ZenChattyServer.Net.Models.Enums;
@@ -42,9 +43,10 @@ public class User(string email)
     public DateTime? Birth { get; set; } = null;
     public DateTime RegisteredAt { get; set; } = DateTime.Now;
     
-
-    public virtual PrivacySettings Privacies { get; set; } = new();
+    [JsonIgnore]
+    public virtual PrivacySettings? Privacies { get; set; } = new();
     
+    [JsonIgnore]
     public virtual UserAuthObject? AuthObject { get; set; }
     
     public virtual ICollection<Contact> Contacts { get; set; } = new List<Contact>();

@@ -74,11 +74,21 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
     [HttpPost("logout")]
     public async Task<ActionResult<BasicResponse>> Logout()
     {
-        var deviceId = Request.Headers["X-Device-Id"].FirstOrDefault();
-        var refreshToken = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
+        var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());
+        var refer = await AuthHelper.RejectOrNotAsync(token, authService);
+        if (refer.failResult != null) 
+            return Unauthorized(new BasicResponse 
+                { 
+                    content = "no such asserted token",
+                    success = false 
+                });
         
-        if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(refreshToken))
+        var deviceId = Request.Headers["X-Device-Id"].FirstOrDefault();
+        Console.WriteLine($"logout DVID: {deviceId}");
+        
+        if (string.IsNullOrEmpty(deviceId) || string.IsNullOrEmpty(token))
         {
+            Console.WriteLine($"stage x1");
             return BadRequest(new BasicResponse 
             { 
                 content = "Lacking: Which one is going to logoff?",
@@ -86,8 +96,8 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
             });
         }
         
-        var result = await authService.LogoutAsync(deviceId, refreshToken);
-        
+        var result = await authService.LogoutAsync(refer.user!, deviceId, token);
+        Console.WriteLine($"stage x2 + {result}");
         return result ? 
             Ok(new BasicResponse { content = "Logout successful", success = true }) :
             BadRequest(new BasicResponse { content = "Logout failed", success = false });
@@ -140,7 +150,8 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
                 success = false 
             });
         }
-
+        user.Privacies = null!; // not saving lmfao
+        Console.WriteLine(user.Privacies == null); 
         return Ok(user);
         //
         // var userInfo = await authService.GetUserInfoAsync(user.LocalId);
@@ -151,9 +162,9 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
     }
     
     [HttpPost("disable/{userId}")]
-    public async Task<ActionResult<BasicResponse>> DisableUser(Guid userId)
+    public async Task<ActionResult<BasicResponse>> DisableUser(string userId)
     {
-        var result = await authService.DisableUserAsync(userId);
+        var result = await authService.DisableUserAsync(new Guid(userId));
         
         return result.isSuccess ? 
             Ok(new BasicResponse { content = "User disabled", success = true }) :

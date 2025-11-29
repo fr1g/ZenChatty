@@ -211,8 +211,8 @@ public class FileController(
         
         return ext switch
         {
-            "jpg" or "jpeg" or "png" or "tiff" => EFileType.Image,
-            "apng" or "gif" => EFileType.Animated,
+            "jpg" or "jpeg" or "png" or "tiff" or "gif" => EFileType.Image,
+            // "apng" or "gif" => EFileType.Animated,
             "mp3" => EFileType.Audio,
             "mp4" => EFileType.Video,
             "zip" => EFileType.Archive,

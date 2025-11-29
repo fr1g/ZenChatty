@@ -34,7 +34,7 @@ public class CacheSyncService
         {
             // 获取所有活跃聊天的ID（最近有消息的聊天）
             var activeChatIds = await _context.Messages
-                .Where(m => m.SentTimestamp > DateTime.UtcNow.AddHours(-24).ToFileTimeUtc()) // 最近24小时有消息
+                .Where(m => m.SentTimestamp > DateTimeOffset.UtcNow.AddHours(-24).ToUnixTimeMilliseconds()) // 最近24小时有消息
                 .Select(m => m.OfChatId)
                 .Distinct()
                 .ToListAsync();

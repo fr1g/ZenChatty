@@ -110,26 +110,6 @@ public class ContactService
     }
 
     /// <summary>
-    /// 获取指定聊天的未读计数
-    /// </summary>
-    public async Task<ushort> GetChatUnreadCountAsync(Guid userId, string chatUniqueMark)
-    {
-        try
-        {
-            var contact = await _context.Contacts
-                .Include(c => c.Object)
-                .FirstOrDefaultAsync(c => c.HostId == userId && c.Object.UniqueMark == chatUniqueMark);
-
-            return contact?.LastUnreadCount ?? 0;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "获取聊天未读计数失败，用户: {UserId}, 聊天: {ChatId}", userId, chatUniqueMark);
-            return 0;
-        }
-    }
-
-    /// <summary>
     /// 获取用户的总未读消息数
     /// </summary>
     public async Task<int> GetTotalUnreadCountAsync(Guid userId)

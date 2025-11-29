@@ -3,18 +3,13 @@ import type { RootState, AppDispatch } from './store';
 export { store } from './store';
 export type { RootState, AppDispatch };
 export { default as authReducer } from './authSlice';
-export { 
-  loginUser, 
-  registerUser, 
-  refreshToken, 
-  logoutUser 
+export {
+  loginUser,
+  registerUser,
+  refreshToken,
+  logoutUser
 } from './authSlice';
-export { 
-  setCredential, 
-  clearError, 
-  resetRegisterState, 
-  clearAuthState 
-} from './authSlice';
+export * from './authSlice';
 
 // Redux hooks 类型定义
 export type UseAppSelector = <TSelected>(selector: (state: RootState) => TSelected) => TSelected;

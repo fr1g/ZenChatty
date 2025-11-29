@@ -260,9 +260,9 @@ public class UserSocialController(
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
         if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var result = await userSocialService.GetPrivacySettingsAsync(refer.user!.LocalId.ToString());
+        var result = await userSocialService.GetPrivacySettingsAsync(refer.user!);
         
-        return result.success ? 
+        return result.Success ? 
             Ok(result) : 
             BadRequest(result);
     }

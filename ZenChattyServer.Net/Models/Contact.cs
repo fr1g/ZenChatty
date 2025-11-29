@@ -11,13 +11,16 @@ public class Contact(User opener, Chat chat) // design of userChatObject has bee
     public Guid HostId { get; set; }
     public virtual User Host { get; set; } = opener;
     
+    [MaxLength(64)]
     public string ObjectId { get; set; } = string.Empty;
-    public virtual Chat Object { get; set; } = chat; // can be a group  or   private
+    public virtual Chat Object { get; set; } = chat; // can be a group or private
     public ushort LastUnreadCount { get; set; }
-    public DateTime LastUsed { get; set; }
+    public DateTime LastUsed { get; set; } // the latest update time
     public DateTime AddTime { get; set; } = DateTime.Now;
     public bool IsPinned { get; set; } = false;
     public bool IsBlocked { get; set; } = false;
+    
+    [MaxLength(64)]
     public string? DisplayName { get; set; } = null;
     public bool HasVitalUnread { get; set; } = false; // 重要未读标记：@提及、群公告、@全体事件
     

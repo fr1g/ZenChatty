@@ -194,7 +194,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                 OfChatId = groupChat.UniqueMark,
                 Content = $"邀请链接：{inviteLink.InviteCode} (有效期48小时，单次有效)",
                 Type = EMessageType.Requesting,
-                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             };
 
             // 通过ChatHub发送邀请链接消息
@@ -330,13 +330,15 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             groupChat.Members = groupChat.Members.Where(m => m.Id != targetMember.Id).ToList();
 
             // 删除对应的Contact对象 todo this may cause problem !!!
-            // var contact = await _context.Contacts
-            //     .FirstOrDefaultAsync(c => c.HostId.ToString() == actualTargetUserId && c.ObjectId == groupId);
-            // if (contact != null)
-            // {
-            //     _context.Contacts.Remove(contact);
-            // }
-
+            var contact = await context.Contacts
+                .FirstOrDefaultAsync(c => c.HostId.ToString() == actualTargetUserId && c.ObjectId == groupId);
+            if (contact != null)
+            {
+                contact.IsBlocked = true;
+                contact.LastUsed = DateTime.UtcNow.AddYears(-1);
+                context.Contacts.Update(contact);
+            }
+            
             // 发送相应的通知
             await SendGroupLeaveNotificationAsync(groupChat, targetMember, inviterId);
 
@@ -394,7 +396,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             OfChatId = groupId,
             Content = isAdmin ? $"用户 {targetId} 被设置为管理员" : $"用户 {targetId} 被取消管理员",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         await ChatAgent.Say(context, message, chatHubService);
@@ -412,7 +414,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             Content =
                 $"用户 {targetId} 被{(isSilent ? "禁言" : "取消禁言")}{durationText}{(reason != null ? $"，原因：{reason}" : "")}",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         await ChatAgent.Say(context, message, chatHubService);
@@ -428,7 +430,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             OfChatId = groupId,
             Content = $"{(isSilent ? "开启" : "关闭")}全体禁言{(reason != null ? $"，原因：{reason}" : "")}",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         await ChatAgent.Say(context, message, chatHubService);
@@ -450,7 +452,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             OfChatId = groupId,
             Content = $"用户 {targetId} 被 {inviterName} 邀请加入群聊{(reason != null ? $"，原因：{reason}" : "")}",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
 
         await ChatAgent.Say(context, message, chatHubService);
@@ -467,7 +469,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
             OfChatId = groupId,
             Content = $"用户 {targetId} 的title被{titleText}{(reason != null ? $"，原因：{reason}" : "")}",
             Type = EMessageType.Event,
-            SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
         };
         await ChatAgent.Say(context, message, chatHubService);
     }
@@ -570,7 +572,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                     OfChatId = existingContact.ObjectId, // 使用私聊ID
                     Content = $"{leavingUserName} 已退出群聊 {groupName}",
                     Type = EMessageType.Event,
-                    SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                    SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 };
 
                 await ChatAgent.Say(context, message, chatHubService);
@@ -623,7 +625,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                                 OfChatId = privateChat.UniqueMark,
                                 Content = $"用户 {leavingUserName} 已退出群聊 {groupName}",
                                 Type = EMessageType.Event,
-                                SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                             };
 
                             await ChatAgent.Say(context, message, chatHubService);
@@ -640,7 +642,7 @@ public class GroupManageService(UserRelatedContext context, ILogger<GroupManageS
                         OfChatId = groupChatId, 
                         Content = $"用户 {leavingUserName} 已退出群聊 {groupName}",
                         Type = EMessageType.Event,
-                        SentTimestamp = DateTime.UtcNow.ToFileTimeUtc()
+                        SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     };
 
                     await ChatAgent.Say(context, message, chatHubService);

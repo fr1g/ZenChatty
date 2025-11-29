@@ -243,23 +243,26 @@ public class AuthService
     }
     
     // 注销设备
-    public async Task<bool> LogoutAsync(string deviceId, string refreshToken)
+    public async Task<bool> LogoutAsync(User user, string deviceId, string refreshToken)
     {
         var authObject = await _context.UserAuthObjects
             .Include(ao => ao.DeviceSessions)
-            .FirstOrDefaultAsync(ao => ao.DeviceSessions.Any(ds => 
-                ds.DeviceId == deviceId && 
-                ds.RefreshToken == refreshToken));
-                
+            .FirstOrDefaultAsync(ao => ao.User.LocalId == user.LocalId);
+        
+        Console.WriteLine($"stage y1");
+        
         if (authObject == null)
             return false;
+        
+        Console.WriteLine($"stage y2");
             
         var deviceSession = authObject.DeviceSessions
-            .First(ds => ds.DeviceId == deviceId && ds.RefreshToken == refreshToken);
+            .First(ds => ds.DeviceId == deviceId); // ignore refreshtoken for now... not carried...
             
         deviceSession.IsActive = false;
+        authObject.DeviceSessions.Remove(deviceSession);
         await _context.SaveChangesAsync();
-        
+        Console.WriteLine($"stage y3");
         return true;
     }
     

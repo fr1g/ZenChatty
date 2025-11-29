@@ -1,7 +1,7 @@
 import { ApiClientBase } from './base';
 import { AuthResponse, LoginRequest, RegisterRequest, RefreshTokenRequest, BasicResponse, UserInfo } from '../models/auth';
 import { Tools } from '../tools';
-import { EGender } from '../models';
+import { EGender, User } from '../models';
 
 export class AuthApiClient extends ApiClientBase {
     /**
@@ -55,8 +55,8 @@ export class AuthApiClient extends ApiClientBase {
      * 获取用户's 信息
      * @returns 用户信息
      */
-    public async getUserInfo(): Promise<UserInfo> {
-        return await this.get<UserInfo>('/api/auth/userinfo');
+    public async getUserInfo(): Promise<User> {
+        return await this.get<User>('/api/auth/userinfo');
     }
 
     /**

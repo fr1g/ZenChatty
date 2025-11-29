@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Services;
 
 namespace ZenChattyServer.Net.Helpers;
@@ -12,6 +13,72 @@ public class ChatAgent
         context.Messages.Add(message);
         await context.SaveChangesAsync();
         await agency.SendMessageAsUserAsync(message);
+    }
+
+    public static async Task SayWithFullUpdate(UserRelatedContext context, Message message, ChatHubService agency, ContactService contactService)
+    {
+        // 保存消息到数据库
+        context.Messages.Add(message);
+        await context.SaveChangesAsync();
+
+        // 更新未读计数（排除发送者自己）
+        var totalUnreadCount = await UpdateUnreadCountForChatAsync(context, message.OfChatId, message.SenderId, message);
+
+        // 推送完整的Contact和Message对象给所有相关用户（排除发送者）
+        await agency.PushUpdatedContactAndMessageAsync(message.OfChatId, message.SenderId, message, totalUnreadCount);
+    }
+
+    /// <summary>
+    /// 更新聊天室的未读计数
+    /// </summary>
+    private static async Task<int> UpdateUnreadCountForChatAsync(UserRelatedContext context, string chatUniqueMark, Guid senderId, Message message)
+    {
+        try
+        {
+            // 获取聊天室的所有联系人（排除发送者）
+            var contacts = await context.Contacts
+                .Include(c => c.Host)
+                .Where(c => c.ObjectId == chatUniqueMark && c.HostId != senderId)
+                .ToListAsync();
+
+            // 判断是否为重要事件
+            var isVitalEvent = IsVitalEvent(message);
+
+            foreach (var contact in contacts)
+            {
+                // 更新未读计数
+                contact.LastUnreadCount++;
+                
+                // 如果是重要事件，更新vitalUnread状态
+                if (isVitalEvent)
+                {
+                    contact.HasVitalUnread = true;
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            // 返回总未读计数（用于推送）
+            return contacts.Sum(c => c.LastUnreadCount);
+        }
+        catch (Exception ex)
+        {
+            // 记录错误但不影响主流程
+            await Console.Error.WriteLineAsync($"更新未读计数失败: {ex.Message}");
+            return 0;
+        }
+    }
+
+    /// <summary>
+    /// 判断是否为重要事件（需要更新vitalUnread状态）
+    /// </summary>
+    private static bool IsVitalEvent(Message message)
+    {
+        // 重要事件类型：公告、系统通知、@全体成员等
+        return message.Type == EMessageType.Announcement || 
+               message.Type == EMessageType.Event ||
+               message.IsMentioningAll ||
+               message.IsAnnouncement;
     }
 
     public static async Task<(bool success, PrivateChat? chat, string message)> CreatePrivateChatFromGroupAsync
