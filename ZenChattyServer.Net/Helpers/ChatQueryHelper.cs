@@ -20,7 +20,7 @@ public class ChatQueryHelper
     {
         return await _context.Chats
             .AsNoTracking() // 提高查询性能
-            .Include(c => c.InitBy) // 只包含必要的导航属性
+            // .Include(c => c.InitBy) // 只包含必要的导航属性
             .FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);
     }
 
@@ -31,7 +31,6 @@ public class ChatQueryHelper
     {
         return await _context.Chats
             .AsNoTracking()
-            .Include(c => c.InitBy)
             .Where(c => chatUniqueMarks.Contains(c.UniqueMark))
             .ToListAsync();
     }
@@ -42,7 +41,6 @@ public class ChatQueryHelper
     public async Task<Chat?> GetChatWithHistoryAsync(string chatUniqueMark, int? messageLimit = null)
     {
         var query = _context.Chats
-            .Include(c => c.InitBy)
             .Include(c => c.History.OrderByDescending(m => m.SentTimestamp).Take(messageLimit ?? 50)) // 限制消息数量
             .Where(c => c.UniqueMark == chatUniqueMark);
 
@@ -70,7 +68,6 @@ public class ChatQueryHelper
     {
         return await _context.Chats
             .AsNoTracking()
-            .Include(c => c.InitBy)
             .Where(c => c.InitById == userId || 
                        c.Contacts.Any(contact => contact.HostId == userId))
             .ToListAsync();
@@ -82,8 +79,7 @@ public class ChatQueryHelper
     public async Task<PrivateChat?> GetPrivateChatBasicInfoAsync(string chatUniqueMark)
     {
         return await _context.PrivateChats
-            .AsNoTracking()
-            .Include(pc => pc.InitBy) // ?
+            .AsNoTracking() // NoTracking?
             .FirstOrDefaultAsync(pc => pc.UniqueMark == chatUniqueMark);
     }
 
@@ -94,7 +90,6 @@ public class ChatQueryHelper
     {
         return await _context.GroupChats
             .AsNoTracking()
-            .Include(gc => gc.InitBy)
             .Include(gc => gc.Members)
             .FirstOrDefaultAsync(gc => gc.UniqueMark == chatUniqueMark);
     }

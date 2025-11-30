@@ -2,7 +2,7 @@ namespace ZenChattyServer.Net.Models;
 
 public class GroupChat(User initBy, List<GroupChatMember>? members = null) : Chat(initBy)
 {
-    public GroupChat() : this(null!) { }
+    public GroupChat() : this(null!) { } // solved back to base class
     
     public virtual ICollection<GroupChatMember> Members { get; set; } = members ?? [];
     public virtual GroupSettings Settings { get; set; } = new();

@@ -48,9 +48,17 @@ export const initializeSignalR = async (
             signalRClient.setAccessToken(clientConfig.userToken);
         }
 
+        // 调试信息：显示连接配置
+        console.log('SignalR连接配置:', {
+            baseURL: clientConfig.baseURL,
+            port: clientConfig.port,
+            hasToken: !!clientConfig.userToken,
+            tokenLength: clientConfig.userToken?.length || 0
+        });
+
         // 建立连接
         await signalRClient.connect();
-        
+
         // 设置事件处理
         signalRClient.onContactAndMessageUpdated = (contact, message, totalUnreadCount) => {
             console.log('收到实时消息更新:', { contact, message, totalUnreadCount });
@@ -104,50 +112,50 @@ export const disconnectSignalR = async (signalRClient: SignalRClient): Promise<v
 };
 
 export const tryGetUserEssentials = async (
-    token: string, 
+    token: string,
     guid: string,
-    clientConfig: ClientInitObject, 
+    clientConfig: ClientInitObject,
     setClientConfig: Function,
     dispatch: Function,
     storageAdapter: SQLiteStorageAdapter
 ) => {
-        setClientConfig((_: ClientInitObject) => {
-            return {
-                ..._,
-                userToken: token,
-            }
-        });
-        let client = CreateZenCoreClient({
-            ...clientConfig,
+    setClientConfig((_: ClientInitObject) => {
+        return {
+            ..._,
             userToken: token,
-        } as ClientInitObject);
-        let userInfo: User | undefined = undefined, possible;
-        for(let i = 0; i < 3; i++) {
-            try {
-                userInfo = await client!.auth.getUserInfo();
-                break;
-            } catch (error) {
-                console.warn('Failed to get user info:', error, i);
-                possible = error as Error;
-            }
         }
-        if(userInfo === undefined){
-              
-            if(possible && possible.message.toLowerCase().includes("token expired")){
-                
-                await LogoutHelper.cleanupCredentialsOnly(guid, storageAdapter)
-                Alert.alert("Login Expired", "you may need to re-login"); // todo 标准化alert
+    });
+    let client = CreateZenCoreClient({
+        ...clientConfig,
+        userToken: token,
+    } as ClientInitObject);
+    let userInfo: User | undefined = undefined, possible;
+    for (let i = 0; i < 3; i++) {
+        try {
+            userInfo = await client!.auth.getUserInfo();
+            break;
+        } catch (error) {
+            console.warn('Failed to get user info:', error, i);
+            possible = error as Error;
+        }
+    }
+    if (userInfo === undefined) {
 
-            }
-            else 
-                Alert.alert("获取用户信息失败", possible?.message);
-            throw new Error("error on getting user info");
+        if (possible && possible.message.toLowerCase().includes("token expired")) {
+
+            await LogoutHelper.cleanupCredentialsOnly(guid, storageAdapter)
+            Alert.alert("Login Expired", "you may need to re-login"); // todo 标准化alert
+
         }
-        console.log('cached user info: ', userInfo);
-        dispatch(setUser(userInfo));
-        // nextstep: if ran 
-        return (await client.auth.validateToken() as BasicResponse).success;
-    };
+        else
+            Alert.alert("获取用户信息失败", possible?.message);
+        throw new Error("error on getting user info");
+    }
+    console.log('cached user info: ', userInfo);
+    dispatch(setUser(userInfo));
+    // nextstep: if ran 
+    return (await client.auth.validateToken() as BasicResponse).success;
+};
 
 function AppContent({ theme }: { theme: any }) {
     const authState = useSelector((state: RootState) => state.auth);
@@ -161,7 +169,13 @@ function AppContent({ theme }: { theme: any }) {
     // SignalR连接管理
     useEffect(() => {
         if (isAuthenticated && clientConfig.userToken) {
-            const signalR = new SignalRClient(clientConfig.baseURL!);
+            const problem = clientConfig.baseURL!.match(/:.[0-9]/g);
+            console.warn(`Initiating SignalR. ccburl: ${clientConfig.baseURL} :: ${problem}`)
+            let prepareHubHost = problem ?
+                clientConfig.baseURL :
+                `${clientConfig.baseURL}:${clientConfig.port}`;
+            console.warn(prepareHubHost);
+            const signalR = new SignalRClient(prepareHubHost!);
             setSignalRClient(signalR);
 
             initializeSignalR(clientConfig, signalR).catch(error => {
@@ -235,7 +249,7 @@ function AppContent({ theme }: { theme: any }) {
                         dispatch,
                         storageAdapter
                     );
-                    if(!isValid) throw new Error("Invalid user token");
+                    if (!isValid) throw new Error("Invalid user token");
                     if (expiresAt > now) {
                         // 凭据有效，恢复登录状态
                         const restoredCredential = {

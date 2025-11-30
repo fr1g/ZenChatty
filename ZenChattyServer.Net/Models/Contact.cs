@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ZenChattyServer.Net.Models;
 
@@ -9,6 +10,8 @@ public class Contact(User opener, Chat chat) // design of userChatObject has bee
     public Guid ContactId { get; set; } = Guid.NewGuid();
     
     public Guid HostId { get; set; }
+    
+    [JsonIgnore]
     public virtual User Host { get; set; } = opener;
     
     [MaxLength(64)]

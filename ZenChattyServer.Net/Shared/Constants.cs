@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Models;
+using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Shared;
 
@@ -21,6 +22,7 @@ public class Constants
             IsAnnouncement = false,
             IsCanceled = false,
             IsMentioningAll = false,
+            Type = EMessageType.Announcement,
             // OfChatId = target.UniqueMark todo maycauseproblem !!!
         };
     }

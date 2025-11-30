@@ -31,15 +31,15 @@ export default function MainDrawerContainer(props: Props) {
     // 退出登录处理函数
     const handleLogout = async () => {
         Alert.alert(
-            "确认退出",
-            "您确定要退出登录吗？",
+            "Log Out?",
+            "Are you sure you want to log out?",
             [
                 {
-                    text: "取消",
+                    text: "No",
                     style: "cancel"
                 },
                 {
-                    text: "确定",
+                    text: "Yes",
                     onPress: async () => {
                         try {
                             if (credential) {
@@ -66,7 +66,7 @@ export default function MainDrawerContainer(props: Props) {
                                 );
                             }
                         } catch (error) {
-                            console.error('退出登录失败:', error);
+                            console.error('Failed: ', error);
                             Alert.alert('Error when logging out', 'Your credential will be safely cleaned up');
                             await storageAdapter.initialize();
                             await LogoutHelper.cleanupCredentialsOnly(user!.localId, storageAdapter)
@@ -78,22 +78,17 @@ export default function MainDrawerContainer(props: Props) {
         );
     };
 
-    return <DrawerContentScrollView {...props} className="border-2 border-black" style={styles.drawerContainer}>
+    return <DrawerContentScrollView {...props} className="border-4 border-rose-300" style={styles.drawerContainer}>
         {/* 自定义头部 */}
         <View style={styles.drawerHeader}>
             <Text style={styles.drawerHeaderText}>{user?.displayName || user?.customId}</Text>
         </View>
-        {/* 默认的抽屉导航项 */}
         <DrawerItemList {...props} />
-        {/* 自定义的底部项 */}
-        <DrawerItem
-            label="帮助与反馈"
-            onPress={() => Linking.openURL('https://mywebsite.com/help')}
-        />
+
         {/* 退出登录按钮 */}
         <View className="grow h-full"></View>
         <DrawerItem
-            label="退出登录"
+            label="LogOut"
             onPress={handleLogout}
             labelStyle={{ color: '#ff4444' }}
         />
@@ -105,12 +100,15 @@ const styles = StyleSheet.create({
     drawerContainer: {
         flex: 1,
         padding: 0,
+        height: '100%'
     },
     drawerHeader: {
-        height: 100,
+        height: 128,
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#f5f5f5',
+        marginBottom: 8,
+        borderRadius: 26
     },
     drawerHeaderText: {
         fontSize: 18,

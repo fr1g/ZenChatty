@@ -7,12 +7,12 @@ export const ImageActs = {
         let locator: string | null = '';
         const chat: Chat | PrivateChat | GroupChat = contact.object;
         if (chat instanceof GroupChat)
-            locator = chat.settings.avatarFileLocator;
+            locator = chat.settings?.avatarFileLocator ?? '';
         else
-            if (contact.host.localId == contact.object.initBy.localId)
-                locator = (chat as PrivateChat).receiver.avatarFileLocator;
+            if (contact.hostId == contact.object.initById)
+                locator = (chat as PrivateChat).receiverAvatarLocator;
             else
-                locator = (chat as PrivateChat).initBy.avatarFileLocator;
+                locator = (chat as PrivateChat).initiatorAvatarLocator;
 
         if (locator == null || locator == '')
             return DefaultAvatarUrl;

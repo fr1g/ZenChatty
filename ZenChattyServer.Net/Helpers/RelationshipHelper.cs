@@ -17,7 +17,7 @@ public class RelationshipHelper
                 .FirstOrDefaultAsync(c => 
                     c.Host.LocalId.ToString() == userId1 && 
                     c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2) &&
+                    (((PrivateChat)c.Object).InitById.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2) &&
                     c.IsBlocked);
 
             // 检查userId2是否拉黑了userId1
@@ -27,7 +27,7 @@ public class RelationshipHelper
                 .FirstOrDefaultAsync(c => 
                     c.Host.LocalId.ToString() == userId2 && 
                     c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId1) &&
+                    (((PrivateChat)c.Object).InitById.ToString() == userId1 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId1) &&
                     c.IsBlocked);
 
             return contact1 != null || contact2 != null;
@@ -93,10 +93,9 @@ public class RelationshipHelper
     {
         // 查找looker和looking之间的非临时私聊
         var privateChat = context.PrivateChats
-            .Include(pc => pc.InitBy)
             .FirstOrDefault(pc => 
-                ((pc.InitBy.LocalId == looker.LocalId && pc.ReceiverId == looking.LocalId) ||
-                 (pc.InitBy.LocalId == looking.LocalId && pc.ReceiverId == looker.LocalId)) &&
+                ((pc.InitById == looker.LocalId && pc.ReceiverId == looking.LocalId) ||
+                 (pc.InitById == looking.LocalId && pc.ReceiverId == looker.LocalId)) &&
                 !pc.IsInformal); // must be existing
                 
         return privateChat != null;
@@ -109,10 +108,9 @@ public class RelationshipHelper
     {
         // 查找looker和looking之间的任何私聊（包括informal）
         var privateChat = context.PrivateChats
-            .Include(pc => pc.InitBy)
             .FirstOrDefault(pc => 
-                (pc.InitBy.LocalId == looker.LocalId && pc.ReceiverId == looking.LocalId) ||
-                (pc.InitBy.LocalId == looking.LocalId && pc.ReceiverId == looker.LocalId));
+                (pc.InitById == looker.LocalId && pc.ReceiverId == looking.LocalId) ||
+                (pc.InitById == looking.LocalId && pc.ReceiverId == looker.LocalId));
                 
         return privateChat != null;
     }

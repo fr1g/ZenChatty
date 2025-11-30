@@ -1,12 +1,11 @@
 import { NavigationContainer, ParamListBase, RouteProp, StaticParamList } from '@react-navigation/native';
 import { createDrawerNavigator, DrawerNavigationOptions, DrawerNavigationProp } from '@react-navigation/drawer';
 import Overview from '../screens/overview';
-import Details from '../screens/details';
-import StorageTestScreen from '../screens/StorageTestScreen';
 import UserSearchScreen from '../screens/UserSearchScreen';
 import MainDrawerHeader from '../components/MainDrawerHeader';
 import MainDrawerContainer from '../components/MainDrawerContainer';
-import { useEffect, useState } from 'react';
+import { createContext, useEffect, useState } from 'react';
+import { View } from 'react-native';
 
 // tag MainNavigationEntrance
 
@@ -28,9 +27,12 @@ const screenOpt: DrawerNavigationOptions = {
 
 const Drawer = createDrawerNavigator();
 
+const ScopeContext = createContext<{ scope: "main" | "chat", change: Function }>({ scope: "main", change: () => "scope not ready" });
+
 export default function DefaultView({ theme }: { theme: ReactNavigation.Theme }) {
 
     const [screenOptions, setScreenOptions] = useState(screenOpt);
+    const [scope, setScope] = useState<"main" | "chat">("main");
 
     useEffect(() => {
         // ...
@@ -41,14 +43,23 @@ export default function DefaultView({ theme }: { theme: ReactNavigation.Theme })
         })
     }, []);
 
-    return <NavigationContainer theme={theme} >
-        <Drawer.Navigator
-            screenOptions={screenOptions}
-            drawerContent={(props) => <MainDrawerContainer {...props} />}>
-            <Drawer.Screen name='index' component={Overview} />
-            <Drawer.Screen name='another' component={Details} />
-            <Drawer.Screen name='storage-test' component={StorageTestScreen} options={{ title: '存储测试' }} />
-            <Drawer.Screen name='user-search' component={UserSearchScreen} options={{ title: '用户搜索' }} />
-        </Drawer.Navigator>
-    </NavigationContainer>;
+    return <ScopeContext.Provider value={{ scope: scope, change: setScope }}>
+        {
+            scope == "main" ?
+                <NavigationContainer theme={theme} >
+                    <Drawer.Navigator
+                        screenOptions={screenOptions}
+                        drawerContent={(props) => <MainDrawerContainer {...props} />}>
+                        <Drawer.Screen name='index' component={Overview} />
+                        <Drawer.Screen name='user-search' component={UserSearchScreen} options={{ title: 'Add Friend' }} />
+                    </Drawer.Navigator>
+                </NavigationContainer>
+                :
+                <View>
+
+                </View>
+            // scopping into two different stages
+        }
+    </ScopeContext.Provider>;
 }
+// I SINCERELY SUPPOSE THAT REGULAR MOBILE APPS SHOULD BE REPLACED BY PWA WEB APPS. WEB ALWAYS HAVE EFFICIENCY!!!!!!!!!

@@ -7,8 +7,11 @@ export class Message {
     public traceId: string = '';
     private _content: string = '';
     public info: string = '';
+
     public senderId: string = '';
-    public sender: User;
+    public senderName: string = "";
+    public senderAvatarLocator: string = "";
+
     public viaGroupChatId?: string;
     public ofChatId: string = '';
 
@@ -22,13 +25,6 @@ export class Message {
     public sentTimestamp: number = 0;
     public serverCaughtTimestamp: number = 0;
 
-    public ofChat: Chat;
-
-    constructor(sender: User, ofChat: Chat, content: string) {
-        this.sender = sender;
-        this.ofChat = ofChat;
-        this._content = content;
-    }
 
     public get content(): string {
         return this.isCanceled ? '' : this._content;

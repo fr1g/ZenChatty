@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Models;
 
 public class Message(User sender, Chat ofChat, string content)
 {
-    public Message () : this(null!, null!, null!){}
+    public Message () : this(null!, null!, null!){ }
+    
     [Key]
     public string TraceId { get; set; } = Guid.NewGuid().ToString(); // todo ??????
     public bool IsCanceled { get; set; } = false;
@@ -40,13 +42,15 @@ public class Message(User sender, Chat ofChat, string content)
              * if guid is invalid, IGNORE them.
      */
 
-    public Guid SenderId { get; set; } = sender.LocalId;
-    public string SenderName { get; set; } = sender.DisplayName;
-    public string SenderAvatarLocator { get; set; } = sender.AvatarFileLocator;
+    public Guid SenderId { get; set; } = sender?.LocalId ?? Guid.Empty;
+    public string SenderName { get; set; } = sender?.DisplayName ?? "ex";
+    public string SenderAvatarLocator { get; set; } = sender?.AvatarFileLocator ?? "ex";
     
     public string? ViaGroupChatId { get; set; } = null;
     
-    public string OfChatId { get; set; }
+    public string OfChatId { get; set; } = Guid.Empty.ToString();
     // nav back
-    public virtual Chat OfChat { get; set; } = ofChat;
+    
+    [JsonIgnore]
+    public virtual Chat OfChat { get; set; } = ofChat ?? new Chat();
 }

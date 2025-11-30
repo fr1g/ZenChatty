@@ -44,18 +44,23 @@ export default class SignalRClient {
         }
 
         try {
+            // 构建完整的SignalR Hub URL，包含端口号
+            const hubUrl = `${this.baseUrl}/chatHub`;
+
             console.log('正在建立SignalR连接:', {
                 baseUrl: this.baseUrl,
-                hubUrl: `${this.baseUrl}/chatHub`,
+                hubUrl: hubUrl,
                 hasAccessToken: !!this.accessToken,
                 accessTokenLength: this.accessToken?.length || 0
             });
-            
+
             this.connection = new HubConnectionBuilder()
-                .withUrl(`${this.baseUrl}/chatHub`, {
-                    accessTokenFactory: () => this.accessToken || ''
+                .withUrl(hubUrl, {
+                    accessTokenFactory: () => this.accessToken || '',
+                    skipNegotiation: false, // 启用协商以支持代理
+                    transport: 4 // 使用所有可用传输方式
                 })
-                .configureLogging(LogLevel.Information)
+                .configureLogging(LogLevel.Debug) // 提高日志级别以调试
                 .withAutomaticReconnect({
                     nextRetryDelayInMilliseconds: retryContext => {
                         return Math.min(1000 * Math.pow(2, retryContext.previousRetryCount), 30000);
@@ -144,7 +149,7 @@ export default class SignalRClient {
             if (!request.SentTimestamp) {
                 request.SentTimestamp = Date.now();
             }
-            
+
             // 后端期望接收完整的SendMessageRequest对象
             await this.connection.invoke('SendMessage', request);
         } catch (error) {
@@ -163,7 +168,7 @@ export default class SignalRClient {
             MessageType: messageType,
             SentTimestamp: Date.now()
         };
-        
+
         return this.sendMessage(request);
     }
 

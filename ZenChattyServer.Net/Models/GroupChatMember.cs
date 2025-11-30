@@ -7,6 +7,7 @@ namespace ZenChattyServer.Net.Models;
 public class GroupChatMember(User member)
 {
     public GroupChatMember() : this(null!){}
+    
     [Key]
     public Guid Id { get; set; } = Guid.NewGuid();
     

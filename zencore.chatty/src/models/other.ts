@@ -5,6 +5,7 @@ import { User } from './user';
 export class Contact {
 
     contactId: string;
+    hostId: string = "";
     host: User;
     object: Chat;
     lastUnreadCount: number;
@@ -43,7 +44,7 @@ export class Contact {
             this.displayName = displayName;
         }
         else if (isGroup) {
-            this.displayName = (object as GroupChat).settings.displayName;
+            this.displayName = (object as GroupChat).settings?.displayName ?? "ex: groupchat name";
         } else {
             if (host.localId === (object as PrivateChat).initBy.localId) {
                 this.displayName = (object as PrivateChat).receiver.displayName;
@@ -51,19 +52,18 @@ export class Contact {
                 this.displayName = (object as PrivateChat).initBy.displayName;
             }
         }
-        if (avatarFileLocator != null) {
+        if (avatarFileLocator != null)
             this.avatarFileLocator = avatarFileLocator;
-        }
-        else if (isGroup) {
-            this.avatarFileLocator = (object as GroupChat).settings.avatarFileLocator;
-        }
-        else {
-            if (host.localId === (object as PrivateChat).initBy.localId) {
+
+        else if (isGroup)
+            this.avatarFileLocator = (object as GroupChat).settings?.avatarFileLocator ?? "";
+
+        else
+            if (host.localId === (object as PrivateChat).initBy.localId)
                 this.avatarFileLocator = (object as PrivateChat).receiver.avatarFileLocator;
-            } else {
+            else
                 this.avatarFileLocator = (object as PrivateChat).initBy.avatarFileLocator;
-            }
-        }
+
     }
 
 }

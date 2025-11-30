@@ -10,45 +10,27 @@ export class Chat {
     [x: string]: any; // only
 
     uniqueMark: string | undefined;
-    initBy: User;
-    history: any[];
-    status: EChatStatus;
+    initById: string = "";
+    initiatorAvatarLocator: string = "";
+    initiatorName: string = ""
 
-    constructor(initBy: User, history: any[] = [], uniqueMark: string | undefined = undefined, status: EChatStatus = EChatStatus.Normal) {
-        this.history = history;
-        this.uniqueMark = uniqueMark;
-        this.initBy = initBy;
-        this.status = status;
-    }
+    history: Message[] = [];
+    status: EChatStatus = EChatStatus.Normal;
+
 }
 
 export class PrivateChat extends Chat {
-    isInformal: boolean;
-    receiver: User;
-
-    constructor(initBy: User, receiver: User, isInformal: boolean = true) {
-        super(initBy);
-        this.receiver = receiver;
-        this.isInformal = isInformal;
-    }
+    isInformal: boolean = true;
+    receiverId: string = "";
+    receiverAvatarLocator: string = "";
+    receiverName: string = ""
 }
 
 export class GroupChat extends Chat {
-    members: GroupChatMember[];
-    settings: GroupSettings;
-    groupAnnounce: Message[];
+    members: GroupChatMember[] = [];
+    settings?: GroupSettings;
+    groupAnnounce: Message[] = [];
 
-    constructor(
-        initBy: User,
-        members: GroupChatMember[],
-        settings: GroupSettings = new GroupSettings(),
-        groupAnnounce: Message[] = []
-    ) {
-        super(initBy);
-        this.members = members;
-        this.settings = settings;
-        this.groupAnnounce = groupAnnounce;
-    }
 }
 
 export class GroupSettings {

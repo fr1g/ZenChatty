@@ -326,10 +326,9 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
 
             // 检查是否已经是好友（非临时私聊）
             var existingPrivateChat = await context.PrivateChats
-                .Include(pc => pc.InitBy)
                 .FirstOrDefaultAsync(pc => 
-                    ((pc.InitBy.LocalId.ToString() == initiatorUserId && pc.ReceiverId.ToString() == targetUser.LocalId.ToString()) ||
-                     (pc.InitBy.LocalId.ToString() == targetUser.LocalId.ToString() && pc.ReceiverId.ToString() == initiatorUserId)) &&
+                    ((pc.InitById.ToString() == initiatorUserId && pc.ReceiverId.ToString() == targetUser.LocalId.ToString()) ||
+                     (pc.InitById.ToString() == targetUser.LocalId.ToString() && pc.ReceiverId.ToString() == initiatorUserId)) &&
                     !pc.IsInformal);
 
             if (existingPrivateChat != null)
@@ -416,7 +415,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 .Where(c => 
                     (c.Host.LocalId.ToString() == userId1 || c.Host.LocalId.ToString() == userId2) &&
                     c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 ||
+                    (((PrivateChat)c.Object).InitById.ToString() == userId1 || ((PrivateChat)c.Object).InitById.ToString() == userId2 ||
                      ((PrivateChat)c.Object).ReceiverId.ToString() == userId1 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
                 .ToListAsync();
 
@@ -473,7 +472,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 .Include(c => c.Object)
                 .Where(c => c.Host.LocalId.ToString() == userId1 && 
                            c.Object is PrivateChat && 
-                           (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
+                           (((PrivateChat)c.Object).InitById.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
                 .FirstOrDefaultAsync();
 
             if (user1Contacts != null)

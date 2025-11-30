@@ -210,7 +210,6 @@ public class MessageValidationService(UserRelatedContext context)
             return SendMessageResponse.ChatNotFound();
 
         var privateChat = await context.PrivateChats
-            .Include(c => c.InitBy)
             .FirstOrDefaultAsync(pc => pc.UniqueMark == chat.UniqueMark);
             
         if (privateChat == null)

@@ -1,45 +1,103 @@
-import { Alert, FlatList, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { MockContactBook } from '../class/shared/MockData';
-import { Contact, ImageActs } from 'zen-core-chatty-ts';
+import { Alert, FlatList, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Contact, EMessageType, ImageActs, Message } from 'zen-core-chatty-ts';
 import ListItem, { ListItemProps } from 'components/ListItem';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
+import { useContacts } from '../hooks/useContacts';
+import { SignalRContext } from 'App';
 
-export default async function Overview() {
-    // const navigation = useNavigation();
-    function tryGetShowingName(){}
-    const [openedChats, setOpenedChats] = useState<Contact[]>([]);
+export default function Overview() {
+    const signalRClient = useContext(SignalRContext)
+    const { contacts, loading, error, refetch } = useContacts(signalRClient!);
+    
+    // 格式化最后消息时间
+    const formatLastMessageTime = (timestamp?: number) => {
+        if (!timestamp) return "notime";
+        
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        
+        if (diff < 24 * 60 * 60 * 1000) {
+            return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        } else if (diff < 7 * 24 * 60 * 60 * 1000) {
+            return date.toLocaleDateString('zh-CN', { weekday: 'short' });
+        } else {
+            return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+        }
+    };
+
+    // 获取消息预览
+    const getMessagePreview = (contact: Contact) => {
+        if (!contact.object?.history?.[0]) return "No msg";
+        
+        const lastMessage = contact.object.history[0] as Message;
+        switch (lastMessage.type) {
+            case EMessageType.Announcement:
+                return "[ANN] " + lastMessage.content;
+            case EMessageType.Requesting:
+                return "[Request] " + lastMessage.content;
+            case EMessageType.Event:
+                return "[Event] " + lastMessage.content;
+            default:
+                return lastMessage.content || " none ";
+        }
+    };
+
     const transformContactItem = (contact: Contact) => {
         return {
             avatarUrl: ImageActs.getContactChatAvatarAsUrl(contact),
-            title: contact.displayName ?? "something's wrong... with backend...",
-            subtitle: "here to get latest message? how?",
-            topBadge: `${contact.lastUnreadCount}`,
+            title: contact.displayName ?? "unknown",
+            subtitle: getMessagePreview(contact),
+            topBadge: contact.lastUnreadCount > 0 ? `${contact.lastUnreadCount}` : undefined,
             CIA: contact.isPinned ? (<Feather name="map-pin" size={16} color="#007AFF" />) : undefined,
-            cornerTip: contact.lastUsed,
-            highlight: contact.hasVitalUnread
+            cornerTip: formatLastMessageTime(contact.object?.history?.[0]?.sentTimestamp),
+            highlight: contact.hasVitalUnread  
         } as ListItemProps;
-    }
-    const updateSorting = () => {
-        setOpenedChats(contacts => {
-            const sortedByLastUsed = [...contacts].sort((a, b) => {
-                const timeA = new Date(a.lastUsed).getTime();
-                const timeB = new Date(b.lastUsed).getTime();
-                return timeB - timeA; 
-            });
-            
-            return [...sortedByLastUsed.filter(contact => contact.isPinned), 
-                    ...sortedByLastUsed.filter(contact => !contact.isPinned)];
-        })
+    };
+
+    // 处理错误状态
+    if (error) {
+        return (
+            <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
     }
 
-    useEffect(() => {
-        setOpenedChats(MockContactBook.recentlyChats);
-    }, [])
+    // 处理加载状态
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#007AFF" />
+                <Text style={styles.loadingText}>Getting recent chats...</Text>
+            </View>
+        );
+    }
 
-    return <FlatList className='grow border-2 border-red-300 pb-5' data={openedChats} renderItem={({ item }) => (
-        <ListItem item={transformContactItem(item)} />
-    )} />
+    if (contacts.length === 0) {
+        return (
+            <View style={styles.emptyContainer}>
+                <Feather name="users" size={64} color="#ccc" />
+                <Text style={styles.emptyText}>No chats</Text>
+                <Text style={styles.emptySubtext}>todo: the backend currently maybe return entire contact as using entire contact method</Text>
+            </View>
+        );
+    }
+
+    return (
+        <FlatList 
+            className='grow pb-5' 
+            data={contacts} 
+            renderItem={({ item }) => (
+                <ListItem item={transformContactItem(item)} />
+            )} 
+            keyExtractor={(item) => item.contactId}
+        />
+    );
 }
 
 
@@ -47,5 +105,59 @@ export const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 24,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#666',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: 20,
+    },
+    errorText: {
+        fontSize: 16,
+        color: '#ff3b30',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    retryButton: {
+        backgroundColor: '#007AFF',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    retryButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        padding: 40,
+    },
+    emptyText: {
+        fontSize: 18,
+        color: '#666',
+        marginTop: 16,
+        fontWeight: '600',
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#999',
+        marginTop: 8,
+        textAlign: 'center',
     },
 });

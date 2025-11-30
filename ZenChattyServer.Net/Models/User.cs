@@ -11,7 +11,10 @@ namespace ZenChattyServer.Net.Models;
 [Table("Users")] [Index(nameof(PhoneNumber), nameof(Email), nameof(CustomId), IsUnique = true)]
 public class User(string email)
 {
-    public User() : this(null!) { }
+    public User() : this(null!)
+    {
+        
+    }
     
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -49,7 +52,11 @@ public class User(string email)
     [JsonIgnore]
     public virtual UserAuthObject? AuthObject { get; set; }
     
+    [JsonIgnore]
+    
     public virtual ICollection<Contact> Contacts { get; set; } = new List<Contact>();
+    
+    [JsonIgnore]
     public virtual ICollection<GroupChatMember> GroupMemberships { get; set; } = new List<GroupChatMember>();
     
     
