@@ -35,7 +35,7 @@ builder.Services.Configure<FileStorageOptions>(builder.Configuration.GetSection(
 builder.Services.AddScoped<FileStorageService>();
 
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<ChatService>();
+builder.Services.AddScoped<ChatService>(); // todo ??
 builder.Services.AddScoped<ChatQueryHelper>();
 builder.Services.AddScoped<RelationshipHelper>();
 builder.Services.AddScoped<MessageValidationService>();

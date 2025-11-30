@@ -125,10 +125,8 @@ public class FileStorageService
                 return (false, null, "文件大小超过限制");
             }
 
-            // 计算MD5
             var hash = await CalculateFileHashAsync(storagePath);
 
-            // 创建UserFile记录
             var userFile = new UserFile
             {
                 FileType = fileType,
@@ -175,7 +173,6 @@ public class FileStorageService
         try
         {
             var userFile = await _context.UserFiles
-                .Include(uf => uf.Uploader)
                 .FirstOrDefaultAsync(uf => uf.Locator == locator);
 
             return userFile == null ? (false, null, "文件不存在") : (true, userFile, "文件信息获取成功");

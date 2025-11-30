@@ -10,7 +10,6 @@ public class ChatAgent
 {
     public static async Task Say(UserRelatedContext context, Message message, ChatHubService agency)
     {
-        message.Sender = null;
         context.Messages.Add(message);
         await context.SaveChangesAsync();
         await agency.SendMessageAsUserAsync(message);
@@ -18,8 +17,6 @@ public class ChatAgent
 
     public static async Task SayWithFullUpdate(UserRelatedContext context, Message msg, ChatHubService agency)
     {
-        msg.Sender = null;
-        
         context.Messages.Add(msg);
         await context.SaveChangesAsync();
         

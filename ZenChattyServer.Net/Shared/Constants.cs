@@ -14,15 +14,14 @@ public class Constants
 
     public static Message CreateWelcomeMessage(User user, Chat target)
     {
-        return new Message
+        var content = $"Welcome, {user.DisplayName}! You can update all your personal settings later.";
+        return new Message(SystemUser!, target, content)
         {
-            Content = $"Welcome, {user.DisplayName}! You can update all your personal settings later.",
             Info = user.DisplayName,
             IsAnnouncement = false,
-            Sender = SystemUser!,
             IsCanceled = false,
             IsMentioningAll = false,
-            OfChatId = target.UniqueMark
+            // OfChatId = target.UniqueMark todo maycauseproblem !!!
         };
     }
 

@@ -165,7 +165,7 @@ public class GroupAnnouncementService(UserRelatedContext context, ILogger<GroupA
         {
             var message = await context.Messages
                 .Include(m => m.OfChat)
-                .Include(m => m.Sender)
+                // .Include(m => m.Sender)
                 .FirstOrDefaultAsync(m => m.TraceId == messageId);
 
             if (message is not { IsAnnouncement: true })

@@ -22,8 +22,10 @@ public class MessageController(
     MessageValidationService validationService,
     IMessageQueueService messageQueueService,
     MessageCacheService messageCacheService,
-    ILogger<MessageController> logger)
-    : ControllerBase
+    ILogger<MessageController> logger,
+    AuthService authService    
+)
+    : AuthedControllerBase (authService)
 {
     /// <summary>
     /// 发送消息 
@@ -190,7 +192,6 @@ public class MessageController(
             
             dbMessages = await context.Messages
                 .Where(m => m.OfChatId == chatUniqueMark && m.SentTimestamp < timestampMs)
-                .Include(m => m.Sender)
                 .OrderByDescending(m => m.SentTimestamp)
                 .Take(messagesNeeded)
                 .ToListAsync();
@@ -286,16 +287,13 @@ public class MessageController(
     {
         try
         {
-            // 获取当前用户ID
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-            {
-                return Unauthorized(new BasicResponse { success = false, content = "Invalid user identity" });
-            }
+            var refer = await AuthenticateAsync();
+            if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+            var userId = refer.user!.LocalId;
 
             // 查找消息
             var message = await context.Messages
-                .Include(m => m.Sender)
                 .Include(m => m.OfChat)
                 .FirstOrDefaultAsync(m => m.TraceId == request.MessageTraceId);
 
@@ -308,13 +306,6 @@ public class MessageController(
             if (message.OfChatId != request.ChatUniqueMark)
             {
                 return BadRequest(new BasicResponse { success = false, content = "Message does not belong to specified chat" });
-            }
-
-            // 检查用户是否有权限访问该聊天
-            var hasAccess = CheckChatAccess(message.OfChat, userId);
-            if (!hasAccess)
-            {
-                return BadRequest(new BasicResponse { success = false, content = "No access to this chat" });
             }
 
             // 检查撤回权限
@@ -342,7 +333,7 @@ public class MessageController(
             messageCacheService.CacheMessage(message);
 
             // 发送撤回通知到消息队列
-            await SendRecallNotificationAsync(message);
+            await SendRecallNotificationAsync(message, refer.user!);
 
             logger.LogInformation("User {UserId} recalled message {MessageId} in chat {ChatId}", 
                 userId, request.MessageTraceId, request.ChatUniqueMark);
@@ -386,12 +377,12 @@ public class MessageController(
     /// <summary>
     /// 发送撤回通知
     /// </summary>
-    private async Task SendRecallNotificationAsync(Message message)
+    private async Task SendRecallNotificationAsync(Message message, User origin)
     {
         try
         {
             // 创建撤回事件消息
-            var recallEventMessage = new Message(message.Sender, message.OfChat, "")
+            var recallEventMessage = new Message(origin, message.OfChat, "")
             {
                 TraceId = Guid.NewGuid().ToString(),
                 Type = EMessageType.Event,

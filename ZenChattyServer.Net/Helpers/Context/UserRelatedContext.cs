@@ -54,11 +54,11 @@ public class UserRelatedContext : DbContext
             .HasForeignKey("ReceiverId")
             .OnDelete(DeleteBehavior.Restrict);
             
-        modelBuilder.Entity<Message>()
-            .HasOne(m => m.Sender)
-            .WithMany(u => u.Messages)
-            .HasForeignKey("SenderId")
-            .OnDelete(DeleteBehavior.Restrict);
+        // modelBuilder.Entity<Message>()
+        //     .HasOne(m => m.Sender)
+        //     .WithMany(u => u.Messages)
+        //     .HasForeignKey("SenderId")
+        //     .OnDelete(DeleteBehavior.Restrict);
             
         modelBuilder.Entity<Message>()
             .HasOne(m => m.OfChat)
@@ -134,12 +134,12 @@ public class UserRelatedContext : DbContext
         modelBuilder.Entity<PrivateChat>().ToTable("PrivateChats");
         modelBuilder.Entity<GroupChat>().ToTable("GroupChats");
         
-        // 配置UserFile实体
-        modelBuilder.Entity<UserFile>()
-            .HasOne(uf => uf.Uploader)
-            .WithMany(u => u.UserFiles)
-            .HasForeignKey(uf => uf.UploaderId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // // 配置UserFile实体
+        // modelBuilder.Entity<UserFile>()
+        //     .HasOne(uf => uf.Uploader)
+        //     .WithMany(u => u.UserFiles)
+        //     .HasForeignKey(uf => uf.UploaderId)
+        //     .OnDelete(DeleteBehavior.Restrict);
 
         base.OnModelCreating(modelBuilder);
     }

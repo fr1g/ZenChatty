@@ -40,8 +40,9 @@ public class Message(User sender, Chat ofChat, string content)
              * if guid is invalid, IGNORE them.
      */
 
-    public Guid SenderId { get; set; }
-    public virtual User? Sender { get; set; } = sender;
+    public Guid SenderId { get; set; } = sender.LocalId;
+    public string SenderName { get; set; } = sender.DisplayName;
+    public string SenderAvatarLocator { get; set; } = sender.AvatarFileLocator;
     
     public string? ViaGroupChatId { get; set; } = null;
     

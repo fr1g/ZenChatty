@@ -40,10 +40,7 @@ public class FileController(
         
         if (request.File.Length == 0)
             return BadRequest(new BasicResponse { content = "File invalid", success = false });
-        
-        
 
-        // 验证文件类型
         var fileType = GetFileTypeFromExtension(request.FileExtension);
         if (fileType == null)
             return BadRequest(new BasicResponse { content = "Unsupported file type", success = false });

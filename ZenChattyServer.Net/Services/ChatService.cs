@@ -130,7 +130,6 @@ public class ChatService
     {
         return await _context.Messages
             .AsNoTracking()
-            .Include(m => m.Sender)
             .Where(m => m.OfChat.UniqueMark == chatUniqueMark)
             .OrderByDescending(m => m.SentTimestamp)
             .FirstOrDefaultAsync();

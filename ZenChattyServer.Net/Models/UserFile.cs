@@ -27,7 +27,7 @@ public class UserFile
     public string OriginalFileName { get; set; } = null!;
     
     [Required]
-    public Guid UploaderId { get; set; }
+    public Guid UploaderId { get; set; } // just record, not for foreign key 
     
     [Required]
     public DateTime UploadTime { get; set; }
@@ -42,9 +42,6 @@ public class UserFile
     [Required]
     [MaxLength(500)]
     public string StoragePath { get; set; } = null!;
-    
-    // 导航属性
-    public virtual User Uploader { get; set; } = null!;
     
     public UserFile() { }
     

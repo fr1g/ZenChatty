@@ -50,9 +50,8 @@ public class User(string email)
     public virtual UserAuthObject? AuthObject { get; set; }
     
     public virtual ICollection<Contact> Contacts { get; set; } = new List<Contact>();
-    public virtual ICollection<Message> Messages { get; set; } = new List<Message>();
     public virtual ICollection<GroupChatMember> GroupMemberships { get; set; } = new List<GroupChatMember>();
     public virtual ICollection<PrivateChat> PrivateChats { get; set; } = new List<PrivateChat>();
     public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
-    public virtual ICollection<UserFile> UserFiles { get; set; } = new List<UserFile>();
+    
 }
