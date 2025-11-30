@@ -1,17 +1,11 @@
 import { getImgByLocator } from '../class/helpers/FileRequest';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image } from 'react-native';
+import { ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 
-export default function Avatar({ locator }: { locator: string }) {
-    const [base64, setBase64] = useState('');
-    useEffect(() => {
-        if (locator === '') getImgByLocator('').then(setBase64);
-    }, [])
-    useEffect(() => {
-        if (locator === '') return;
-        getImgByLocator(locator).then(setBase64);
-    }, [locator]);
-    return !base64 ? (
+export default function Avatar({ path }: { path: string }) {
+
+    return path === '' ? (
         <ActivityIndicator
             style={{
                 height: '100%',
@@ -21,13 +15,15 @@ export default function Avatar({ locator }: { locator: string }) {
         />
     ) : (
         <Image
-            source={{ uri: `data:image/png;base64,${base64}` }}
+            source={{ uri: path }}
             style={{
-                height: '100%',
+                height: '86%',
                 aspectRatio: 1,
-                borderRadius: 999, // 圆形头像
+                borderRadius: 999, 
+                marginVertical: 20,
+                marginHorizontal: 12,
+                padding: 10
             }}
-            resizeMode="cover"
         />
 
     );

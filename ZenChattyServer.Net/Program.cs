@@ -54,6 +54,25 @@ builder.Services.AddDbContext<UserRelatedContext>(options =>
 // 添加SignalR服务
 builder.Services.AddSignalR();
 
+// 添加CORS配置
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("ReactNativeApp", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:8081", // Expo开发服务器
+                "http://localhost:19000", // Expo Metro bundler
+                "http://localhost:19006", // Expo开发工具
+                "http://chatty.vot.moe", 
+                "http://rus.kami.su" // 您的frp映射域名
+                // todo i still want to ensure support of https. open client. then let's just allow all cors!
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
+
 // 配置RabbitMQ
 builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
 builder.Services.AddSingleton<RabbitMQConfig>(provider =>
@@ -76,14 +95,18 @@ catch (Exception e)
     return;
 }
 
+using var scope = app.Services.CreateScope();
+var userContext = scope.ServiceProvider.GetRequiredService<UserRelatedContext>();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
     
+    // 启用CORS（开发环境）
+    app.UseCors("ReactNativeApp");
+    
     // dev test scope
-    using var scope = app.Services.CreateScope();
-    var userContext = scope.ServiceProvider.GetRequiredService<UserRelatedContext>();
+
     userContext.Database.EnsureDeleted();
     userContext.Database.EnsureCreated();
     
@@ -96,10 +119,42 @@ app.MapControllers();
 // 添加SignalR Hub路由
 app.MapHub<ChatHub>("/chatHub");
 
+// Creating System User, or ensure it is here.
+try
+{
+    const string systemUserName = "system";
+    var systemUser = await userContext.Users.FirstOrDefaultAsync(u => u.CustomId! == systemUserName);
+    if (systemUser is null)
+    {
+        var sysUser = new User
+        {
+            CustomId = systemUserName,
+            Email = "systemUser@chatty.me",
+            DisplayName = "System Sayings"
+        };
+        try
+        {
+            userContext.Users.Add(sysUser);
+            await userContext.SaveChangesAsync();
+            systemUser = sysUser;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Seems here's parallel: {e.Message}");
+            systemUser = await userContext.Users.FirstOrDefaultAsync(u => u.CustomId! == systemUserName);
+        }
+    }
+    Constants.SystemUser = systemUser;
+}
+catch (Exception e)
+{
+    Console.Error.WriteLine($"!!!CRIT System User maybe not exists: {e.Message}");
+}
+
 // 启动RabbitMQ消费者服务
 try
 {
-    using var scope = app.Services.CreateScope();
+    // using var scope = app.Services.CreateScope();
     var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
     await messageQueueService.StartConsumingAsync();
     Console.WriteLine("RabbitMQ消费者服务已启动");

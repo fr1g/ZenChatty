@@ -3,19 +3,8 @@ import { BasicResponse } from '../models/auth';
 import { ChatResponse } from '../models/chat';
 import { Contact } from '../models/other';
 import { UserInfoQueryRequest } from '../models/requests';
-
-export interface UserInfoResponse {
-    success: boolean;
-    content?: string;
-    user?: {
-        localId: string;
-        email: string;
-        customId?: string;
-        displayName?: string;
-        avatarUrl?: string;
-        status: string;
-    };
-}
+import { User, UserInfoResponse } from '../models';
+import { Tools } from '../tools';
 
 export class ContactApiClient extends ApiClientBase {
     constructor(baseUrl: string, timeout: number = 10000) {
@@ -25,8 +14,9 @@ export class ContactApiClient extends ApiClientBase {
     /**
      * 查询用户信息（根据隐私设置过滤）
      */
-    async queryUserInfo(request: UserInfoQueryRequest): Promise<UserInfoResponse> {
-        return await this.post<UserInfoResponse>('/api/social/get-user-info', request);
+    async queryUserInfo(finding: string): Promise<UserInfoResponse> {
+        if (Tools.isNoneOrEmpty(finding)) throw new Error("Empty Finding for.");
+        return await this.post<UserInfoResponse>(`/api/social/get-user-info/${finding}`);
     }
 
     /**

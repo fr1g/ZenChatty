@@ -31,6 +31,13 @@ export class RegisterRequest {
     public gender?: EGender;
     public birthday?: Date;
     public bio?: string;
+
+    public ensureNoSpace() {
+        this.password = this.password?.trim().replaceAll(" ", "");
+        this.email = this.email?.trim().replaceAll(" ", "");
+        this.uniqueCustomId = this.uniqueCustomId?.trim().replaceAll(" ", "");
+        return this;
+    }
 }
 
 export class RefreshTokenRequest {

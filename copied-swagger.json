@@ -218,17 +218,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserInfo"
+                  "$ref": "#/components/schemas/User"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserInfo"
+                  "$ref": "#/components/schemas/User"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserInfo"
+                  "$ref": "#/components/schemas/User"
                 }
               }
             }
@@ -247,8 +247,7 @@
             "in": "path",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "type": "string"
             }
           }
         ],
@@ -1292,21 +1291,21 @@
             }
           },
           {
-            "name": "page",
+            "name": "queryMessageAmount",
             "in": "query",
+            "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 1
+              "format": "int32"
             }
           },
           {
-            "name": "pageSize",
+            "name": "fromTimestamp",
             "in": "query",
+            "required": true,
             "schema": {
               "type": "integer",
-              "format": "int32",
-              "default": 50
+              "format": "int64"
             }
           }
         ],
@@ -1432,30 +1431,21 @@
         }
       }
     },
-    "/api/social/get-user-info": {
+    "/api/social/get-user-info/{targetSeekBy}": {
       "post": {
         "tags": [
           "UserSocial"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserInfoQueryRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserInfoQueryRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserInfoQueryRequest"
-              }
+        "parameters": [
+          {
+            "name": "targetSeekBy",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -2045,6 +2035,52 @@
           }
         }
       }
+    },
+    "/api/social/add-friend-request": {
+      "post": {
+        "tags": [
+          "UserSocial"
+        ],
+        "parameters": [
+          {
+            "name": "targetUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "viaGroupId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BasicResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2185,6 +2221,7 @@
             "$ref": "#/components/schemas/User"
           },
           "objectId": {
+            "maxLength": 64,
             "type": "string",
             "nullable": true
           },
@@ -2210,6 +2247,7 @@
             "type": "boolean"
           },
           "displayName": {
+            "maxLength": 64,
             "type": "string",
             "nullable": true
           },
@@ -2248,11 +2286,11 @@
       },
       "CreatePrivateChatRequest": {
         "required": [
-          "receiverCustomId"
+          "receiverId"
         ],
         "type": "object",
         "properties": {
-          "receiverCustomId": {
+          "receiverId": {
             "minLength": 1,
             "type": "string"
           },
@@ -2261,59 +2299,6 @@
           },
           "displayName": {
             "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "DeviceSession": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "userAuthObjectId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "deviceId": {
-            "maxLength": 64,
-            "type": "string",
-            "nullable": true
-          },
-          "refreshToken": {
-            "maxLength": 64,
-            "type": "string",
-            "nullable": true
-          },
-          "refreshTokenExpiresAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastAccessedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "lastHeartbeatAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "isOnline": {
-            "type": "boolean"
-          },
-          "deviceType": {
-            "maxLength": 8,
-            "type": "string",
-            "nullable": true
-          },
-          "rowVersion": {
-            "type": "string",
-            "format": "byte",
             "nullable": true
           }
         },
@@ -2333,8 +2318,7 @@
           0,
           1,
           2,
-          3,
-          4
+          3
         ],
         "type": "integer",
         "format": "int32"
@@ -2849,6 +2833,9 @@
           },
           "genderVisibility": {
             "$ref": "#/components/schemas/EPrivacyVisibilityRange"
+          },
+          "birthdayVisibility": {
+            "$ref": "#/components/schemas/EPrivacyVisibilityRange"
           }
         },
         "additionalProperties": false
@@ -2864,13 +2851,22 @@
             "nullable": true
           },
           "isDiscoverableViaSearch": {
-            "$ref": "#/components/schemas/EPrivacyVisibilityRange"
+            "type": "boolean"
           },
           "isAddableFromGroup": {
-            "$ref": "#/components/schemas/EPrivacyVisibilityRange"
+            "type": "boolean"
           },
           "isGroupInviteAllowed": {
-            "$ref": "#/components/schemas/EPrivacyVisibilityRange"
+            "type": "boolean"
+          },
+          "isInvitableToGroup": {
+            "type": "boolean"
+          },
+          "isNewChatKeepSilent": {
+            "type": "boolean"
+          },
+          "allowViewInfoFromGroupChat": {
+            "type": "boolean"
           },
           "contactVisibility": {
             "$ref": "#/components/schemas/EPrivacyVisibilityRange"
@@ -2879,6 +2875,9 @@
             "$ref": "#/components/schemas/EPrivacyVisibilityRange"
           },
           "genderVisibility": {
+            "$ref": "#/components/schemas/EPrivacyVisibilityRange"
+          },
+          "birthdayVisibility": {
             "$ref": "#/components/schemas/EPrivacyVisibilityRange"
           }
         },
@@ -2962,6 +2961,10 @@
         "additionalProperties": false
       },
       "RegisterRequest": {
+        "required": [
+          "email",
+          "password"
+        ],
         "type": "object",
         "properties": {
           "uniqueCustomId": {
@@ -2969,16 +2972,17 @@
             "nullable": true
           },
           "password": {
-            "type": "string",
-            "nullable": true
+            "minLength": 1,
+            "type": "string"
           },
           "displayName": {
             "type": "string",
             "nullable": true
           },
           "email": {
+            "minLength": 1,
             "type": "string",
-            "nullable": true
+            "format": "email"
           },
           "gender": {
             "type": "string",
@@ -3043,7 +3047,7 @@
       "SendMessageResponse": {
         "type": "object",
         "properties": {
-          "result": {
+          "resultCanBe": {
             "$ref": "#/components/schemas/EMessageSendResult"
           },
           "messageId": {
@@ -3161,12 +3165,6 @@
             "type": "string",
             "format": "date-time"
           },
-          "privacies": {
-            "$ref": "#/components/schemas/PrivacySettings"
-          },
-          "authObject": {
-            "$ref": "#/components/schemas/UserAuthObject"
-          },
           "contacts": {
             "type": "array",
             "items": {
@@ -3206,34 +3204,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/UserFile"
-            },
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "UserAuthObject": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "user": {
-            "$ref": "#/components/schemas/User"
-          },
-          "encryptedPassword": {
-            "type": "string",
-            "nullable": true
-          },
-          "lastGeneratedAuthToken": {
-            "type": "string",
-            "nullable": true
-          },
-          "deviceSessions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DeviceSession"
             },
             "nullable": true
           }
@@ -3324,23 +3294,6 @@
             "nullable": true
           },
           "status": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "UserInfoQueryRequest": {
-        "required": [
-          "email"
-        ],
-        "type": "object",
-        "properties": {
-          "email": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "customId": {
             "type": "string",
             "nullable": true
           }

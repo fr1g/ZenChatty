@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
@@ -10,22 +10,22 @@ public class ChatAgent
 {
     public static async Task Say(UserRelatedContext context, Message message, ChatHubService agency)
     {
+        message.Sender = null;
         context.Messages.Add(message);
         await context.SaveChangesAsync();
         await agency.SendMessageAsUserAsync(message);
     }
 
-    public static async Task SayWithFullUpdate(UserRelatedContext context, Message message, ChatHubService agency, ContactService contactService)
+    public static async Task SayWithFullUpdate(UserRelatedContext context, Message msg, ChatHubService agency)
     {
-        // 保存消息到数据库
-        context.Messages.Add(message);
+        msg.Sender = null;
+        
+        context.Messages.Add(msg);
         await context.SaveChangesAsync();
+        
+        var totalUnreadCount = await UpdateUnreadCountForChatAsync(context, msg.OfChatId, msg.SenderId, msg);
 
-        // 更新未读计数（排除发送者自己）
-        var totalUnreadCount = await UpdateUnreadCountForChatAsync(context, message.OfChatId, message.SenderId, message);
-
-        // 推送完整的Contact和Message对象给所有相关用户（排除发送者）
-        await agency.PushUpdatedContactAndMessageAsync(message.OfChatId, message.SenderId, message, totalUnreadCount);
+        await agency.PushUpdatedContactAndMessageAsync(msg.OfChatId, msg.SenderId, msg, totalUnreadCount);
     }
 
     /// <summary>

@@ -19,8 +19,14 @@ export class AuthApiClient extends ApiClientBase {
      * @returns 基础响应
      */
     public async register(request: RegisterRequest): Promise<BasicResponse> {
-        console.log(JSON.stringify(request));
-        return await this.post<BasicResponse>('/api/auth/register', request);
+        // i cannot understand why this in-class function cannot be found. IDIOT.
+        const req = {
+            ...request,
+            password: request.password?.trim().replaceAll(" ", ""),
+            email: request.email?.trim().replaceAll(" ", ""),
+            uniqueCustomId: request.uniqueCustomId?.trim().replaceAll(" ", ""),
+        } as RegisterRequest;
+        return await this.post<BasicResponse>('/api/auth/register', req);
     }
 
     /**
@@ -52,7 +58,7 @@ export class AuthApiClient extends ApiClientBase {
     }
 
     /**
-     * 获取用户's 信息
+     * get oneself's info (without privacies)
      * @returns 用户信息
      */
     public async getUserInfo(): Promise<User> {
@@ -60,18 +66,12 @@ export class AuthApiClient extends ApiClientBase {
     }
 
     /**
-     * 禁用用户 @deprecated ??????
-     * @param userId - 用户ID
-     * @returns 基础响应
+     * @deprecated
      */
     public async disableUser(userId: string): Promise<BasicResponse> {
         return await this.post<BasicResponse>(`/api/auth/disable/${userId}`);
     }
 
-    /**
-     * 心跳检测
-     * @returns 基础响应
-     */
     public async touch(): Promise<BasicResponse> {
         return await this.get<BasicResponse>('/api/auth/touch');
     }

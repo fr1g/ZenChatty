@@ -7,7 +7,7 @@ export class CreatePrivateChatRequest {
 }
 
 export class UserInfoQueryRequest {
-    public email: string = '';
+    public email?: string;
     public customId?: string;
 }
 

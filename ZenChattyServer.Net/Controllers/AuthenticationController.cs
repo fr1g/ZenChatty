@@ -112,7 +112,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
         {
             return Unauthorized(new BasicResponse 
             { 
-                content = "Lacking: AccessToken",
+                content = "Lacking: AccessToken (absolutely none)",
                 success = false 
             });
         }
@@ -135,7 +135,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
         {
             return BadRequest(new BasicResponse 
             { 
-                content = "Lacking: AccessToken",
+                content = "Lacking: AccessToken: GetUserInfo",
                 success = false 
             });
         }
@@ -174,7 +174,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
     [HttpGet("touch")]
     public ActionResult<BasicResponse> Touch()
     {
-        return Ok(new BasicResponse{ content = "it do works!", success = true });
+        return Ok(new BasicResponse{ content = $"It do works! \nExtra: Is System User Null: {Constants.SystemUser is null}; SystemUserName: \"{Constants.SystemUser?.DisplayName}\"#{Constants.SystemUser?.CustomId}", success = true });
     }
     
 }

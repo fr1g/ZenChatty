@@ -1,3 +1,5 @@
+using ZenChattyServer.Net.Models.Enums;
+
 namespace ZenChattyServer.Net.Models.Response;
 public class UserInfoResponse
     {
@@ -9,8 +11,8 @@ public class UserInfoResponse
         public string? Bio { get; set; }
         public string? CustomId { get; set; }
         public string? PhoneNumber { get; set; }
-        public ZenChattyServer.Net.Models.Enums.EUserStatus Status { get; set; }
-        public ZenChattyServer.Net.Models.Enums.EGender Gender { get; set; }
+        public EUserStatus Status { get; set; }
+        public EGender Gender { get; set; }
         public DateTime? Birth { get; set; }
         public DateTime RegisteredAt { get; set; }
         public bool success { get; set; }

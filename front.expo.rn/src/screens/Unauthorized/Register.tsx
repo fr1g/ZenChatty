@@ -147,6 +147,7 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                     <TextInput
+                        style={{padding: 10}}
                         className="bg-slate-400 w-full rounded-lg text-lg px-1.5"
                         placeholder="Enter your unique ID"
                         onBlur={() => handleUidValidation(value, onBlur)}

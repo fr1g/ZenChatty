@@ -14,6 +14,7 @@ export class Contact {
     isBlocked: boolean;
     displayName: string | null;
     avatarFileLocator: string | null;
+    hasVitalUnread: boolean = false;
 
     constructor(
         id: string,

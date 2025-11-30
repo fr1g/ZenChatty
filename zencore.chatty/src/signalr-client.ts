@@ -1,6 +1,24 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import * as Models from './models/index.js';
 
+interface SendMessageRequest {
+    ChatUniqueMark: string;
+    Content: string;
+    SentTimestamp?: number;
+    MessageType?: Models.EMessageType;
+    ViaGroupChatId?: string;
+    IsMentioningAll?: boolean;
+    MentionedUserIds?: string[];
+    Info?: string;
+}
+
+interface ReceiveUpdatedContactAndMessageData {
+    Contact: Models.Contact;
+    Message: Models.Message;
+    TotalUnreadCount: number;
+    UpdateTime: string;
+}
+
 export default class SignalRClient {
     private connection: HubConnection | null = null;
     private baseUrl: string;
@@ -26,6 +44,13 @@ export default class SignalRClient {
         }
 
         try {
+            console.log('正在建立SignalR连接:', {
+                baseUrl: this.baseUrl,
+                hubUrl: `${this.baseUrl}/chatHub`,
+                hasAccessToken: !!this.accessToken,
+                accessTokenLength: this.accessToken?.length || 0
+            });
+            
             this.connection = new HubConnectionBuilder()
                 .withUrl(`${this.baseUrl}/chatHub`, {
                     accessTokenFactory: () => this.accessToken || ''
@@ -44,7 +69,14 @@ export default class SignalRClient {
             await this.connection.start();
             console.log('SignalR连接已建立');
         } catch (error) {
-            console.error('SignalR连接失败:', error);
+            console.error('SignalR连接失败:', {
+                error,
+                baseUrl: this.baseUrl,
+                hubUrl: `${this.baseUrl}/chatHub`,
+                hasAccessToken: !!this.accessToken,
+                accessTokenLength: this.accessToken?.length || 0,
+                timestamp: new Date().toISOString()
+            });
             throw error;
         }
     }
@@ -66,9 +98,10 @@ export default class SignalRClient {
     private registerServerMethods(): void {
         if (!this.connection) return;
 
-        // 接收新消息
-        this.connection.on('ReceiveMessage', (message: Models.Message) => {
-            this.onMessageReceived?.(message);
+        // 接收更新的Contact和Message对象（后端实际推送的数据格式）
+        this.connection.on('ReceiveUpdatedContactAndMessage', (data: ReceiveUpdatedContactAndMessageData) => {
+            console.log('收到更新的Contact和Message:', data);
+            this.onContactAndMessageUpdated?.(data.Contact, data.Message, data.TotalUnreadCount);
         });
 
         // 接收未读计数更新
@@ -99,15 +132,21 @@ export default class SignalRClient {
     }
 
     /**
-     * 发送消息
+     * 发送消息（修复参数匹配问题）
      */
-    async sendMessage(chatId: string, content: string, messageType: Models.EMessageType = Models.EMessageType.Normal): Promise<void> {
+    async sendMessage(request: SendMessageRequest): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
             throw new Error('SignalR连接未建立');
         }
 
         try {
-            await this.connection.invoke('SendMessage', chatId, content, messageType);
+            // 设置默认时间戳
+            if (!request.SentTimestamp) {
+                request.SentTimestamp = Date.now();
+            }
+            
+            // 后端期望接收完整的SendMessageRequest对象
+            await this.connection.invoke('SendMessage', request);
         } catch (error) {
             console.error('发送消息失败:', error);
             throw error;
@@ -115,15 +154,29 @@ export default class SignalRClient {
     }
 
     /**
+     * 简化的发送消息方法（保持向后兼容）
+     */
+    async sendSimpleMessage(chatId: string, content: string, messageType: Models.EMessageType = Models.EMessageType.Normal): Promise<void> {
+        const request: SendMessageRequest = {
+            ChatUniqueMark: chatId,
+            Content: content,
+            MessageType: messageType,
+            SentTimestamp: Date.now()
+        };
+        
+        return this.sendMessage(request);
+    }
+
+    /**
      * 加入聊天组
      */
-    async joinChat(chatId: string): Promise<void> {
+    async joinChat(chatUniqueMark: string): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
             throw new Error('SignalR连接未建立');
         }
 
         try {
-            await this.connection.invoke('JoinChat', chatId);
+            await this.connection.invoke('JoinChat', chatUniqueMark);
         } catch (error) {
             console.error('加入聊天组失败:', error);
             throw error;
@@ -133,13 +186,13 @@ export default class SignalRClient {
     /**
      * 离开聊天组
      */
-    async leaveChat(chatId: string): Promise<void> {
+    async leaveChat(chatUniqueMark: string): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
             throw new Error('SignalR连接未建立');
         }
 
         try {
-            await this.connection.invoke('LeaveChat', chatId);
+            await this.connection.invoke('LeaveChat', chatUniqueMark);
         } catch (error) {
             console.error('离开聊天组失败:', error);
             throw error;
@@ -170,7 +223,7 @@ export default class SignalRClient {
     }
 
     // 事件回调函数
-    public onMessageReceived?: (message: Models.Message) => void;
+    public onContactAndMessageUpdated?: (contact: Models.Contact, message: Models.Message, totalUnreadCount: number) => void;
     public onUnreadCountUpdated?: (contactId: string, unreadCount: number) => void;
     public onContactUpdated?: (contact: Models.Contact) => void;
     public onReconnecting?: (error?: Error) => void;

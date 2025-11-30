@@ -7,17 +7,8 @@ namespace ZenChattyServer.Net.Services;
 /// <summary>
 /// 联系人服务 - 管理未读消息计数
 /// </summary>
-public class ContactService
+public class ContactService(UserRelatedContext context, ILogger<ContactService> logger)
 {
-    private readonly UserRelatedContext _context;
-    private readonly ILogger<ContactService> _logger;
-
-    public ContactService(UserRelatedContext context, ILogger<ContactService> logger)
-    {
-        _context = context;
-        _logger = logger;
-    }
-
     /// <summary>
     /// 增加聊天中所有联系人的未读计数
     /// </summary>
@@ -26,7 +17,7 @@ public class ContactService
         try
         {
             // 获取聊天中的所有联系人
-            var contacts = await _context.Contacts
+            var contacts = await context.Contacts
                 .Include(c => c.Object)
                 .Where(c => c.Object.UniqueMark == chatUniqueMark)
                 .ToListAsync();
@@ -41,15 +32,15 @@ public class ContactService
                 contact.LastUnreadCount++;
                 contact.LastUsed = DateTime.UtcNow;
                 
-                _logger.LogDebug("增加用户 {UserId} 在聊天 {ChatId} 的未读计数，当前: {Count}", 
+                logger.LogDebug("增加用户 {UserId} 在聊天 {ChatId} 的未读计数，当前: {Count}", 
                     contact.HostId, chatUniqueMark, contact.LastUnreadCount);
             }
 
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "增加未读计数失败，聊天: {ChatId}", chatUniqueMark);
+            logger.LogError(ex, "增加未读计数失败，聊天: {ChatId}", chatUniqueMark);
             throw;
         }
     }
@@ -61,7 +52,7 @@ public class ContactService
     {
         try
         {
-            var contact = await _context.Contacts
+            var contact = await context.Contacts
                 .Include(c => c.Object)
                 .FirstOrDefaultAsync(c => c.HostId == userId && c.Object.UniqueMark == chatUniqueMark);
 
@@ -74,15 +65,15 @@ public class ContactService
                 contact.HasVitalUnread = false; // 重置重要未读标记
                 contact.LastUsed = DateTime.UtcNow;
 
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 
-                _logger.LogDebug("重置用户 {UserId} 在聊天 {ChatId} 的未读计数，原值: {OldCount}, 原重要标记: {HadVital}", 
+                logger.LogDebug("重置用户 {UserId} 在聊天 {ChatId} 的未读计数，原值: {OldCount}, 原重要标记: {HadVital}", 
                     userId, chatUniqueMark, oldCount, hadVitalUnread);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "重置未读计数失败，用户: {UserId}, 聊天: {ChatId}", userId, chatUniqueMark);
+            logger.LogError(ex, "重置未读计数失败，用户: {UserId}, 聊天: {ChatId}", userId, chatUniqueMark);
             throw;
         }
     }
@@ -94,7 +85,7 @@ public class ContactService
     {
         try
         {
-            var contacts = await _context.Contacts
+            var contacts = await context.Contacts
                 .Include(c => c.Object)
                 .Where(c => c.HostId == userId)
                 .Select(c => new { c.Object.UniqueMark, c.LastUnreadCount })
@@ -104,7 +95,7 @@ public class ContactService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取用户未读计数失败，用户: {UserId}", userId);
+            logger.LogError(ex, "获取用户未读计数失败，用户: {UserId}", userId);
             return new Dictionary<string, ushort>();
         }
     }
@@ -116,13 +107,13 @@ public class ContactService
     {
         try
         {
-            return await _context.Contacts
+            return await context.Contacts
                 .Where(c => c.HostId == userId)
                 .SumAsync(c => (int)c.LastUnreadCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取总未读计数失败，用户: {UserId}", userId);
+            logger.LogError(ex, "获取总未读计数失败，用户: {UserId}", userId);
             return 0;
         }
     }
@@ -134,7 +125,7 @@ public class ContactService
     {
         try
         {
-            return await _context.Contacts
+            return await context.Contacts
                 .Include(c => c.Object)
                 .Include(c => c.Object.History.OrderByDescending(m => m.SentTimestamp).Take(1))
                 .Where(c => c.HostId == userId)
@@ -143,7 +134,7 @@ public class ContactService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "获取联系人列表失败，用户: {UserId}", userId);
+            logger.LogError(ex, "获取联系人列表失败，用户: {UserId}", userId);
             return new List<Contact>();
         }
     }

@@ -1,19 +1,10 @@
 import { ApiClientBase } from './base';
-import { UserInfoResponse } from '../models/user';
-import { UserInfoQueryRequest } from '../models/requests';
+
 import { BasicResponse } from '../models/auth';
 import { Contact } from '../models/other';
 import { PrivacySettings, PrivacySettingsResponse } from '../models/other';
 
 export class UserApiClient extends ApiClientBase {
-    /**
-     * 获取用户信息
-     * @param request - 用户信息查询请求
-     * @returns 用户信息响应
-     */
-    public async getUserInfo(request: UserInfoQueryRequest): Promise<UserInfoResponse> {
-        return await this.post<UserInfoResponse>('/api/social/get-user-info', request);
-    }
 
     /**
      * 检查用户是否被禁用

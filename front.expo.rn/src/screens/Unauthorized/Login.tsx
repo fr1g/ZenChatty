@@ -5,12 +5,11 @@ import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
-import { CoreRedux, LoginDataForm, LoginRequest, Credential, setUser } from "zen-core-chatty-ts";
+import { CoreRedux, LoginDataForm, LoginRequest, Credential, setUser, setCredential, CreateZenCoreClient } from "zen-core-chatty-ts";
 import { RootState } from "../../redux/StoreProvider";
-import zenCoreClient from "../../api/ZenCoreClientInstance";
 import { SQLiteStorageAdapter } from "../../database/SQLiteStorageAdapter";
 import { ClientConfig } from "../../App";
-import DeviceInfo from 'react-native-device-info';
+import * as Device from 'expo-device';
 
 const { loginUser } = CoreRedux;
 
@@ -38,18 +37,16 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
     const authState = useSelector((state: RootState) => state.auth);
     const [deviceId, setDeviceId] = useState<string>('');
     
-    // 获取设备IMEI
+    // 获取设备唯一标识符
     useEffect(() => {
         const getDeviceId = async () => {
             try {
-                const imei = await DeviceInfo.getUniqueId();
-                setDeviceId(imei);
-                console.log('Device IMEI:', imei);
+                // 使用expo-device获取设备唯一标识符
+                const deviceId = Device.osBuildId || Device.modelId || Device.deviceName || Device.brand || 'unknown-device';
+                setDeviceId(deviceId);
+                console.log('Device ID:', deviceId);
             } catch (error) {
-                console.error('Failed to get device IMEI:', error);
-                // 如果获取失败，使用备用标识符
-                const uniqueId = await DeviceInfo.getUniqueId();
-                setDeviceId(uniqueId);
+                console.error('Failed to get device ID:', error);
             }
         };
         
@@ -107,23 +104,20 @@ function LoginMain({ bottomInset, switching }: { bottomInset: number, switching:
                 }
             };
             
-            // 修复字段映射问题：将 LoginRequest 正确转换为 LoginDataForm
+            // LoginRequest => LoginDataForm
             const loginDataForm: LoginDataForm = {
-                login: data.username!, // 将 username 映射到 login
-                passwd: data.password!, // 将 password 映射到 passwd
-                deviceId: deviceId // 使用设备IMEI作为deviceId
+                login: data.username!,  
+                passwd: data.password!,  
+                deviceId: deviceId 
             };
             
             const result 
                 = await dispatch(loginUser({loginData: loginDataForm, clientConfig: ClientConfig, storageMethod}) as any)
                 .unwrap() as Credential;
-            console.log(`X: Login result: ${JSON.stringify(result as Credential)}`);
             if(!result) throw new Error("invalid response");
-            // 登录成功后，获取用户信息并缓存到SQLite
             try {
 
-                // 设置认证令牌
-                zenCoreClient.setAuthToken(result?.AccessToken);
+                const zenCoreClient = CreateZenCoreClient({...ClientConfig, userToken: result.AccessToken});
                 
                 // 调用AuthApiClient.getUserInfo()获取用户信息
                 const userInfo = await zenCoreClient.auth.getUserInfo();

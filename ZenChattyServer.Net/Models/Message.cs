@@ -41,7 +41,7 @@ public class Message(User sender, Chat ofChat, string content)
      */
 
     public Guid SenderId { get; set; }
-    public virtual User Sender { get; set; } = sender;
+    public virtual User? Sender { get; set; } = sender;
     
     public string? ViaGroupChatId { get; set; } = null;
     

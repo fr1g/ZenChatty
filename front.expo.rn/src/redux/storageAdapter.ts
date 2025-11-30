@@ -10,9 +10,7 @@ export const StorageMethods: ZenStorageMethods = {
   storageMethod: async (object: any, wipe: boolean): Promise<any> => {
     try {
       if (wipe) {
-        // 清除数据 - 根据对象类型决定清除策略
         if (object && object.user_guid) {
-          // 清除用户相关数据
           await sqliteAdapter.deleteCredential(object.user_guid);
           console.log('清除用户凭据:', object.user_guid);
         }

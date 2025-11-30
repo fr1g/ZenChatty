@@ -27,13 +27,14 @@ public class UserSocialController(
     /// <summary>
     /// 查询用户信息（根据隐私设置过滤）
     /// </summary>
-    [HttpPost("get-user-info")]
-    public async Task<ActionResult<UserInfoResponse>> QueryUserInfo([FromBody] UserInfoQueryRequest request)
+    [HttpPost("get-user-info/{targetSeekBy}")]
+    public async Task<ActionResult<UserInfoResponse>> QueryUserInfo(string targetSeekBy) // wrong! it should be:
+    // todo it should be a path variable, search it if the id match or the email match
     {
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
 
-        var result = await userSocialService.QueryUserInfoAsync(refer.user!.LocalId.ToString(), request.Email, request.CustomId);
+        var result = await userSocialService.QueryUserInfoAsync(refer.user!, targetSeekBy.ToLower());
         
         if (!result.success)
             return BadRequest(result);

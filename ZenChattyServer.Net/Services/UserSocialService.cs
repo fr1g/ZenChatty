@@ -79,27 +79,19 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 查询用户信息（根据隐私设置过滤）
     /// </summary>
-    public async Task<UserInfoResponse> QueryUserInfoAsync(string requesterUserId, string email, string? customId)
+    public async Task<UserInfoResponse> QueryUserInfoAsync(User requester, string targetSeekBy)
     {
         try
         {
-            var requester = await context.Users
-                .Include(u => u.Privacies)
-                .FirstOrDefaultAsync(u => u.LocalId.ToString() == requesterUserId);
-            
-            if (requester == null)
-                return new UserInfoResponse { success = false, message = "请求用户不存在" };
-
-            // 查找目标用户
             var targetUser = await context.Users
                 .Include(u => u.Privacies)
-                .FirstOrDefaultAsync(u => u.Email == email || u.CustomId == customId);
+                .FirstOrDefaultAsync(u => u.Email == targetSeekBy || u.CustomId == targetSeekBy);
             
             if (targetUser == null)
                 return new UserInfoResponse { success = false, message = "目标用户不存在" };
 
             // 检查是否允许通过搜索发现
-            if (!targetUser.Privacies.IsDiscoverableViaSearch)
+            if (!targetUser.Privacies.IsDiscoverableViaSearch) // log: dont know why in properties this guy got a [?], and i didnt remember why make this nullable
                 return new UserInfoResponse { success = false, message = "该用户不允许被搜索" };
 
             // 检查关系以确定可见性
@@ -436,45 +428,46 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             {
                 contact.IsBlocked = false;
             }
-
-            // 检查是否已经是好友（非临时私聊）
-            var existingPrivateChat = await context.PrivateChats
-                .Include(pc => pc.InitBy)
-                .Include(pc => pc.Receiver)
-                .FirstOrDefaultAsync(pc => 
-                    ((pc.InitBy.LocalId.ToString() == userId1 && pc.Receiver.LocalId.ToString() == userId2) ||
-                     (pc.InitBy.LocalId.ToString() == userId2 && pc.Receiver.LocalId.ToString() == userId1)) &&
-                    !pc.IsInformal);
-
-            if (existingPrivateChat == null)
-            {
-                // 创建正式私聊
-                var user1 = await context.Users.FindAsync(Guid.Parse(userId1));
-                var user2 = await context.Users.FindAsync(Guid.Parse(userId2));
-
-                if (user1 == null || user2 == null)
-                    return (false, "用户不存在");
-
-                var privateChat = new PrivateChat(user1, user2)
-                {
-                    IsInformal = false
-                };
-
-                context.PrivateChats.Add(privateChat);
-
-                // 为双方创建Contact对象
-                var contact1 = new Contact(user1, privateChat)
-                {
-                    DisplayName = user2.DisplayName ?? user2.CustomId
-                };
-
-                var contact2 = new Contact(user2, privateChat)
-                {
-                    DisplayName = user1.DisplayName ?? user1.CustomId
-                };
-
-                context.Contacts.AddRange(contact1, contact2);
-            }
+            
+            // ALREADY CREATED, otherwise how to block?
+            // // 检查是否已经是好友（非临时私聊）
+            // var existingPrivateChat = await context.PrivateChats
+            //     .Include(pc => pc.InitBy)
+            //     .Include(pc => pc.Receiver)
+            //     .FirstOrDefaultAsync(pc => 
+            //         ((pc.InitBy.LocalId.ToString() == userId1 && pc.Receiver.LocalId.ToString() == userId2) ||
+            //          (pc.InitBy.LocalId.ToString() == userId2 && pc.Receiver.LocalId.ToString() == userId1)) &&
+            //         !pc.IsInformal);
+            //
+            // if (existingPrivateChat == null)
+            // {
+            //     // 创建正式私聊
+            //     var user1 = await context.Users.FindAsync(Guid.Parse(userId1));
+            //     var user2 = await context.Users.FindAsync(Guid.Parse(userId2));
+            //
+            //     if (user1 == null || user2 == null)
+            //         return (false, "用户不存在");
+            //
+            //     var privateChat = new PrivateChat(user1, user2)
+            //     {
+            //         IsInformal = false
+            //     };
+            //
+            //     context.PrivateChats.Add(privateChat);
+            //
+            //     // 为双方创建Contact对象
+            //     var contact1 = new Contact(user1, privateChat)
+            //     {
+            //         DisplayName = user2.DisplayName ?? user2.CustomId
+            //     };
+            //
+            //     var contact2 = new Contact(user2, privateChat)
+            //     {
+            //         DisplayName = user1.DisplayName ?? user1.CustomId
+            //     };
+            //
+            //     context.Contacts.AddRange(contact1, contact2);
+            // }
 
             await context.SaveChangesAsync();
 
@@ -497,44 +490,6 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
         {
             logger.LogError(ex, "Failed to unblock and add friend");
             return (false, "Failed to unblock and add friend");
-        }
-    }
-    
-    /// <summary>
-    /// 解除拉黑并发送消息
-    /// </summary>
-    public async Task<(bool success, string message)> UnblockAndSendGreetingAsync(
-        string userId, string targetUserId)
-    {
-        try
-        {
-            var contact = await context.Contacts
-                .Include(c => c.Object)
-                .FirstOrDefaultAsync(c => 
-                    c.HostId.ToString() == userId && 
-                    c.Object is PrivateChat && 
-                    (((PrivateChat)c.Object).InitById.ToString() == targetUserId || 
-                     ((PrivateChat)c.Object).ReceiverId.ToString() == targetUserId));
-
-            if (contact == null)
-                return (false, "Contact does not exist");
-
-            if (!contact.IsBlocked)
-                return (false, "User is not blocked");
-
-            // 解除拉黑
-            contact.IsBlocked = false;
-
-            // 发送打招呼消息
-            await SendGreetingMessageAsync(contact.ObjectId, userId);
-
-            await context.SaveChangesAsync();
-            return (true, "Unblocked and sent greeting message successfully");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to unblock");
-            return (false, "Failed to unblock");
         }
     }
 

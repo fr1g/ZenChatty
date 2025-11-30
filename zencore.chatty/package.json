@@ -1,6 +1,6 @@
 {
   "name": "zen-core-chatty-ts",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "description": "ZenCore Chatty TypeScript SDK : for all ZenChatties",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

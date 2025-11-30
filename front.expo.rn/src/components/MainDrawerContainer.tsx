@@ -7,7 +7,8 @@ import { useSelector, useDispatch } from "react-redux";
 import { RootState, User, logoutUser, Credential } from "zen-core-chatty-ts";
 import { useEffect, useState } from "react";
 import { SQLiteStorageAdapter } from "../database/SQLiteStorageAdapter";
-import { ClientConfig } from "App";
+import { ClientConfig } from "./../App";
+import { LogoutHelper } from "../class/helpers/LogoutHelper";
 
 type Props = {
     state: DrawerNavigationState<ParamListBase>;
@@ -20,6 +21,7 @@ export default function MainDrawerContainer(props: Props) {
     const user = useSelector((state: RootState) => state.auth.user);
     const credential = useSelector((state: RootState) => state.auth.credential);
     const dispatch = useDispatch();
+    const [storageAdapter, setStorageAdapter] = useState(new SQLiteStorageAdapter());
     
     useEffect(() => {
         setUser(user);
@@ -41,18 +43,19 @@ export default function MainDrawerContainer(props: Props) {
                     onPress: async () => {
                         try {
                             if (credential) {
-                                // 创建SQLite存储适配器
-                                const storageAdapter = new SQLiteStorageAdapter();
                                 await storageAdapter.initialize();
-                                
                                 // 调用退出登录action
                                 await dispatch(logoutUser({
                                     credential,
                                     clientConfig: ClientConfig,
                                     storageMethod: async (credentialToClear: Credential, wipe: boolean) => {
                                         if (wipe) {
-                                            await storageAdapter.deleteCredential(credentialToClear.UserGuid);
-                                            console.log('登录凭证已从数据库删除');
+                                            // 使用工具方法清理用户数据
+                                            await LogoutHelper.cleanupUserData(
+                                                credentialToClear, 
+                                                storageAdapter, 
+                                                ClientConfig
+                                            );
                                         }
                                     }
                                 }) as any).unwrap();
@@ -64,7 +67,10 @@ export default function MainDrawerContainer(props: Props) {
                             }
                         } catch (error) {
                             console.error('退出登录失败:', error);
-                            Alert.alert('错误', '退出登录失败，请重试');
+                            Alert.alert('Error when logging out', 'Your credential will be safely cleaned up');
+                            await storageAdapter.initialize();
+                            await LogoutHelper.cleanupCredentialsOnly(user!.localId, storageAdapter)
+
                         }
                     }
                 }
@@ -72,7 +78,7 @@ export default function MainDrawerContainer(props: Props) {
         );
     };
 
-    return <DrawerContentScrollView {...props} style={styles.drawerContainer}>
+    return <DrawerContentScrollView {...props} className="border-2 border-black" style={styles.drawerContainer}>
         {/* 自定义头部 */}
         <View style={styles.drawerHeader}>
             <Text style={styles.drawerHeaderText}>{user?.displayName || user?.customId}</Text>
@@ -85,6 +91,7 @@ export default function MainDrawerContainer(props: Props) {
             onPress={() => Linking.openURL('https://mywebsite.com/help')}
         />
         {/* 退出登录按钮 */}
+        <View className="grow h-full"></View>
         <DrawerItem
             label="退出登录"
             onPress={handleLogout}

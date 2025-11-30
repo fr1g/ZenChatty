@@ -44,7 +44,7 @@ public class User(string email)
     public DateTime RegisteredAt { get; set; } = DateTime.Now;
     
     [JsonIgnore]
-    public virtual PrivacySettings? Privacies { get; set; } = new();
+    public virtual PrivacySettings Privacies { get; set; } = new();
     
     [JsonIgnore]
     public virtual UserAuthObject? AuthObject { get; set; }

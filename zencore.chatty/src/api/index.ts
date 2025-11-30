@@ -11,14 +11,17 @@ export interface ClientInitObject {
     baseURL: string | null;
     port: number | null;
     userToken: string | null;
+    userAgent: string | undefined;
     timeout: number | null;
 };
 
+const _defaultUa = "zencore SDK default";
 export function CreateZenCoreClient(config: ClientInitObject) {
     return new ZenCoreClient(
         config.baseURL ?? 'https://localhost:5637',
         config.port ?? 5637,
         config.userToken ?? undefined,
+        config.userAgent ?? _defaultUa,
         config.timeout ?? 10000
     )
 }
@@ -33,7 +36,9 @@ export class ZenCoreClient {
     public readonly privacy: PrivacyApiClient;
     public readonly contact: ContactApiClient;
 
-    constructor(baseURL: string = 'https://localhost:5637', port: number = 5637, userToken: string | undefined = undefined, timeout: number = 10000) {
+    public settedTokenRaw: string = "none";
+
+    constructor(baseURL: string = 'https://localhost:5637', port: number = 5637, userToken: string | undefined = undefined, userAgent: string = _defaultUa, timeout: number = 10000) {
 
         let assembled = baseURL.match(/:[0-9]/g) ? baseURL : baseURL + ":" + port;
 
@@ -51,6 +56,7 @@ export class ZenCoreClient {
     }
 
     public setAuthToken(token: string): void {
+        this.settedTokenRaw = token;
         this.auth.setAuthToken(token);
         this.user.setAuthToken(token);
         this.chat.setAuthToken(token);

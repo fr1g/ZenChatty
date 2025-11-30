@@ -54,7 +54,7 @@ public class AuthHelper
 
         if (string.IsNullOrEmpty(token))
         {
-            result.failResult = new BasicResponse { content = "Lacking: AccessToken", success = false };
+            result.failResult = new BasicResponse { content = "Lacking: AccessToken (by: rejected)", success = false };
             return result;
         }
 

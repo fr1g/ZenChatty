@@ -13,7 +13,7 @@ public class PrivacySettings
     
     public virtual User User { get; set; } = null!;
 
-    public bool IsDiscoverableViaSearch { get; set; } = false;
+    public bool IsDiscoverableViaSearch { get; set; } = true; // temporary set this as default
     public bool IsInvitableToGroup { get; set; } = false;
     public bool IsAddableFromGroup { get; set; } = false;
     public bool IsNewChatKeepSilent { get; set; } = false;

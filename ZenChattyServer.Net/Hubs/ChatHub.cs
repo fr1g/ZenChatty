@@ -137,7 +137,10 @@ public class ChatHub(
             // 4. 将消息发送到消息队列
             await messageQueueService.SendMessageAsync(message);
 
-            // 5. 推送完整的Contact和Message对象给所有相关用户
+            // 5. 增加聊天中所有联系人的未读计数（排除发送者自己）
+            await contactService.IncreaseUnreadCountAsync(request.ChatUniqueMark, userId.Value);
+
+            // 6. 推送完整的Contact和Message对象给所有相关用户
             await PushUpdatedContactAndMessageAsync(request.ChatUniqueMark, userId.Value, message);
 
             logger.LogInformation("用户 {UserId} 在聊天 {ChatId} 发送消息，消息ID: {MessageId}", 
@@ -390,6 +393,7 @@ public class ChatHub(
 
     /// <summary>
     /// 获取用户所有聊天的未读计数（客户端调用）
+    /// I DOUBT IF THIS IS REALLY GOTTA BE USED. 
     /// </summary>
     public async Task GetUnreadCounts()
     {
@@ -472,7 +476,10 @@ public class ChatHub(
             // 4. 将消息发送到消息队列
             await messageQueueService.SendMessageAsync(message);
 
-            // 5. 推送完整的Contact和Message对象给所有相关用户
+            // 5. 增加聊天中所有联系人的未读计数（排除发送者自己）
+            await contactService.IncreaseUnreadCountAsync(chatUniqueMark, senderId);
+
+            // 6. 推送完整的Contact和Message对象给所有相关用户
             await PushUpdatedContactAndMessageAsync(chatUniqueMark, senderId, message);
 
             logger.LogInformation("模拟用户 {SenderId} 在聊天 {ChatId} 发送消息，消息ID: {MessageId}", 
