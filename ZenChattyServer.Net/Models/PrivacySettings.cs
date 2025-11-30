@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Models;
@@ -11,6 +12,7 @@ public class PrivacySettings
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
     
+    [JsonIgnore]
     public virtual User User { get; set; } = null!;
 
     public bool IsDiscoverableViaSearch { get; set; } = true; // temporary set this as default

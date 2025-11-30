@@ -83,8 +83,7 @@ public class ChatQueryHelper
     {
         return await _context.PrivateChats
             .AsNoTracking()
-            .Include(pc => pc.InitBy)
-            .Include(pc => pc.Receiver)
+            .Include(pc => pc.InitBy) // ?
             .FirstOrDefaultAsync(pc => pc.UniqueMark == chatUniqueMark);
     }
 

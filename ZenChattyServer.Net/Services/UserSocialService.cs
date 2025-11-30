@@ -327,10 +327,9 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             // 检查是否已经是好友（非临时私聊）
             var existingPrivateChat = await context.PrivateChats
                 .Include(pc => pc.InitBy)
-                .Include(pc => pc.Receiver)
                 .FirstOrDefaultAsync(pc => 
-                    ((pc.InitBy.LocalId.ToString() == initiatorUserId && pc.Receiver.LocalId.ToString() == targetUser.LocalId.ToString()) ||
-                     (pc.InitBy.LocalId.ToString() == targetUser.LocalId.ToString() && pc.Receiver.LocalId.ToString() == initiatorUserId)) &&
+                    ((pc.InitBy.LocalId.ToString() == initiatorUserId && pc.ReceiverId.ToString() == targetUser.LocalId.ToString()) ||
+                     (pc.InitBy.LocalId.ToString() == targetUser.LocalId.ToString() && pc.ReceiverId.ToString() == initiatorUserId)) &&
                     !pc.IsInformal);
 
             if (existingPrivateChat != null)
@@ -376,17 +375,15 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             context.PrivateChats.Add(privateChat);
             await context.SaveChangesAsync(); // 
             
-            var contactName = string.IsNullOrEmpty(targetUser.DisplayName) ? targetUser.CustomId : targetUser.DisplayName;
-
             // 为双方创建Contact对象
             var contact1 = new Contact(initiator, privateChat)
             {
-                DisplayName = contactName
+                DisplayName = targetUser.DisplayName
             };
 
             var contact2 = new Contact(targetUser, privateChat)
             {
-                DisplayName = contactName
+                DisplayName = initiator.DisplayName
             };
 
             context.Contacts.AddRange(contact1, contact2);
@@ -420,7 +417,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                     (c.Host.LocalId.ToString() == userId1 || c.Host.LocalId.ToString() == userId2) &&
                     c.Object is PrivateChat && 
                     (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 ||
-                     ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId1 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId2))
+                     ((PrivateChat)c.Object).ReceiverId.ToString() == userId1 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
                 .ToListAsync();
 
             // 解除拉黑状态
@@ -476,7 +473,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 .Include(c => c.Object)
                 .Where(c => c.Host.LocalId.ToString() == userId1 && 
                            c.Object is PrivateChat && 
-                           (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).Receiver.LocalId.ToString() == userId2))
+                           (((PrivateChat)c.Object).InitBy.LocalId.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
                 .FirstOrDefaultAsync();
 
             if (user1Contacts != null)

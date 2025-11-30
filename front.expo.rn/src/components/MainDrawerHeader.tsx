@@ -60,9 +60,11 @@ export default function
                 />
             </TouchableOpacity>
 
-            <Text className='text-zinc-50 px-1 text-xl my-auto pt-1 align-middle'>{
+            <Text className='text-zinc-50 px-1 text-xl my-auto pt-1 align-middle'>
+                {
                     title == "index" ? `Welcome, ${user?.customId}!` : title
-                }</Text>
+                }
+            </Text>
 
         </View>
     </View>

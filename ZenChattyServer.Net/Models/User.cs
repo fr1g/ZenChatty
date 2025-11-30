@@ -51,7 +51,6 @@ public class User(string email)
     
     public virtual ICollection<Contact> Contacts { get; set; } = new List<Contact>();
     public virtual ICollection<GroupChatMember> GroupMemberships { get; set; } = new List<GroupChatMember>();
-    public virtual ICollection<PrivateChat> PrivateChats { get; set; } = new List<PrivateChat>();
-    public virtual ICollection<Chat> Chats { get; set; } = new List<Chat>();
+    
     
 }

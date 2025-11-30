@@ -42,23 +42,23 @@ public class UserRelatedContext : DbContext
             .HasForeignKey<PrivacySettings>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
             
-        modelBuilder.Entity<Chat>()
-            .HasOne(c => c.InitBy)
-            .WithMany(u => u.Chats)
-            .HasForeignKey("InitById")
-            .OnDelete(DeleteBehavior.Restrict);
-            
-        modelBuilder.Entity<PrivateChat>()
-            .HasOne(pc => pc.Receiver)
-            .WithMany(u => u.PrivateChats)
-            .HasForeignKey("ReceiverId")
-            .OnDelete(DeleteBehavior.Restrict);
-            
-        // modelBuilder.Entity<Message>()
-        //     .HasOne(m => m.Sender)
-        //     .WithMany(u => u.Messages)
-        //     .HasForeignKey("SenderId")
+        // can user only have relationship via contact.
+        // User -> Contact -> PrivateChat(Chat) <- Contact <- User ...OR
+        // User Created Group --> Group <- GroupMembers <-- ...Users (1v1)
+        
+        // modelBuilder.Entity<Chat>()
+        //     .HasOne(c => c.InitBy)
+        //     .WithMany(u => u.Chats)
+        //     .HasForeignKey("InitById")
         //     .OnDelete(DeleteBehavior.Restrict);
+        //     
+        // modelBuilder.Entity<PrivateChat>()
+        //     .HasOne(pc => pc.Receiver)
+        //     .WithMany(u => u.PrivateChats)
+        //     .HasForeignKey("ReceiverId")
+        //     .OnDelete(DeleteBehavior.Restrict);
+        
+        // ?
             
         modelBuilder.Entity<Message>()
             .HasOne(m => m.OfChat)
@@ -70,7 +70,7 @@ public class UserRelatedContext : DbContext
             .HasOne(c => c.Host)
             .WithMany(u => u.Contacts)
             .HasForeignKey("HostId")
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
             
         modelBuilder.Entity<Contact>()
             .HasOne(c => c.Object)
@@ -90,15 +90,6 @@ public class UserRelatedContext : DbContext
             .HasForeignKey("InvitedById")
             .OnDelete(DeleteBehavior.Restrict);
             
-        modelBuilder.Entity<GroupChatMember>()
-            .HasIndex(gcm => gcm.TheGuyId);
-            
-        modelBuilder.Entity<GroupChatMember>()
-            .HasIndex(gcm => gcm.GroupChatId);
-            
-        modelBuilder.Entity<GroupChatMember>()
-            .HasIndex(gcm => gcm.InvitedById);
-            
         modelBuilder.Entity<GroupChat>()
             .HasMany(gc => gc.Members)
             .WithOne(gcm => gcm.GroupChat)
@@ -111,8 +102,7 @@ public class UserRelatedContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
             
         modelBuilder.Entity<UserAuthObject>()
-            .HasKey(uao => uao.Id);
-            
+            .HasKey(uao => uao.Id); // with
         modelBuilder.Entity<UserAuthObject>()
             .HasOne(uao => uao.User)
             .WithOne()
@@ -127,19 +117,21 @@ public class UserRelatedContext : DbContext
             
         modelBuilder.Entity<DeviceSession>()
             .Property(ds => ds.RowVersion)
-            .IsRowVersion();
+            .IsRowVersion(); // deprecated?
 
         // configure TPT inheritance for chat hierarchy
         modelBuilder.Entity<Chat>().ToTable("Chats");
         modelBuilder.Entity<PrivateChat>().ToTable("PrivateChats");
         modelBuilder.Entity<GroupChat>().ToTable("GroupChats");
         
-        // // 配置UserFile实体
-        // modelBuilder.Entity<UserFile>()
-        //     .HasOne(uf => uf.Uploader)
-        //     .WithMany(u => u.UserFiles)
-        //     .HasForeignKey(uf => uf.UploaderId)
-        //     .OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.TheGuyId);
+            
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.GroupChatId);
+            
+        modelBuilder.Entity<GroupChatMember>()
+            .HasIndex(gcm => gcm.InvitedById);
 
         base.OnModelCreating(modelBuilder);
     }

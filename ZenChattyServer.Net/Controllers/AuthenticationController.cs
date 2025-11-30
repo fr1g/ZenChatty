@@ -151,7 +151,7 @@ public class AuthenticationController(AuthService authService, JwtConfig jwtConf
             });
         }
         user.Privacies = null!; // not saving lmfao
-        Console.WriteLine(user.Privacies == null); 
+        user.Contacts = null!;
         return Ok(user);
         //
         // var userInfo = await authService.GetUserInfoAsync(user.LocalId);

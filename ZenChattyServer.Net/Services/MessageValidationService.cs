@@ -39,7 +39,7 @@ public class MessageValidationService(UserRelatedContext context)
 
         // 3. 检查聊天是否为私聊
         var privateChat = await context.PrivateChats
-            .Include(pc => pc.Receiver)
+            // .Include(pc => pc.Receiver)
             .FirstOrDefaultAsync(pc => pc.UniqueMark == chat.UniqueMark);
             
         if (privateChat == null)
@@ -210,7 +210,6 @@ public class MessageValidationService(UserRelatedContext context)
             return SendMessageResponse.ChatNotFound();
 
         var privateChat = await context.PrivateChats
-            .Include(pc => pc.Receiver)
             .Include(c => c.InitBy)
             .FirstOrDefaultAsync(pc => pc.UniqueMark == chat.UniqueMark);
             
@@ -224,14 +223,10 @@ public class MessageValidationService(UserRelatedContext context)
                           c.ObjectId == senderId.ToString() && 
                           !c.IsBlocked &&
                           !((PrivateChat)c.Object).IsInformal);
-
-        var xi = RelationshipHelper.IsUserAFriend(context, privateChat.InitBy, privateChat.Receiver);
-
-        // 如果是好友关系，不限制消息类型
+        
         if (isFriend)
             return SendMessageResponse.Success(Guid.NewGuid());
 
-        // 如果通过群聊发起且验证通过，不限制消息类型
         if (!string.IsNullOrEmpty(viaGroupChatId))
         {
             var groupValidationResult = await ValidateViaGroupChatAsync(viaGroupChatId, senderId, privateChat.ReceiverId);
@@ -239,7 +234,6 @@ public class MessageValidationService(UserRelatedContext context)
                 return SendMessageResponse.Success(Guid.NewGuid());
         }
 
-        // 非好友关系且非群聊发起，Requesting only
         if (messageType != EMessageType.Requesting)
             return SendMessageResponse.Unauthorized("REQUESTING ONLY");
 
