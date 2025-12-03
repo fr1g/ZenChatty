@@ -9,15 +9,15 @@ import { SignalRContext } from 'App';
 export default function Overview() {
     const signalRClient = useContext(SignalRContext)
     const { contacts, loading, error, refetch } = useContacts(signalRClient!);
-    
+
     // 格式化最后消息时间
     const formatLastMessageTime = (timestamp?: number) => {
         if (!timestamp) return "notime";
-        
+
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now.getTime() - date.getTime();
-        
+
         if (diff < 24 * 60 * 60 * 1000) {
             return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
         } else if (diff < 7 * 24 * 60 * 60 * 1000) {
@@ -30,7 +30,7 @@ export default function Overview() {
     // 获取消息预览
     const getMessagePreview = (contact: Contact) => {
         if (!contact.object?.history?.[0]) return "No msg";
-        
+
         const lastMessage = contact.object.history[0] as Message;
         switch (lastMessage.type) {
             case EMessageType.Announcement:
@@ -52,7 +52,7 @@ export default function Overview() {
             topBadge: contact.lastUnreadCount > 0 ? `${contact.lastUnreadCount}` : undefined,
             CIA: contact.isPinned ? (<Feather name="map-pin" size={16} color="#007AFF" />) : undefined,
             cornerTip: formatLastMessageTime(contact.object?.history?.[0]?.sentTimestamp),
-            highlight: contact.hasVitalUnread  
+            highlight: contact.hasVitalUnread
         } as ListItemProps;
     };
 
@@ -89,14 +89,25 @@ export default function Overview() {
     }
 
     return (
-        <FlatList 
-            className='grow pb-5' 
-            data={contacts} 
-            renderItem={({ item }) => (
-                <ListItem item={transformContactItem(item)} />
-            )} 
-            keyExtractor={(item) => item.contactId}
-        />
+        <>
+            <View className='bg-gray-200' style={{
+                padding: 16
+            }}>
+                <Text>Here will go searchbox</Text>
+            </View>
+            <FlatList
+                style={{
+                    borderTopColor: "#9e9e9e68",
+                    borderTopWidth: 1,
+                }}
+                className='grow pb-5 border-t border-t-gray-300'
+                data={contacts}
+                renderItem={({ item }) => (
+                    <ListItem item={transformContactItem(item)} />
+                )}
+                keyExtractor={(item) => item.contactId}
+            />
+        </>
     );
 }
 

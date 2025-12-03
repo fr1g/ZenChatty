@@ -336,7 +336,7 @@ public class UserSocialController(
                 OfChat = created.chat!,
                 OfChatId = created.chat.UniqueMark,
                 ViaGroupChatId = viaGroupId,
-                Info = "newfriendrequestthroughgroupchat"
+                Info = "NFR::Group"
             };
         }
         else
@@ -358,7 +358,7 @@ public class UserSocialController(
                 Type = EMessageType.Requesting,
                 OfChat = created.chat!,
                 OfChatId = created.chatId,
-                Info = "newfriendrequestdirectly"
+                Info = "NFR::Dir"
             };
         }
         

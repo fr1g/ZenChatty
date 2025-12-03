@@ -1,10 +1,10 @@
 import { DrawerContentScrollView, DrawerItem, DrawerItemList } from "@react-navigation/drawer";
 import { DrawerNavigationState, ParamListBase, StackActions } from "@react-navigation/native";
 import { DrawerNavigationHelpers, DrawerDescriptorMap } from "node_modules/@react-navigation/drawer/lib/typescript/module/src/types";
-import { View, StyleSheet, Text, Linking, Alert } from "react-native";
+import { View, StyleSheet, Text, Linking, Alert, ImageBackground } from "react-native";
 import { useCredential, useUserInfo } from "../hooks/useCredential";
 import { useSelector, useDispatch } from "react-redux";
-import { RootState, User, logoutUser, Credential } from "zen-core-chatty-ts";
+import { RootState, User, logoutUser, Credential, ImageActs, ProfileImageUrlPair, DefaultAvatarUrl } from "zen-core-chatty-ts";
 import { useEffect, useState } from "react";
 import { SQLiteStorageAdapter } from "../database/SQLiteStorageAdapter";
 import { ClientConfig } from "./../App";
@@ -17,18 +17,17 @@ type Props = {
 }
 
 export default function MainDrawerContainer(props: Props) {
-    const [xuser, setUser] = useState<User | null>(null);
     const user = useSelector((state: RootState) => state.auth.user);
     const credential = useSelector((state: RootState) => state.auth.credential);
     const dispatch = useDispatch();
     const [storageAdapter, setStorageAdapter] = useState(new SQLiteStorageAdapter());
-    
-    useEffect(() => {
-        setUser(user);
-        console.log(user?.customId ?? "cannot get the info");
-    }, [user]);
+    const [imagePair, setImagePair] = useState<ProfileImageUrlPair | null>(null);
 
-    // 退出登录处理函数
+    useEffect(() => {
+        setImagePair(ImageActs.getUserProfileImagePairAsUrl(user!));
+        console.log(user?.customId ?? "cannot get the info");
+    }, [user]); 
+
     const handleLogout = async () => {
         Alert.alert(
             "Log Out?",
@@ -52,14 +51,14 @@ export default function MainDrawerContainer(props: Props) {
                                         if (wipe) {
                                             // 使用工具方法清理用户数据
                                             await LogoutHelper.cleanupUserData(
-                                                credentialToClear, 
-                                                storageAdapter, 
+                                                credentialToClear,
+                                                storageAdapter,
                                                 ClientConfig
                                             );
                                         }
                                     }
                                 }) as any).unwrap();
-                                
+
                                 // 导航回登录页面
                                 props.navigation.dispatch(
                                     StackActions.replace('Unauthorized')
@@ -80,12 +79,15 @@ export default function MainDrawerContainer(props: Props) {
 
     return <DrawerContentScrollView {...props} className="border-4 border-rose-300" style={styles.drawerContainer}>
         {/* 自定义头部 */}
-        <View style={styles.drawerHeader}>
+        <View className="shadow" style={styles.drawerHeaderBg} >
+            <ImageBackground style={styles.drawerHeader} source={{ uri: (`${imagePair?.background == DefaultAvatarUrl ? imagePair?.background : imagePair?.background}`) }}>
+            </ImageBackground>
+
             <Text style={styles.drawerHeaderText}>{user?.displayName || user?.customId}</Text>
+
         </View>
         <DrawerItemList {...props} />
 
-        {/* 退出登录按钮 */}
         <View className="grow h-full"></View>
         <DrawerItem
             label="LogOut"
@@ -102,16 +104,34 @@ const styles = StyleSheet.create({
         padding: 0,
         height: '100%'
     },
-    drawerHeader: {
+    drawerHeaderBg: {
+        marginBottom: 8,
+        borderRadius: 26,
         height: 128,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
-        marginBottom: 8,
-        borderRadius: 26
+        position: 'relative',
+        opacity: 0.68,
+        // borderColor: "#9e9e9e5e",
+        // borderWidth: 3,
+        overflow: 'hidden'
+    },
+    drawerHeader: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        zIndex: 1,
+        height: 128,
+        width: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+
     },
     drawerHeaderText: {
         fontSize: 18,
+        position: 'absolute',
+        zIndex: 2,
+
         fontWeight: 'bold',
     },
 });

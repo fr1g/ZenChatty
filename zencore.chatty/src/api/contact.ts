@@ -43,7 +43,8 @@ export class ContactApiClient extends ApiClientBase {
     }
 
     /**
-     * 添加好友
+     * FINAL adding friend. before that, use: sendFriendRequest
+     * @param targetUserGuid the GUID string of target user
      */
     async addFriend(targetUserGuid: string): Promise<ChatResponse> {
         return await this.post<ChatResponse>(`/api/social/add-friend/${targetUserGuid}`);

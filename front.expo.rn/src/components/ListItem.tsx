@@ -5,7 +5,9 @@ import { ReactNode } from "react";
 
 export default function ListItem({ item }: { item: ListItemProps }) {
 
-    return <TouchableOpacity className='h-20 relative flex-row items-center border-b border-b-zinc-300 dark:border-b-zinc-700'>
+    return <TouchableOpacity 
+    style={{height: 86}}
+    className=' relative flex-row items-center border-b border-b-zinc-300 dark:border-b-zinc-700'>
         <View className="relative">
             <View style={{
                 position: 'absolute',
@@ -32,7 +34,7 @@ export default function ListItem({ item }: { item: ListItemProps }) {
                 numberOfLines={2}
                 ellipsizeMode="tail"
                 className='-translate-y-0.5 opacity-80  '>
-                {item.subtitle} ahisudhiahsuidhihsaiuhdiuh
+                {item.subtitle} 
             </Text>
         </View>
     </TouchableOpacity>

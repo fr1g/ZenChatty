@@ -8,7 +8,7 @@ export default function Avatar({ path }: { path: string }) {
     return path === '' ? (
         <ActivityIndicator
             style={{
-                height: '100%',
+                height: '86%',
                 aspectRatio: 1,
             }}
             size="small"
@@ -22,7 +22,7 @@ export default function Avatar({ path }: { path: string }) {
                 borderRadius: 999, 
                 marginVertical: 20,
                 marginHorizontal: 12,
-                padding: 10
+                padding: 15
             }}
         />
 

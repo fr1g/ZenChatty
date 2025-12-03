@@ -6,6 +6,8 @@ import MainDrawerHeader from '../components/MainDrawerHeader';
 import MainDrawerContainer from '../components/MainDrawerContainer';
 import { createContext, useEffect, useState } from 'react';
 import { View } from 'react-native';
+import ChatScopeViews from './ChatScope';
+import Retest from 'screens/test';
 
 // tag MainNavigationEntrance
 
@@ -27,7 +29,7 @@ const screenOpt: DrawerNavigationOptions = {
 
 const Drawer = createDrawerNavigator();
 
-const ScopeContext = createContext<{ scope: "main" | "chat", change: Function }>({ scope: "main", change: () => "scope not ready" });
+export const ScopeContext = createContext<{ scope: "main" | "chat", change: Function }>({ scope: "main", change: () => "scope not ready" });
 
 export default function DefaultView({ theme }: { theme: ReactNavigation.Theme }) {
 
@@ -44,22 +46,22 @@ export default function DefaultView({ theme }: { theme: ReactNavigation.Theme })
     }, []);
 
     return <ScopeContext.Provider value={{ scope: scope, change: setScope }}>
-        {
-            scope == "main" ?
-                <NavigationContainer theme={theme} >
+        <NavigationContainer theme={theme} >
+            {
+                scope == "main" ?
+
                     <Drawer.Navigator
                         screenOptions={screenOptions}
                         drawerContent={(props) => <MainDrawerContainer {...props} />}>
                         <Drawer.Screen name='index' component={Overview} />
+                        <Drawer.Screen name='ex' component={Retest} />
                         <Drawer.Screen name='user-search' component={UserSearchScreen} options={{ title: 'Add Friend' }} />
                     </Drawer.Navigator>
-                </NavigationContainer>
-                :
-                <View>
-
-                </View>
-            // scopping into two different stages
-        }
+                    :
+                    <ChatScopeViews />
+                // scopping into two different stages
+            }
+        </NavigationContainer>
     </ScopeContext.Provider>;
 }
 // I SINCERELY SUPPOSE THAT REGULAR MOBILE APPS SHOULD BE REPLACED BY PWA WEB APPS. WEB ALWAYS HAVE EFFICIENCY!!!!!!!!!

@@ -15,17 +15,18 @@ export default function
         { navigation, route, options }:
             { navigation: unknown | any, route: Route<any, any>, options: RouteOptionsType }
     ) {
-    const dispatch = useDispatch();
+    const dispatch = useDispatch(); 
     const authState = useSelector((state: RootState) => state.auth);
     const currentGetter = useCurrentUserGet(authState, dispatch);
-    const [user, setUser] = useState<User | null>(null);
+    const user = useSelector((state: RootState) => state.auth.user);
     const [imagePair, setImagePair] = useState<ProfileImageUrlPair | null>(null);
 
     useEffect(() => {
+        if(user) setImagePair(ImageActs.getUserProfileImagePairAsUrl(user!));
         for (let i = 0; i < 3; i++) {
             try {
                 currentGetter().then((user) => {
-                    setUser(user);
+                    // setUser(user);
                     setImagePair(ImageActs.getUserProfileImagePairAsUrl(user!));
                 }).catch((error) => {
                     if (i == 2) throw error;
