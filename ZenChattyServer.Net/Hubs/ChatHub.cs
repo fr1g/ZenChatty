@@ -358,6 +358,7 @@ public class ChatHub(
             {
                 // 获取该用户的总未读计数
                 var totalUnreadCount = await contactService.GetTotalUnreadCountAsync(userId.Value);
+                contact.LastUsed = DateTime.UtcNow;
                 
                 // 创建简化的Contact对象（避免循环引用）
                 var simplifiedContact = new
@@ -373,6 +374,9 @@ public class ChatHub(
                     DisplayName = contact.DisplayName,
                     HasVitalUnread = contact.HasVitalUnread
                 };
+
+                context.Contacts.Update(contact);
+                await context.SaveChangesAsync(); // 我总觉得我引入缓存就是乱增实体。。。
                 
                 // 推送更新的Contact对象给当前用户
                 await Clients.Caller.SendAsync("ReceiveUpdatedContact", new

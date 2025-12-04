@@ -116,13 +116,13 @@ public class MessageController(
                 return BadRequest(SendMessageResponse.InternalError("Sender does not exist"));
             }
 
-            var message = new Message(sender, chat, request.Content)
+            var message = new Message(sender, chat, $"{request.Content} # (this message was sent via API) T::{isTestingRequest}")
             {
                 TraceId = Guid.NewGuid().ToString(),
                 Type = request.MessageType,
                 SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Info = request.Info ?? "",
+                Info = $"{request.Info} # (this message was sent via API) T::{isTestingRequest}" ?? "",
                 IsMentioningAll = request.IsMentioningAll,
                 MentionedUserGuids = request.MentionedUserIds?.Select(id => id.ToString()).ToArray()
             };
@@ -130,7 +130,7 @@ public class MessageController(
             Console.WriteLine($"created::{message.OfChatId} {message.OfChat.UniqueMark}");
 
             // 发送到消息队列
-            await messageQueueService.SendMessageAsync(message);
+            // await messageQueueService.SendMessageAsync(message);
             await ChatAgent.Say(context, message, chatHub);
 
             logger.LogInformation("User {UserId} sent message to chat {ChatId}, message ID: {MessageId}", 

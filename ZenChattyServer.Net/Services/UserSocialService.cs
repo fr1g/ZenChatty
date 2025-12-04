@@ -554,7 +554,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
                 .Where(c => // 猪脑过载了
                             (c.Host.LocalId.ToString() == userId) &&
                             (ignoreInformal ? !(c.Object is PrivateChat && ((PrivateChat)c.Object).IsInformal) : true) &&
-                            (isRecently ? EF.Functions.DateDiffHour(c.LastUsed, now) >= 72 : true)
+                            (isRecently ? EF.Functions.DateDiffHour(c.LastUsed, now) >= -72 : true)
                       )
                 .OrderByDescending(c => c.LastUsed)
                 .ToListAsync();
