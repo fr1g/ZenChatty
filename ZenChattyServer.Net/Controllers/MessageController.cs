@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ZenChattyServer.Net.Helpers;
+using ZenChattyServer.Net.Shared;
 using ZenChattyServer.Net.Helpers.Context;
 using ZenChattyServer.Net.Models;
 using ZenChattyServer.Net.Models.Enums;
@@ -16,13 +18,14 @@ namespace ZenChattyServer.Net.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/msg")]
-[Authorize]
+// [Authorize]
 public class MessageController(
     UserRelatedContext context,
     MessageValidationService validationService,
     IMessageQueueService messageQueueService,
     MessageCacheService messageCacheService,
     ILogger<MessageController> logger,
+    ChatHubService chatHub,
     AuthService authService    
 )
     : AuthedControllerBase (authService)
@@ -33,14 +36,38 @@ public class MessageController(
     [HttpPost("send")]
     public async Task<ActionResult<SendMessageResponse>> SendMessage([FromBody] SendMessageRequest request)
     {
+        var where = "nowhere";
         try
         {
-            // 获取当前用户ID
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            Console.Error.WriteLine("@ Sending message through HTTP API");
+            var passIt = false;
+            var isTestingRequest = Request.Headers.Authorization == "Bearer test";
+            
+            #if DEBUG
+                passIt = true;
+                Console.WriteLine($"DEBUG {passIt}, {isTestingRequest}, {Request.Headers.Authorization}");
+            #endif
+
+            where = "1";
+            var refer = await AuthenticateAsync();
+            if (refer.failResult != null && !passIt && !isTestingRequest) return Unauthorized(refer.failResult);
+            // if failed, and not passing it, and not test, return failure
+            
+            where = "2";
+            
+            User? sender;
+            if (passIt && isTestingRequest)
             {
-                return Unauthorized(SendMessageResponse.Unauthorized("Invalid user identity"));
-            }
+                sender = await context.Users.FirstOrDefaultAsync(u => u.CustomId == Constants.SystemUser.CustomId);
+            } else sender = refer.user!; // if test, if in debug, directly give stored 
+
+            where = "3";
+            if (sender == null && isTestingRequest) throw new NullReferenceException("System User Not Ready");
+            where = $"3+ {sender is null} {sender?.LocalId is null} {sender?.CustomId} TRQ?{isTestingRequest}";
+
+            var userId = sender!.LocalId;
+            
+            Console.WriteLine($"[incoming test request]: {userId}: System User");
 
             // 验证消息内容
             var contentValidation = validationService.ValidateMessageContent(request.Content);
@@ -82,9 +109,8 @@ public class MessageController(
             {
                 return BadRequest(validationResult);
             }
-
-            // 创建消息对象
-            var sender = await context.Users.FindAsync(userId);
+            
+            // var sender = await context.Users.FindAsync(userId);
             if (sender == null)
             {
                 return BadRequest(SendMessageResponse.InternalError("Sender does not exist"));
@@ -100,9 +126,12 @@ public class MessageController(
                 IsMentioningAll = request.IsMentioningAll,
                 MentionedUserGuids = request.MentionedUserIds?.Select(id => id.ToString()).ToArray()
             };
+            
+            Console.WriteLine($"created::{message.OfChatId} {message.OfChat.UniqueMark}");
 
             // 发送到消息队列
             await messageQueueService.SendMessageAsync(message);
+            await ChatAgent.Say(context, message, chatHub);
 
             logger.LogInformation("User {UserId} sent message to chat {ChatId}, message ID: {MessageId}", 
                 userId, request.ChatUniqueMark, message.TraceId);
@@ -111,7 +140,7 @@ public class MessageController(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error sending message");
+            logger.LogError(ex, $"Error sending message: {where}");
             return StatusCode(500, SendMessageResponse.InternalError("Server Error"));
         }
     }
@@ -128,10 +157,13 @@ public class MessageController(
         try
         {
             // 获取当前用户ID
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-                return Unauthorized();
-            
+            // var userIdClaim = User.FindFirst("userId")?.Value;
+            // if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
+            //     return Unauthorized();
+            var refer = await AuthenticateAsync();
+            if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+            var userId = refer.user!.LocalId;
 
             // 验证用户是否有权限访问该聊天
             var chat = await context.Chats.FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);

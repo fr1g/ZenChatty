@@ -41,7 +41,7 @@ export default function UserSearchScreen() {
             })
 
             // 调用SDK中的用户API方法
-            const result: UserInfoResponse = await client.contact.queryUserInfo(email);
+            const result: UserInfoResponse = await client.contact.queryOthersInfoByPrivacy(email);
             setSearchResult(result);
 
             if (!result.success) {

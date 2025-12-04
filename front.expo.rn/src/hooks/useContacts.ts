@@ -4,7 +4,7 @@ import { DefaultConfig, DefaultConfig as ZenClientConfig } from '../ZenClient.co
 import { Contact } from 'zen-core-chatty-ts';
 import { useCredential } from './useCredential';
 
-export const useContacts = (signalRClient: SignalRClient) => {
+export const useContacts = (signalRClient: SignalRClient, requiringAll = false) => {
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -19,13 +19,15 @@ export const useContacts = (signalRClient: SignalRClient) => {
                 ...DefaultConfig,
                 userToken: credential!.AccessToken
             }).contact;
-            const userContacts = await contactApi.getContacts();
+            const userContacts = requiringAll ? await contactApi.getContacts() : await contactApi.getRecentContacts();
+            console.log(userContacts.length, 'user')
 
             const sortedContacts = userContacts.sort((a, b) =>
                 new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
             );
 
             setContacts(sortedContacts);
+            console.log(sortedContacts.length, 'sorted')
         } catch (err) {
             setError('Failed to get chats');
             console.error('1 获取联系人失败:', err);
@@ -41,9 +43,8 @@ export const useContacts = (signalRClient: SignalRClient) => {
 
             // 设置SignalR事件处理
             client.onContactAndMessageUpdated = (contact, message, totalUnreadCount) => {
-                console.log('收到联系人更新:', contact, message);
+                console.log('收到联系人更新:', contact, message, totalUnreadCount);
 
-                // 更新联系人列表
                 setContacts(prev => {
                     const index = prev.findIndex(c => c.contactId === contact.contactId);
                     if (index === -1) {
@@ -51,11 +52,9 @@ export const useContacts = (signalRClient: SignalRClient) => {
                         return [contact, ...prev];
                     }
 
-                    // 更新现有联系人
                     const newContacts = [...prev];
                     newContacts[index] = contact;
 
-                    // 按最后使用时间重新排序
                     return newContacts.sort((a, b) =>
                         new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
                     );

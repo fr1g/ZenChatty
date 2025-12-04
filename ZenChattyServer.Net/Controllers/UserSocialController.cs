@@ -229,8 +229,19 @@ public class UserSocialController(
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
         if (refer.failResult != null) return Unauthorized(refer.failResult); // Combined (well maybe better using filter?)
 
-        var contacts = await userSocialService.GetContactsAsync(refer.user!.LocalId.ToString());
+        var contacts = await userSocialService.GetContactsAsync(refer.user!.LocalId.ToString(), true, false);
         
+        return Ok(contacts);
+    }
+    
+    
+    [HttpPost("contact/recent")]
+    public async Task<ActionResult<List<Contact>>> GetRecentContact()
+    {
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+        
+        var contacts = await userSocialService.GetContactsAsync(refer.user!.LocalId.ToString());
         return Ok(contacts);
     }
 

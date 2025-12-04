@@ -18,6 +18,7 @@ public class Constants
         var content = $"Welcome, {user.DisplayName}! You can update all your personal settings later.";
         return new Message(SystemUser!, target, content)
         {
+            SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             Info = user.DisplayName,
             IsAnnouncement = false,
             IsCanceled = false,

@@ -19,9 +19,9 @@ describe('ContactApiClient', () => {
     });
   });
 
-  describe('queryUserInfo', () => {
+  describe('queryOthersInfoByPrivacy', () => {
     it('should be defined', () => {
-      expect(contactApiClient.queryUserInfo).toBeDefined();
+      expect(contactApiClient.queryOthersInfoByPrivacy).toBeDefined();
     });
 
     it('should accept UserInfoQueryRequest', () => {
@@ -47,12 +47,6 @@ describe('ContactApiClient', () => {
   describe('checkUserIsDisabled', () => {
     it('should be defined', () => {
       expect(contactApiClient.checkUserIsDisabled).toBeDefined();
-    });
-  });
-
-  describe('updateUnreadCount', () => {
-    it('should be defined', () => {
-      expect(contactApiClient.updateUnreadCount).toBeDefined();
     });
   });
 

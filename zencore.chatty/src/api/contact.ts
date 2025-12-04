@@ -12,9 +12,9 @@ export class ContactApiClient extends ApiClientBase {
     }
 
     /**
-     * 查询用户信息（根据隐私设置过滤）
+     * 查询用户信息（根据隐私设置过滤） was-named: queryUserInfo
      */
-    async queryUserInfo(finding: string): Promise<UserInfoResponse> {
+    async queryOthersInfoByPrivacy(finding: string): Promise<UserInfoResponse> {
         if (Tools.isNoneOrEmpty(finding)) throw new Error("Empty Finding for.");
         return await this.post<UserInfoResponse>(`/api/social/get-user-info/${finding}`);
     }
@@ -58,19 +58,14 @@ export class ContactApiClient extends ApiClientBase {
     }
 
     /**
-     * 更新未读消息计数
-     */
-    async updateUnreadCount(contactId: string, unreadCount: number): Promise<BasicResponse> {
-        return await this.post<BasicResponse>(`/api/social/contact/get-unread/${contactId}`, null, {
-            params: { unreadCount }
-        });
-    }
-
-    /**
      * 获取用户的所有联系人
      */
     async getContacts(): Promise<Contact[]> {
         return await this.post<Contact[]>('/api/social/contact/list');
+    }
+
+    async getRecentContacts(): Promise<Contact[]> {
+        return await this.post<Contact[]>('/api/social/contact/recent');
     }
 
     async sendFriendRequest(targetUserGuid: string, viaGroupGuid?: string): Promise<BasicResponse> {

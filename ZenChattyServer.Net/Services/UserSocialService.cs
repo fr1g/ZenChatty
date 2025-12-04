@@ -543,15 +543,19 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 获取用户联系人列表
     /// </summary>
-    public async Task<List<Contact>> GetContactsAsync(string userId)
+    public async Task<List<Contact>> GetContactsAsync(string userId, bool ignoreInformal = false, bool isRecently = true)
     {
         try
         {
+            var now = DateTime.UtcNow;
             var contacts = await context.Contacts
                 .Include(c => c.Host)
                 .Include(c => c.Object)
-                .Where(c => c.Host.LocalId.ToString() == userId && 
-                           !(c.Object is PrivateChat && ((PrivateChat)c.Object).IsInformal))
+                .Where(c => // 猪脑过载了
+                            (c.Host.LocalId.ToString() == userId) &&
+                            (ignoreInformal ? !(c.Object is PrivateChat && ((PrivateChat)c.Object).IsInformal) : true) &&
+                            (isRecently ? EF.Functions.DateDiffHour(c.LastUsed, now) >= 72 : true)
+                      )
                 .OrderByDescending(c => c.LastUsed)
                 .ToListAsync();
 

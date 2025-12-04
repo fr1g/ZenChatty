@@ -84,6 +84,9 @@ export default function Overview() {
                 <Feather name="users" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>No chats</Text>
                 <Text style={styles.emptySubtext}>todo: the backend currently maybe return entire contact as using entire contact method</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -168,7 +171,7 @@ export const styles = StyleSheet.create({
     emptySubtext: {
         fontSize: 14,
         color: '#999',
-        marginTop: 8,
+        margin: 8,
         textAlign: 'center',
     },
 });

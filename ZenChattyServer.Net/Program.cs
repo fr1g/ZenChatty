@@ -110,7 +110,7 @@ if (app.Environment.IsDevelopment())
     userContext.Database.EnsureDeleted();
     userContext.Database.EnsureCreated();
     
-}
+} 
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

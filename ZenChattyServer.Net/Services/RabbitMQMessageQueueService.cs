@@ -133,9 +133,11 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             
             try
             {
-                var messageData = JsonSerializer.Deserialize<MessageQueueData>(messageJson);
+                var messageData = JsonSerializer.Deserialize<MessageQueueData>(messageJson); // not accepting camel case
                 if (messageData != null)
                 {
+                    Console.WriteLine($"{messageJson} ||| {messageData.ChatUniqueMark}");
+                    
                     await ProcessMessageAsync(messageData);
                     _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
                 }
@@ -168,7 +170,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 
             if (chat == null || sender == null)
             {
-                _logger.LogWarning("Chat or sender not found, message ID: {MessageId}", messageData.MessageId);
+                _logger.LogWarning($"Chat or sender not found (CUM::For:{messageData.ChatUniqueMark}), message ID: {messageData.MessageId} S::{sender is null} C::{chat is null}");
                 return;
             }
 
@@ -317,7 +319,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         public string ChatUniqueMark { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public EMessageType MessageType { get; set; }
-        public Guid SenderId { get; set; }
+        public Guid SenderId { get; set; } // todo maycauseproblem 他妈的这里传输的时候只有senderId，那怎么获取到头像？？？
         public long SentTimestamp { get; set; }
         public string? Info { get; set; }
         public bool IsMentioningAll { get; set; }

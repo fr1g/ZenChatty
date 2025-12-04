@@ -48,7 +48,7 @@ public class Message(User sender, Chat ofChat, string content)
     
     public string? ViaGroupChatId { get; set; } = null;
     
-    public string OfChatId { get; set; } = Guid.Empty.ToString();
+    public string OfChatId { get; set; } = ofChat?.UniqueMark ?? Guid.Empty.ToString();
     // nav back
     
     [JsonIgnore]

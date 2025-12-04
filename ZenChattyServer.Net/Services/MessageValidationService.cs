@@ -215,15 +215,25 @@ public class MessageValidationService(UserRelatedContext context)
         if (privateChat == null)
             return SendMessageResponse.Unauthorized("非私聊类型");
 
+        // var pc = await context.PrivateChats.FirstAsync(pc => pc.InitById == privateChat.InitById);
         // 检查是否为好友关系
-        var isFriend = await context.Contacts
-            // .Include()
-            .AnyAsync(c => c.HostId == privateChat.ReceiverId && 
-                          c.ObjectId == senderId.ToString() && 
-                          !c.IsBlocked &&
-                          !((PrivateChat)c.Object).IsInformal);
+        // var isFriend = await context.Contacts
+        //     .Include(c => c.Object)
+        //     .AnyAsync(c => c.HostId == privateChat.ReceiverId && 
+        //                   c.ObjectId == senderId.ToString() && 
+        //                   !c.IsBlocked);
+            // && !((PrivateChat)c.Object).IsInformal);
+            
+        // getting receiver
+        var sender = await context.Users.FirstOrDefaultAsync(u => u.LocalId == privateChat.InitById);
+        var receiver = await context.Users.FirstOrDefaultAsync(u => u.LocalId == privateChat.ReceiverId);
         
-        if (isFriend)
+        if(sender == null || receiver == null)
+            return SendMessageResponse.Unauthorized($"Sender or Receiver is null: R::{receiver is null}");
+        
+        var isFriend = RelationshipHelper.IsUserAFriend(context, sender, receiver);
+        
+        if (isFriend && !privateChat.IsInformal)
             return SendMessageResponse.Success(Guid.NewGuid());
 
         if (!string.IsNullOrEmpty(viaGroupChatId))
@@ -234,7 +244,7 @@ public class MessageValidationService(UserRelatedContext context)
         }
 
         if (messageType != EMessageType.Requesting)
-            return SendMessageResponse.Unauthorized("REQUESTING ONLY");
+            return SendMessageResponse.Unauthorized($"REQUESTING ONLY ({isFriend})");
 
         return SendMessageResponse.Success(Guid.NewGuid());
     }
