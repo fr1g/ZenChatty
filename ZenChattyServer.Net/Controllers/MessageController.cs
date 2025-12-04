@@ -164,8 +164,8 @@ public class MessageController(
             PrivateChat privateChat => 
                 privateChat.InitById == userId || privateChat.ReceiverId == userId,
             GroupChat groupChat => 
-                groupChat.Members.Any(m => m.TheGuyId == userId),
-            _ => false
+                groupChat.Members.Any(m => m.TheGuyId == userId), // todo 这个方法仅用于获取聊天记录，所以就算聊天禁用、被屏蔽，也仍然可以看到历史消息（不涉及会出现新的消息的情况）
+            _ => false // todo 看起来被踢出是无法查看历史消息的，因为不存储何时被踢出。算了，就当保护群聊本身不会进一步泄露吧
         };
     }
 
@@ -223,65 +223,8 @@ public class MessageController(
     }
 
     /// <summary>
-    /// 获取未读消息数量 todo !!! maybe need refracture to get all unread msgs... if need to be pushed to NSrvs as total-unread in notification?  
-    /// </summary>
-    [HttpGet("unread/count")]
-    public async Task<ActionResult<Dictionary<string, int>>> GetUnreadMessageCount()
-    {
-        try
-        {
-            // 获取当前用户ID
-            var userIdClaim = User.FindFirst("userId")?.Value;
-            if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
-            {
-                return Unauthorized();
-            }
-
-            // 获取用户的所有聊天
-            var userChats = await GetUserChatsAsync(userId);
-            var result = new Dictionary<string, int>();
-
-            foreach (var chat in userChats)
-            {
-                // 这里简化处理，实际应该根据用户最后阅读时间计算未读消息
-                var unreadCount = await context.Messages
-                    .CountAsync(m => m.OfChatId == chat.UniqueMark && 
-                                   m.SentTimestamp > DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeMilliseconds()); // 最近一天的消息
-                
-                result[chat.UniqueMark] = unreadCount;
-            }
-
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error getting unread message count");
-            return StatusCode(500, "Server Error");
-        }
-    }
-
-    /// <summary>
-    /// 获取用户的所有聊天
-    /// </summary>
-    private async Task<List<Chat>> GetUserChatsAsync(Guid userId)
-    {
-        var privateChats = await context.PrivateChats
-            .Where(pc => pc.InitById == userId || pc.ReceiverId == userId)
-            .Cast<Chat>()
-            .ToListAsync();
-
-        var groupChats = await context.GroupChats
-            .Include(gc => gc.Members)
-            .Where(gc => gc.Members.Any(m => m.TheGuyId == userId))
-            .Cast<Chat>()
-            .ToListAsync();
-
-        return privateChats.Concat(groupChats).ToList();
-    }
-
-    /// <summary>
     /// 撤回消息
-    /// </summary>
+    /// </summary> todo 实在不行就不做撤回了。我真的很累了。
     [HttpPost("recall")]
     public async Task<ActionResult<BasicResponse>> RecallMessage([FromBody] RecallMessageRequest request)
     {
@@ -348,7 +291,7 @@ public class MessageController(
     }
 
     /// <summary>
-    /// 检查撤回权限
+    /// 检查撤回权限  todo 可以不做的。留着吧，有人想来做就让他来做。
     /// </summary>
     private async Task<bool> CheckRecallPermissionAsync(Message message, Guid userId)
     {
@@ -391,7 +334,7 @@ public class MessageController(
                 Info = $"{{\"eventType\":\"messageRecalled\",\"originalMessageId\":\"{message.TraceId}\"}}"
             };
 
-            // 发送到消息队列
+            // 发送到消息队列 todo 本意是直接更新消息，把撤回相关的必要消息更新到Message.Info
             await messageQueueService.SendMessageAsync(recallEventMessage);
 
             logger.LogInformation("Recall notification sent for message {MessageId}", message.TraceId);

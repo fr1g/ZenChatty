@@ -24,9 +24,10 @@ export default function MainDrawerContainer(props: Props) {
     const [imagePair, setImagePair] = useState<ProfileImageUrlPair | null>(null);
 
     useEffect(() => {
-        setImagePair(ImageActs.getUserProfileImagePairAsUrl(user!));
-        console.log(user?.customId ?? "cannot get the info");
-    }, [user]); 
+        if (user)
+            setImagePair(ImageActs.getUserProfileImagePairAsUrl(user!));
+        console.log("AVTR set result:: ", user?.customId ?? "cannot get the info");
+    }, [user]);
 
     const handleLogout = async () => {
         Alert.alert(

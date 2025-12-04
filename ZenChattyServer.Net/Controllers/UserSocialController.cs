@@ -107,7 +107,7 @@ public class UserSocialController(
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
         
-        var result = await userSocialService.UnblockAndAddFriendAsync(refer.user!.LocalId.ToString(), targetUserId);
+        var result = await userSocialService.UnblockPrivateChat(refer.user!.LocalId.ToString(), targetUserId);
         
         return result.success ? 
             Ok(new BasicResponse { content = result.message, success = true }) : 
@@ -122,7 +122,9 @@ public class UserSocialController(
     {
         var refer = await AuthenticateAsync();
         if (refer.failResult != null) return Unauthorized(refer.failResult);
-
+        // verify if the request is valid
+        // ...
+        
         var result = await userSocialService.AddFriendAsync(refer.user!.LocalId.ToString(), targetUserGuid);
         return result.success ? 
             Ok(new ChatResponse { ChatId = result.chatId }) : 

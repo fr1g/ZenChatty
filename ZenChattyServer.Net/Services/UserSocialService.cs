@@ -403,7 +403,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// <summary>
     /// 解除拉黑状态并添加好友
     /// </summary>
-    public async Task<(bool success, string message)> UnblockAndAddFriendAsync(
+    public async Task<(bool success, string message)> UnblockPrivateChat(
         string userId1, string userId2)
     {
         try
@@ -426,6 +426,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             }
             
             // ALREADY CREATED, otherwise how to block?
+            // 实际上也不需要检查是否临时，管你临不临时的呢
             // // 检查是否已经是好友（非临时私聊）
             // var existingPrivateChat = await context.PrivateChats
             //     .Include(pc => pc.InitBy)
@@ -437,7 +438,7 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
             //
             // if (existingPrivateChat == null)
             // {
-            //     // 创建正式私聊
+            //     // 创建正式私聊 // 实际上正式私聊创建后压根不会变成非正式
             //     var user1 = await context.Users.FindAsync(Guid.Parse(userId1));
             //     var user2 = await context.Users.FindAsync(Guid.Parse(userId2));
             //
@@ -467,13 +468,18 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
 
             await context.SaveChangesAsync();
 
-            // 发送自动打招呼消息
+            // 发送自动打招呼消息 // necessary???
             var user1Contacts = await context.Contacts
                 .Include(c => c.Object)
                 .Where(c => c.Host.LocalId.ToString() == userId1 && 
                            c.Object is PrivateChat && 
                            (((PrivateChat)c.Object).InitById.ToString() == userId2 || ((PrivateChat)c.Object).ReceiverId.ToString() == userId2))
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(); // 可以改为发送已解除通知
+            
+            // todo 我操，现在还不知道单方面拉黑怎么处理的
+            /* todo
+             * 也就是说，如果A拉黑了B，B的通讯录里是没拉黑A的，那么B发送给A的消息会检查A是否拉黑了B吗？
+             */
 
             if (user1Contacts != null)
             {
