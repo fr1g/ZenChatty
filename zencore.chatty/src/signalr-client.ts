@@ -1,17 +1,6 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import * as Models from './models/index.js';
 
-interface SendMessageRequest {
-    ChatUniqueMark: string;
-    Content: string;
-    SentTimestamp?: number;
-    MessageType?: Models.EMessageType;
-    ViaGroupChatId?: string;
-    IsMentioningAll?: boolean;
-    MentionedUserIds?: string[];
-    Info?: string;
-}
-
 interface ReceiveUpdatedContactAndMessageData {
     Contact: Models.Contact;
     Message: Models.Message;
@@ -139,7 +128,7 @@ export default class SignalRClient {
     /**
      * 发送消息（修复参数匹配问题）
      */
-    async sendMessage(request: SendMessageRequest): Promise<void> {
+    async sendMessage(request: Models.SendMessageRequest): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
             throw new Error('SignalR连接未建立');
         }
@@ -162,7 +151,7 @@ export default class SignalRClient {
      * 简化的发送消息方法（保持向后兼容）
      */
     async sendSimpleMessage(chatId: string, content: string, messageType: Models.EMessageType = Models.EMessageType.Normal): Promise<void> {
-        const request: SendMessageRequest = {
+        const request: Models.SendMessageRequest = {
             ChatUniqueMark: chatId,
             Content: content,
             MessageType: messageType,

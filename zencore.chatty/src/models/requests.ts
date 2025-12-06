@@ -20,14 +20,19 @@ export class CreateGroupChatRequest {
 }
 
 export class SendMessageRequest {
-    public chatUniqueMark: string = '';
-    public sentTimestamp: number = (new Date()).getTime();
-    public content: string = '';
-    public messageType?: EMessageType;
-    public viaGroupChatId?: string;
-    public isMentioningAll: boolean = false;
-    public mentionedUserIds?: string[];
-    public info?: string;
+    ChatUniqueMark: string;
+    Content: string;
+    SentTimestamp?: number;
+    MessageType: EMessageType = EMessageType.Normal;
+    ViaGroupChatId?: string;
+    IsMentioningAll?: boolean;
+    MentionedUserIds?: string[];
+    Info?: string;
+
+    constructor(cum: string, content: string) {
+        this.ChatUniqueMark = cum;
+        this.Content = content;
+    }
 }
 
 export class SendMessageResponse {

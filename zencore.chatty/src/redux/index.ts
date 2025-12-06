@@ -3,13 +3,30 @@ import type { RootState, AppDispatch } from './store';
 export { store } from './store';
 export type { RootState, AppDispatch };
 export { default as authReducer } from './authSlice';
-export {
-  loginUser,
-  registerUser,
-  refreshToken,
-  logoutUser
-} from './authSlice';
+export { default as contactReducer } from './contactSlice';
+export { default as messageReducer } from './messageSlice';
+
 export * from './authSlice';
+
+export {
+  updateRecentContact,
+  updateContact,
+  setAllContacts,
+  setRecentContacts,
+  clearError as contactClearError,
+  resetContacts
+} from './contactSlice';
+
+export {
+  addNewMessage,
+  addMessages,
+  updateUnreadCount,
+  clearMessages,
+  setLoading as messageSetLoading,
+  setError as messageSetError,
+  clearError as messageClearError,
+  resetMessages
+} from './messageSlice';
 
 // Redux hooks 类型定义
 export type UseAppSelector = <TSelected>(selector: (state: RootState) => TSelected) => TSelected;

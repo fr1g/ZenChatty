@@ -16,12 +16,12 @@ export class MessageApiClient extends ApiClientBase {
     /**
      * 获取消息历史
      * @param chatUniqueMark - 聊天唯一标识
-     * @param page - 页码
-     * @param pageSize - 每页大小
+     * @param size 一次查询多少消息
+     * @param since 数字类型的时间戳，查询自【since】前发出的消息
      * @returns 消息列表
      */
-    public async getMessageHistory(chatUniqueMark: string, page: number = 1, pageSize: number = 50): Promise<Message[]> {
-        return await this.get<Message[]>(`/api/msg/history/${chatUniqueMark}?page=${page}&pageSize=${pageSize}`);
+    public async getMessageHistory(chatUniqueMark: string, size: number = 10, since: number = ((new Date()).getTime())): Promise<Message[]> {
+        return await this.get<Message[]>(`/api/msg/history/${chatUniqueMark}?queryMessageAmount=${size}&fromTimestamp=${since}`);
     }
 
     /**

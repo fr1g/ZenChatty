@@ -1,5 +1,6 @@
-import { User, EGroupMemberType, GroupChatMember, GroupChat, PrivateChat, Contact } from "zen-core-chatty-ts";
+/*
 
+import { User, EGroupMemberType, GroupChatMember, GroupChat, PrivateChat, Contact } from "zen-core-chatty-ts";
 
 export const MockUsers: Record<string, User> = {
     John: new User('123', 'john@ali.com', 'John Doe', undefined),
@@ -48,3 +49,6 @@ export const MockContactBook = {
         ],
     }
 } // dto to save space, all contact hosts should be null, and frontend automatically set it to owner and cache it.
+
+*/
+// 不再需要。现在他妈的时间紧得跟啥似的哪还有时间一点点用mockdata调试

@@ -8,14 +8,26 @@ import { useSelector, useDispatch } from 'react-redux';
 
 import 'react-native-gesture-handler';
 
-import { BasicResponse, ClientInitObject, CreateZenCoreClient, ZenCoreClient, Tools, fetchUserInfo, User, setUser } from 'zen-core-chatty-ts';
+import {
+    BasicResponse,
+    ClientInitObject,
+    CreateZenCoreClient,
+    ZenCoreClient,
+    Tools,
+    User,
+    setUser,
+    setCredential,
+    updateRecentContact,
+    updateContact,
+    addNewMessage,
+    updateUnreadCount
+} from 'zen-core-chatty-ts';
 import SignalRClient from 'zen-core-chatty-ts/signalr-client';
 import DefaultView from './navigation/MainNavigator';
 import UnauthorizedView from './navigation/Unauthorized';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StoreProvider, RootState } from './redux/StoreProvider';
 import { SQLiteStorageAdapter } from './database/SQLiteStorageAdapter';
-import { setCredential } from 'zen-core-chatty-ts';
 import { LogoutHelper } from './class/helpers/LogoutHelper';
 import { DefaultConfig } from 'ZenClient.config';
 
@@ -40,7 +52,8 @@ export default function App() {
 // SignalR连接管理函数
 export const initializeSignalR = async (
     clientConfig: ClientInitObject,
-    signalRClient: SignalRClient
+    signalRClient: SignalRClient,
+    dispatch: Function
 ): Promise<void> => {
     try {
         // 设置访问令牌
@@ -62,17 +75,23 @@ export const initializeSignalR = async (
         // 设置事件处理
         signalRClient.onContactAndMessageUpdated = (contact, message, totalUnreadCount) => {
             console.log('收到实时消息更新:', { contact, message, totalUnreadCount });
-            // 这里可以添加Redux状态更新逻辑
+            // 更新Redux状态：添加新消息并更新联系人
+            dispatch(addNewMessage(message));
+            dispatch(updateRecentContact(contact));
+            // 更新总未读计数（这里需要根据实际需求处理）
+            // dispatch(updateUnreadCount({ contactId: contact.id, unreadCount: totalUnreadCount }));
         };
 
         signalRClient.onUnreadCountUpdated = (contactId, unreadCount) => {
             console.log('未读计数更新:', { contactId, unreadCount });
-            // 这里可以添加未读计数更新逻辑
+            // 更新Redux状态：更新未读计数
+            dispatch(updateUnreadCount({ contactId, unreadCount }));
         };
 
         signalRClient.onContactUpdated = (contact) => {
             console.log('联系人更新:', contact);
-            // 这里可以添加联系人更新逻辑
+            // 更新Redux状态：更新联系人信息
+            dispatch(updateContact(contact));
         };
 
         signalRClient.onReconnecting = (error) => {
@@ -178,7 +197,7 @@ function AppContent({ theme }: { theme: any }) {
             const signalR = new SignalRClient(prepareHubHost!);
             setSignalRClient(signalR);
 
-            initializeSignalR(clientConfig, signalR).catch(error => {
+            initializeSignalR(clientConfig, signalR, dispatch).catch(error => {
                 console.error('SignalR连接失败:', error);
             });
 
