@@ -8212,9 +8212,9 @@ yocto-queue@^0.1.0:
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
 zen-core-chatty-ts@^1.0.0:
-  version "1.0.13"
-  resolved "https://registry.yarnpkg.com/zen-core-chatty-ts/-/zen-core-chatty-ts-1.0.13.tgz#47cb3d33d417b31f467b8674cab9f2aec5d6124c"
-  integrity sha512-R4LLKvrcvR0N9WXgvC507Hy1YGcl/rWHMdql7+huOrLNYOoP+vUgNihlO5zH1q0ACNvbrCOjw0T8aAuO+GrIzA==
+  version "1.0.17"
+  resolved "https://registry.yarnpkg.com/zen-core-chatty-ts/-/zen-core-chatty-ts-1.0.17.tgz#0811973739e7e36e16e1d43f45743bbd6332e648"
+  integrity sha512-aJowwrLRaShnwMmz9ePO2JWtWDp7cQmFDWNzrczJiFur/UKLHluUmtzo8Fak64A74IFk/CifJjBe3R5bMkN/ZQ==
   dependencies:
     "@microsoft/signalr" "^10.0.0"
     "@reduxjs/toolkit" "^2.11.0"

@@ -110,7 +110,7 @@ public class AuthService(
             // fuck
             var rererereregotTargetChat =
                 await context.PrivateChats.FirstAsync(chat => chat.UniqueMark == newRelationChatId);
-            await ChatAgent.SayWithFullUpdate(context, Constants.CreateWelcomeMessage(user, rererereregotTargetChat),
+            await ChatAgent.Say(context, Constants.CreateWelcomeMessage(user, rererereregotTargetChat),
                 chatHubService);
             // no more changes, right?
         }
@@ -269,7 +269,7 @@ public class AuthService(
 
             var userId = Guid.Parse(userIdClaim);
 
-            // 先查询UserAuthObject，然后通过导航属性获取User
+            // UserAuthObject nav User
             var authObject = await context.UserAuthObjects
                 .Include(ao => ao.User)
                 .Include(ao => ao.DeviceSessions)
@@ -338,7 +338,7 @@ public class AuthService(
         };
     }
 
-    // 私有方法
+    // ----
     private async Task<DeviceSession> CreateDeviceSession(UserAuthObject authObject, string deviceId)
     {
         var refreshToken = GenerateRefreshToken();

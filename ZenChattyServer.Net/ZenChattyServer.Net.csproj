@@ -27,4 +27,20 @@
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="issues\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="issues\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Content Remove="issues\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="issues\**" />
+    </ItemGroup>
+
 </Project>

@@ -13,68 +13,19 @@ public class ChatAgent
         context.Messages.Add(message);
         await context.SaveChangesAsync();
         await agency.SendMessageAsUserAsync(message);
-    }
-
-    public static async Task SayWithFullUpdate(UserRelatedContext context, Message msg, ChatHubService agency)
+    } // (hub)有新消息 -> foreach:接收者::Contact更新(unreadCount++)(previewMsg) -> 如果有vital，更新vital再推送
+     // 
+    private static bool IsVitalEvent(Message message, User who) // todo maycauseproblem 必须保证消息传入的时候是完整的对象（mention list完整） 
     {
-        context.Messages.Add(msg);
-        await context.SaveChangesAsync();
-        
-        var totalUnreadCount = await UpdateUnreadCountForChatAsync(context, msg.OfChatId, msg.SenderId, msg);
-
-        await agency.PushUpdatedContactAndMessageAsync(msg.OfChatId, msg.SenderId, msg, totalUnreadCount);
-    }
-
-    /// <summary>
-    /// 更新聊天室的未读计数
-    /// </summary>
-    private static async Task<int> UpdateUnreadCountForChatAsync(UserRelatedContext context, string chatUniqueMark, Guid senderId, Message message)
-    {
-        try
+        var hasMe = false;
+        if (message.MentionedUserGuids is not null && message.MentionedUserGuids.Length > 0)
         {
-            // 获取聊天室的所有联系人（排除发送者）
-            var contacts = await context.Contacts
-                .Include(c => c.Host)
-                .Where(c => c.ObjectId == chatUniqueMark && c.HostId != senderId)
-                .ToListAsync();
-
-            // 判断是否为重要事件
-            var isVitalEvent = IsVitalEvent(message);
-
-            foreach (var contact in contacts)
-            {
-                // 更新未读计数
-                contact.LastUnreadCount++;
-                
-                // 如果是重要事件，更新vitalUnread状态
-                if (isVitalEvent)
-                {
-                    contact.HasVitalUnread = true;
-                }
-            }
-
-            await context.SaveChangesAsync();
-
-            // 返回总未读计数（用于推送）
-            return contacts.Sum(c => c.LastUnreadCount);
+            hasMe = message.MentionedUserGuids.Any(uid => uid == who.LocalId.ToString());
         }
-        catch (Exception ex)
-        {
-            // 记录错误但不影响主流程
-            await Console.Error.WriteLineAsync($"更新未读计数失败: {ex.Message}");
-            return 0;
-        }
-    }
-
-    /// <summary>
-    /// 判断是否为重要事件（需要更新vitalUnread状态）
-    /// </summary>
-    private static bool IsVitalEvent(Message message)
-    {
-        // 重要事件类型：公告、系统通知、@全体成员等
+        // 重要事件类型：Announcement or Mention
         return message.Type == EMessageType.Announcement || 
                message.Type == EMessageType.Event ||
-               message.IsMentioningAll ||
+               message.IsMentioningAll || hasMe ||
                message.IsAnnouncement;
     }
 

@@ -148,7 +148,7 @@ public class MessageController(
     /// <summary>
     /// 获取聊天消息历史
     /// </summary>
-    [HttpGet("history/{chatUniqueMark}")]
+    [HttpGet("history/{chatUniqueMark}")] 
     public async Task<ActionResult<IEnumerable<Message>>> GetMessageHistory(
         string chatUniqueMark,
         [FromQuery] [Required] int queryMessageAmount,
@@ -164,7 +164,7 @@ public class MessageController(
             if (refer.failResult != null) return Unauthorized(refer.failResult);
 
             var userId = refer.user!.LocalId;
-
+    
             // 验证用户是否有权限访问该聊天
             var chat = await context.Chats.FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);
             if (chat == null) return NotFound("Chat does not exist");

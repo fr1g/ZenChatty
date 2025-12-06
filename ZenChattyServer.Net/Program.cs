@@ -25,9 +25,42 @@ builder.Services.AddSwaggerGen();
 // config JWT
 builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<JwtConfig>(provider =>
+    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtConfig>>().Value
+);
+
+// JWT for SignalR (which, should for all controller as basic verification, but now I'm using a custom one, which embraces more conveniences)
+builder.Services.AddAuthentication(options =>
 {
-    var config = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<JwtConfig>>().Value;
-    return config;
+    options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+            System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"] ?? "")),
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+    
+    // SignalR
+    options.Events = new Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+                context.Token = accessToken;
+            
+            return Task.CompletedTask;
+        }
+    };
 });
 
 // config File Storage
@@ -41,7 +74,7 @@ builder.Services.AddScoped<RelationshipHelper>();
 builder.Services.AddScoped<MessageValidationService>();
 builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 builder.Services.AddSingleton<MessageCacheService>();
-builder.Services.AddScoped<CacheSyncService>();
+// todo builder.Services.AddScoped<CacheSyncService>();
 builder.Services.AddScoped<ChatHubService>();
 builder.Services.AddScoped<UserSocialService>();
 builder.Services.AddScoped<GroupManageService>();
@@ -113,6 +146,7 @@ if (app.Environment.IsDevelopment())
 } 
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 

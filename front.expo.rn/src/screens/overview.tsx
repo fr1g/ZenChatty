@@ -3,12 +3,18 @@ import { Contact, EMessageType, ImageActs, Message } from 'zen-core-chatty-ts';
 import ListItem, { ListItemProps } from 'components/ListItem';
 import { useContext, useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { useContacts } from '../hooks/useContacts';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from 'zen-core-chatty-ts';
 import { SignalRContext } from 'App';
 
 export default function Overview() {
     const signalRClient = useContext(SignalRContext)
-    const { contacts, loading, error, refetch } = useContacts(signalRClient!);
+    const dispatch = useDispatch();
+    
+    // 从Redux store中获取联系人数据
+    const contacts = useSelector((state: RootState) => state.contacts.recentContactList);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // 格式化最后消息时间
     const formatLastMessageTime = (timestamp?: number) => {
@@ -56,12 +62,34 @@ export default function Overview() {
         } as ListItemProps;
     };
 
+    // 数据获取逻辑
+    const fetchContacts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            
+            // 这里可以添加API调用逻辑来获取联系人数据
+            // 暂时使用现有的Redux状态
+            console.log('当前联系人数量:', contacts.length);
+        } catch (err) {
+            setError('获取联系人失败');
+            console.error('获取联系人失败:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 组件挂载时获取数据
+    useEffect(() => {
+        fetchContacts();
+    }, []);
+
     // 处理错误状态
     if (error) {
         return (
             <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchContacts}>
                     <Text style={styles.retryButtonText}>Retry</Text>
                 </TouchableOpacity>
             </View>
@@ -78,13 +106,13 @@ export default function Overview() {
         );
     }
 
-    if (contacts.length === 0) {
+    if (contacts.length === 0 && !loading) {
         return (
             <View style={styles.emptyContainer}>
                 <Feather name="users" size={64} color="#ccc" />
                 <Text style={styles.emptyText}>No chats</Text>
                 <Text style={styles.emptySubtext}>todo: the backend currently maybe return entire contact as using entire contact method</Text>
-                <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+                <TouchableOpacity style={styles.retryButton} onPress={fetchContacts}>
                     <Text style={styles.retryButtonText}>Retry</Text>
                 </TouchableOpacity>
             </View>

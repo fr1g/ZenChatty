@@ -1,3 +1,4 @@
+import { User } from 'zen-core-chatty-ts';
 import { DatabaseManager } from './DatabaseManager';
 
 /**
@@ -57,22 +58,22 @@ export class SQLiteStorageAdapter {
   /**
    * 缓存当前登录用户的个人信息
    */
-  public async cacheCurrentUserInfo(userInfo: any): Promise<void> {
-    if (!userInfo || !userInfo.userId) {
+  public async cacheCurrentUserInfo(userInfo: User): Promise<void> {
+    if (!userInfo || !userInfo.localId) {
       console.warn('Invalid user info for caching');
       return;
     }
 
     try {
       await this.saveUser({
-        user_guid: userInfo.userId,
-        username: userInfo.username,
+        user_guid: userInfo.localId,
+        username: userInfo.customId,
         email: userInfo.email,
         display_name: userInfo.displayName,
         status: userInfo.status || 'online',
         last_seen: new Date()
       });
-      console.log('User info cached successfully:', userInfo.userId);
+      console.log('User info cached successfully:', userInfo.localId);
     } catch (error) {
       console.error('Failed to cache user info:', error);
     }
