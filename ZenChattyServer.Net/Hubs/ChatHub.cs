@@ -8,6 +8,7 @@ using ZenChattyServer.Net.Models.Enums;
 using ZenChattyServer.Net.Models.Request;
 using ZenChattyServer.Net.Models.Response;
 using ZenChattyServer.Net.Services;
+using ZenChattyServer.Net.Models.Events;
 
 namespace ZenChattyServer.Net.Hubs;
 
