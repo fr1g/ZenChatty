@@ -69,32 +69,3 @@ public class PatchMessageEvent : MessageEvent
         UpdateType = updateType;
     }
 }
-
-/// <summary>
-/// 最近消息更新事件
-/// </summary>
-public class UpdateRecentsEvent : MessageEvent
-{
-    /// <summary>
-    /// 聊天ID
-    /// </summary>
-    public string ChatId { get; set; }
-
-    /// <summary>
-    /// 最新消息时间戳
-    /// </summary>
-    public long LatestMessageTimestamp { get; set; }
-
-    /// <summary>
-    /// 未读消息数量
-    /// </summary>
-    public int UnreadCount { get; set; }
-
-    public UpdateRecentsEvent(string chatUniqueMark, string chatId, long latestMessageTimestamp, int unreadCount) 
-        : base("UpdateRecents", chatUniqueMark)
-    {
-        ChatId = chatId;
-        LatestMessageTimestamp = latestMessageTimestamp;
-        UnreadCount = unreadCount;
-    }
-}

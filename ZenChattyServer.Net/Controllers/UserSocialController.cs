@@ -286,7 +286,7 @@ public class UserSocialController(
     #region 好友请求接口
 
     /// <summary>
-    /// 发送好友请求
+    /// 发送好友请求 send request to add, if receiver need to accept, press accept button to post another request: ~add-friend/{targetUserGuid}
     /// </summary>
     [HttpPost("add-friend-request")]
     public async Task<ActionResult<BasicResponse>> SendFriendRequest(
@@ -295,9 +295,7 @@ public class UserSocialController(
     {
         var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
         if (refer.failResult != null) return Unauthorized(refer.failResult);
-
-        // 这里实现好友请求发送逻辑
-        // 用户需要实现具体的业务逻辑
+        
         // agile fast adding function, not gonna add new service function.
         
         var targetUser = context.Users.FirstOrDefault(user => user.LocalId == targetUserId);

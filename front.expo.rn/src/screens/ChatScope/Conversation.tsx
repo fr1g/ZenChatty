@@ -108,7 +108,7 @@ export default function Conversation({ route, navigation }: any) {
                 MessageType: EMessageType.Normal,
                 SentTimestamp: Date.now(),
                 IsMentioningAll: false
-            };
+            }; // future using messageCompiler
             
             // 通过SignalR发送消息
             await signalRClient.sendMessage(request);

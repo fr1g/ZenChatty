@@ -1,7 +1,35 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import * as Models from './models/index.js';
 
-interface ReceiveUpdatedContactAndMessageData {
+// 事件数据接口定义
+export interface IncomeMessageData {
+    EventType: string;
+    ChatUniqueMark: string;
+    Timestamp: number;
+    Message: Models.Message;
+}
+
+export interface PatchMessageData {
+    EventType: string;
+    ChatUniqueMark: string;
+    Timestamp: number;
+    UpdatedMessage: Models.Message;
+    UpdateType: string;
+}
+
+export interface UpdateRecentsData {
+    ChatUniqueMark: string;
+    Message: Models.Message;
+    TotalUnreadCount: number;
+    UpdateTime: string;
+}
+
+export interface UpdateMessageResponseData {
+    Result: string;
+    ErrorMessage?: string;
+}
+
+export interface ReceiveUpdatedContactAndMessageData {
     Contact: Models.Contact;
     Message: Models.Message;
     TotalUnreadCount: number;
@@ -76,7 +104,7 @@ export default class SignalRClient {
     }
 
     /**
-     * 断开SignalR连接
+     * 断开SignalR连接 PASS
      */
     async disconnect(): Promise<void> {
         if (this.connection) {
@@ -92,20 +120,38 @@ export default class SignalRClient {
     private registerServerMethods(): void {
         if (!this.connection) return;
 
-        // 接收更新的Contact和Message对象（后端实际推送的数据格式）
-        this.connection.on('ReceiveUpdatedContactAndMessage', (data: ReceiveUpdatedContactAndMessageData) => {
-            console.log('收到更新的Contact和Message:', data);
-            this.onContactAndMessageUpdated?.(data.Contact, data.Message, data.TotalUnreadCount);
+        // 接收新消息事件（对应后端IncomeMessage）
+        this.connection.on('IncomeMessage', (data: IncomeMessageData) => {
+            console.log('收到新消息事件:', {
+                chatId: data.ChatUniqueMark,
+                messageId: data.Message.traceId,
+                eventType: data.EventType,
+                timestamp: data.Timestamp
+            });
+            this.onIncomeMessage?.(data);
         });
 
-        // 接收未读计数更新
-        this.connection.on('UpdateUnreadCount', (contactId: string, unreadCount: number) => {
-            this.onUnreadCountUpdated?.(contactId, unreadCount);
+        // 接收消息更新事件（对应后端PatchMessage）
+        this.connection.on('PatchMessage', (data: PatchMessageData) => {
+            console.log('收到消息更新事件:', {
+                chatId: data.ChatUniqueMark,
+                messageId: data.UpdatedMessage.traceId,
+                eventType: data.EventType,
+                updateType: data.UpdateType,
+                timestamp: data.Timestamp
+            });
+            this.onPatchMessage?.(data);
         });
 
-        // 接收联系人更新
-        this.connection.on('UpdateContact', (contact: Models.Contact) => {
-            this.onContactUpdated?.(contact);
+        // 接收最近消息更新事件（对应后端UpdateRecents）
+        this.connection.on('UpdateRecents', (data: UpdateRecentsData) => {
+            console.log('收到最近消息更新事件:', {
+                chatId: data.ChatUniqueMark,
+                messageId: data.Message.traceId,
+                totalUnreadCount: data.TotalUnreadCount,
+                updateTime: data.UpdateTime
+            });
+            this.onUpdateRecents?.(data);
         });
 
         // 连接状态变化
@@ -126,7 +172,7 @@ export default class SignalRClient {
     }
 
     /**
-     * 发送消息（修复参数匹配问题）
+     * 发送消息（对应后端SendMessage方法）PASS
      */
     async sendMessage(request: Models.SendMessageRequest): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
@@ -148,21 +194,33 @@ export default class SignalRClient {
     }
 
     /**
-     * 简化的发送消息方法（保持向后兼容）
+     * 更新消息（对应后端UpdateMessage方法）PASS
      */
-    async sendSimpleMessage(chatId: string, content: string, messageType: Models.EMessageType = Models.EMessageType.Normal): Promise<void> {
-        const request: Models.SendMessageRequest = {
-            ChatUniqueMark: chatId,
-            Content: content,
-            MessageType: messageType,
-            SentTimestamp: Date.now()
+    async updateMessage(chatUniqueMark: string, newVersion: Models.Message): Promise<UpdateMessageResponseData> {
+        if (!this.connection || this.connection.state !== 'Connected') {
+            throw new Error('SignalR连接未建立');
+        }
+        const updateMessageReqData = {
+            messageTraceId: newVersion.traceId,
+            chatUniqueMark: chatUniqueMark,
+            newContent: newVersion.content,
+            isCanceled: newVersion.isCanceled,
+            isAnnouncement: newVersion.isAnnouncement,
+            info: newVersion.info,
+            messageType: newVersion.type
         };
-
-        return this.sendMessage(request);
+        try {
+            const response = await this.connection.invoke<UpdateMessageResponseData>('UpdateMessage', updateMessageReqData);
+            console.log('消息更新结果:', response);
+            return response;
+        } catch (error) {
+            console.error('更新消息失败:', error);
+            throw error;
+        }
     }
 
     /**
-     * 加入聊天组
+     * 加入聊天组（对应后端JoinChat方法）PASS
      */
     async joinChat(chatUniqueMark: string): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
@@ -171,6 +229,7 @@ export default class SignalRClient {
 
         try {
             await this.connection.invoke('JoinChat', chatUniqueMark);
+            console.log('已加入聊天组:', chatUniqueMark);
         } catch (error) {
             console.error('加入聊天组失败:', error);
             throw error;
@@ -178,7 +237,7 @@ export default class SignalRClient {
     }
 
     /**
-     * 离开聊天组
+     * 离开聊天组（对应后端LeaveChat方法）PASS
      */
     async leaveChat(chatUniqueMark: string): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
@@ -187,6 +246,7 @@ export default class SignalRClient {
 
         try {
             await this.connection.invoke('LeaveChat', chatUniqueMark);
+            console.log('已离开聊天组:', chatUniqueMark);
         } catch (error) {
             console.error('离开聊天组失败:', error);
             throw error;
@@ -194,7 +254,7 @@ export default class SignalRClient {
     }
 
     /**
-     * 标记消息为已读
+     * 标记消息为已读（对应后端MarkMessagesAsRead方法）PASS
      */
     async markMessagesAsRead(chatId: string, messageIds: string[]): Promise<void> {
         if (!this.connection || this.connection.state !== 'Connected') {
@@ -210,6 +270,20 @@ export default class SignalRClient {
     }
 
     /**
+     * 简化的发送消息方法（保持向后兼容）
+     */
+    async sendSimpleMessage(chatId: string, content: string, messageType: Models.EMessageType = Models.EMessageType.Normal): Promise<void> {
+        const request: Models.SendMessageRequest = {
+            ChatUniqueMark: chatId,
+            Content: content,
+            MessageType: messageType,
+            SentTimestamp: Date.now()
+        };
+
+        return this.sendMessage(request);
+    }
+
+    /**
      * 获取连接状态
      */
     getConnectionState(): string {
@@ -217,10 +291,49 @@ export default class SignalRClient {
     }
 
     // 事件回调函数
+
+    /**
+     * 新消息事件回调
+     */
+    public onIncomeMessage?: (data: IncomeMessageData) => void;
+
+    /**
+     * 消息更新事件回调
+     */
+    public onPatchMessage?: (data: PatchMessageData) => void;
+
+    /**
+     * 最近消息更新事件回调
+     */
+    public onUpdateRecents?: (data: UpdateRecentsData) => void;
+
+    /**
+     * 更新的Contact和Message对象回调（保持向后兼容）
+     */
     public onContactAndMessageUpdated?: (contact: Models.Contact, message: Models.Message, totalUnreadCount: number) => void;
+
+    /**
+     * 未读计数更新回调
+     */
     public onUnreadCountUpdated?: (contactId: string, unreadCount: number) => void;
+
+    /**
+     * 联系人更新回调
+     */
     public onContactUpdated?: (contact: Models.Contact) => void;
+
+    /**
+     * 重新连接中回调
+     */
     public onReconnecting?: (error?: Error) => void;
+
+    /**
+     * 重新连接成功回调
+     */
     public onReconnected?: (connectionId?: string) => void;
+
+    /**
+     * 连接关闭回调
+     */
     public onConnectionClosed?: (error?: Error) => void;
 }

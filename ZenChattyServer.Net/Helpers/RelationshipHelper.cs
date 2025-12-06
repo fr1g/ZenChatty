@@ -124,4 +124,14 @@ public class RelationshipHelper
     {
         return via?.Members != null && via.Members.Any(member => member.TheGuy.LocalId == looking.LocalId);
     }
+    
+    public static bool IsUserGroupMate(Guid looker, Guid looking, GroupChat via)
+    {
+        return IsUserGroupMember(looker, via) && IsUserGroupMember(looking, via);
+    }
+    
+    public static bool IsUserGroupMember(Guid looking, GroupChat via)
+    {
+        return via?.Members != null && via.Members.Any(member => member.TheGuy.LocalId == looking);
+    }
 }

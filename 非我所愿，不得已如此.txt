@@ -18,5 +18,21 @@ ChatHub重构
 
 必须保证满足以下要求：
 	无论通过哪种方法接收新消息，必然能通过一个方法判断并最终调用符合上述要求的正确的方法推送
-	修改现有方法，并且保留系统内部调用的SendAsUser方法
+	修改现有方法，并且保留系统内部调用的SendAsUser方法（ChatAgent中**似乎**有可以用上的工具方法）	
+	
+client：(will send)
+	JoinChat
+	LeaveChat
+	SendMessage
+	UpdateMessage
+	
+server：(will send)
+	PatchMessage
+	UpdateRecents
+	IncomeMessage
+	
+general call：
+	OnConnect -> Subscribe
+	OnDisconnect -> Unsubscribe
+	
 	
