@@ -4,7 +4,7 @@ import { DatabaseManager } from '../database/DatabaseManager';
 
 /**
  * ===========================================
- * 统一应用状态管理 Context 设计文档
+ * 统一应用状态管理 Context 设计文档  ? deprecate or not
  * ===========================================
  * 
  * 设计目标：
@@ -77,7 +77,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ...state,
         currentUser: action.payload.user,
         credential: action.payload.credential,
-        userCache: new Map(state.userCache).set(action.payload.user.user_guid, action.payload.user),
+        userCache: new Map(state.userCache).set(action.payload.user.localId, action.payload.user),
       };
     
     case 'CLEAR_CURRENT_USER':
@@ -91,7 +91,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'ADD_USER_TO_CACHE':
       // 添加用户到缓存，使用Map确保唯一性
       const newUserCache = new Map(state.userCache);
-      newUserCache.set(action.payload.user_guid, action.payload);
+      newUserCache.set(action.payload.localId, action.payload);
       return { ...state, userCache: newUserCache };
     
     case 'ADD_MESSAGES_TO_CACHE':
@@ -105,7 +105,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
     case 'ADD_CONTACT_TO_CACHE':
       // 添加联系人到缓存
       const newContactCache = new Map(state.contactCache);
-      newContactCache.set(action.payload.contact_guid || action.payload.user_guid, action.payload);
+      newContactCache.set(action.payload.contactId, action.payload);
       return { ...state, contactCache: newContactCache };
     
     case 'SET_LOADING':
@@ -164,17 +164,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         
-        // 加载最近访问的用户（缓存策略）
-        const recentUsers = await dbManager.getRecentUsers(50);
-        recentUsers.forEach(user => {
-          dispatch({ type: 'ADD_USER_TO_CACHE', payload: user });
-        });
+        // // 加载最近访问的用户（缓存策略）
+        // const recentUsers = await dbManager.getRecentUsers(50);
+        // recentUsers.forEach(user => {
+        //   dispatch({ type: 'ADD_USER_TO_CACHE', payload: user });
+        // });
         
         // 加载联系人列表
-        const contacts = await dbManager.getAllContacts();
-        contacts.forEach(contact => {
-          dispatch({ type: 'ADD_CONTACT_TO_CACHE', payload: contact });
-        });
+        // const contacts = await dbManager.getAllContacts();
+        // contacts.forEach(contact => {
+        //   dispatch({ type: 'ADD_CONTACT_TO_CACHE', payload: contact });
+        // }); // 我他妈受不了了每次都从后端拉吧这点时间怎么可能做好
         
       } catch (error) {
         console.error('加载初始数据失败:', error);

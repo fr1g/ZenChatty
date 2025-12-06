@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,77 @@ public class ChatHub(
     ILogger<ChatHub> logger)
     : Hub
 {
+    #region 连接与断开连接，身份管理，事件工具
+        /// <summary>
+    /// 模拟用户发送消息（系统调用）
+    /// </summary>
+    public async Task SendMessageAsUser(
+        string chatUniqueMark, 
+        Guid senderId, 
+        string content, 
+        EMessageType messageType = EMessageType.Normal
+    )
+    {
+        try
+        {
+            // 1. 验证聊天存在
+            var chat = await context.Chats
+                .Include(c => c.Contacts)
+                .FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);
+
+            if (chat == null)
+            {
+                logger.LogWarning("模拟发送消息失败：聊天 {ChatId} 不存在", chatUniqueMark);
+                return;
+            }
+
+            // 2. 验证发送者存在且是聊天成员
+            var sender = await context.Users.FindAsync(senderId);
+            if (sender == null)
+            {
+                logger.LogWarning("模拟发送消息失败：发送者 {SenderId} 不存在", senderId);
+                return;
+            }
+
+            var isMember = await context.Contacts
+                .AnyAsync(c => c.ObjectId == chat.UniqueMark && c.HostId == senderId);
+        
+            if (!isMember)
+            {
+                logger.LogWarning("模拟发送消息失败：用户 {SenderId} 不是聊天 {ChatId} 的成员", senderId, chatUniqueMark);
+                return;
+            }
+
+            // 3. 创建消息对象
+            var message = new Message(sender, chat, content)
+            {
+                TraceId = Guid.NewGuid().ToString(),
+                Type = messageType,
+                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Info = "",
+                IsMentioningAll = false,
+                MentionedUserGuids = null
+            };
+
+            // 4. 将消息发送到消息队列
+            await messageQueueService.SendMessageAsync(message);
+
+            // 5. 增加聊天中所有联系人的未读计数（排除发送者自己）
+            await contactService.IncreaseUnreadCountAsync(chatUniqueMark, senderId);
+
+            // 6. 推送完整的Contact和Message对象给所有相关用户
+            await PushMessage(chatUniqueMark, senderId, message);
+
+            logger.LogInformation("模拟用户 {SenderId} 在聊天 {ChatId} 发送消息，消息ID: {MessageId}", 
+                senderId, chatUniqueMark, message.TraceId);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "模拟发送消息时发生错误，发送者: {SenderId}, 聊天: {ChatId}", 
+                senderId, chatUniqueMark);
+        }
+    }
     public override async Task OnConnectedAsync()
     {
         var userId = GetCurrentUserId();
@@ -25,7 +97,7 @@ public class ChatHub(
         {
             // 将用户添加到其所在的所有聊天组
             var userChats = await GetUserChatsAsync(userId.Value);
-            foreach (var chat in userChats)
+            if (userChats.Count > 0) foreach (var chat in userChats)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, chat.UniqueMark);
             }
@@ -38,6 +110,10 @@ public class ChatHub(
                 await context.SaveChangesAsync();
             }
             logger.LogInformation("用户 {UserId} 已连接到聊天中心，连接ID: {ConnectionId}", userId, Context.ConnectionId);
+        }
+        else
+        {
+            Console.WriteLine($"User {userId} ??????");
         }
 
         await base.OnConnectedAsync();
@@ -70,7 +146,68 @@ public class ChatHub(
 
         await base.OnDisconnectedAsync(exception);
     }
+        /// <summary>
+    /// 获取当前用户ID
+    /// </summary>
+    private Guid? GetCurrentUserId()
+    {
+        // 调试信息：显示Context.User的详细信息
+        Console.WriteLine($"=== GetCurrentUserId 调试信息 ===");
+        Console.WriteLine($"Connection ID: {Context.ConnectionId}");
+        Console.WriteLine($"Context.User is null: {Context.User == null}");
+        
+        if (Context.User != null)
+        {
+            Console.WriteLine($"Context.User.Identity.Name: {Context.User.Identity?.Name}");
+            Console.WriteLine($"Context.User.Identity.IsAuthenticated: {Context.User.Identity?.IsAuthenticated}");
+            Console.WriteLine($"Context.User.Claims count: {Context.User.Claims.Count()}");
+            
+            // 显示所有声明
+            foreach (var claim in Context.User.Claims)
+            {
+                Console.WriteLine($"Claim Type: {claim.Type}, Value: {claim.Value}");
+            }
+            
+            // 检查是否有access_token查询参数
+            var httpContext = Context.GetHttpContext();
+            if (httpContext != null)
+            {
+                var accessToken = httpContext.Request.Query["access_token"].FirstOrDefault();
+                Console.WriteLine($"access_token query parameter: {accessToken}");
+                
+                // 检查Authorization头
+                var authHeader = httpContext.Request.Headers["Authorization"].FirstOrDefault();
+                Console.WriteLine($"Authorization header: {authHeader}");
+            }
+        }
+        
+        // original running
+        var userIdClaim = Context.User?.FindFirst(ClaimTypes.NameIdentifier); // todo can save to constants
+        if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            Console.WriteLine($"找到UserId声明: {userId}");
+            return userId;
+        }
+        
+        Console.WriteLine($"未找到有效的UserId声明");
+        return null;
+    }
 
+    /// <summary>
+    /// 获取用户所在的所有聊天
+    /// </summary>
+    private async Task<List<Chat>> GetUserChatsAsync(Guid userId)
+    {
+        // instant
+        Console.WriteLine($"Instantly query all available chats: {userId}");
+        return await context.Chats
+            .Include(c => c.Contacts)
+            .Where(c => c.Contacts.Any(contact => contact.HostId == userId))
+            .ToListAsync();
+    }
+    #endregion
+    
+    #region 客户端发起的事件
     /// <summary>
     /// 发送消息
     /// </summary>
@@ -141,7 +278,7 @@ public class ChatHub(
             await contactService.IncreaseUnreadCountAsync(request.ChatUniqueMark, userId.Value);
 
             // 6. 推送完整的Contact和Message对象给所有相关用户
-            await PushUpdatedContactAndMessageAsync(request.ChatUniqueMark, userId.Value, message);
+            await PushMessage(request.ChatUniqueMark, userId.Value, message);
 
             logger.LogInformation("用户 {UserId} 在聊天 {ChatId} 发送消息，消息ID: {MessageId}", 
                 userId, request.ChatUniqueMark, message.TraceId);
@@ -155,7 +292,7 @@ public class ChatHub(
             return SendMessageResponse.InternalError(ex.Message);
         }
     }
-
+    
     /// <summary>
     /// 加入聊天组
     /// </summary>
@@ -186,34 +323,18 @@ public class ChatHub(
         logger.LogInformation("用户 {UserId} 离开聊天组 {ChatId}", userId, chatUniqueMark);
     }
 
-    /// <summary>
-    /// 获取当前用户ID
-    /// </summary>
-    private Guid? GetCurrentUserId()
-    {
-        var userIdClaim = Context.User?.FindFirst("UserId");
-        if (userIdClaim != null && Guid.TryParse(userIdClaim.Value, out var userId))
-        {
-            return userId;
-        }
-        return null;
-    }
+    #endregion
+
+
+
+
 
     /// <summary>
-    /// 获取用户所在的所有聊天
+    /// 服务端->客户端（实现）：出现了新的消息。
+    /// 如果用户正在接收某个聊天的消息，推送这单条新消息到客户端。
+    /// 此方法需要被重构但是没有确认实现。
     /// </summary>
-    private async Task<List<Chat>> GetUserChatsAsync(Guid userId)
-    {
-        return await context.Chats
-            .Include(c => c.Contacts)
-            .Where(c => c.Contacts.Any(contact => contact.HostId == userId))
-            .ToListAsync();
-    }
-
-    /// <summary>
-    /// Push single contact update to given sender with given new message and as inside the given chat, which is queried by chatUniqueMark 
-    /// </summary>
-    private async Task PushUpdatedContactAndMessageAsync(string chatUniqueMark, Guid senderId, Message message)
+    private async Task PushMessage(string chatUniqueMark, Guid senderId, Message message)
     {
         try
         {
@@ -251,7 +372,7 @@ public class ChatHub(
                     HasVitalUnread = contact.HasVitalUnread
                 };
 
-                // 创建简化的Message对象（避免循环引用）
+                // 简化 todo 没有同步新的参数
                 var simplifiedMessage = new
                 {
                     TraceId = message.TraceId,
@@ -285,54 +406,6 @@ public class ChatHub(
         catch (Exception ex)
         {
             logger.LogError(ex, "推送Contact和Message对象失败，聊天: {ChatId}", chatUniqueMark);
-        }
-    }
-
-    /// <summary>
-    /// 推送未读计数更新给所有相关用户
-    /// </summary>
-    private async Task PushUnreadCountUpdateAsync(string chatUniqueMark, Guid senderId)
-    {
-        try
-        {
-            // 获取聊天中的所有联系人（排除发送者和blocked的contact）
-            var contacts = await context.Contacts
-                .Include(c => c.Object)
-                .Where(c => c.Object.UniqueMark == chatUniqueMark && 
-                            c.HostId != senderId && 
-                            !c.IsBlocked)
-                .ToListAsync();
-
-            foreach (var contact in contacts)
-            {
-                // 获取该用户的总未读计数
-                var totalUnreadCount = await contactService.GetTotalUnreadCountAsync(contact.HostId);
-                
-                // 从数据库中获取该聊天的真实未读计数
-                var realUnreadCount = await context.Contacts
-                    .Where(c => c.ContactId == contact.ContactId)
-                    .Select(c => c.LastUnreadCount)
-                    .FirstOrDefaultAsync();
-                
-                // 推送未读计数更新给该用户
-                await Clients.User(contact.HostId.ToString()).SendAsync("UpdateUnreadCount", new
-                {
-                    ChatUniqueMark = chatUniqueMark,
-                    UnreadCount = realUnreadCount,
-                    TotalUnreadCount = totalUnreadCount,
-                    UpdateTime = DateTime.UtcNow
-                });
-
-                logger.LogDebug("推送未读计数更新给用户 {UserId}, 聊天: {ChatId}, 未读数: {Count}", 
-                    contact.HostId, chatUniqueMark, realUnreadCount);
-            }
-
-            logger.LogInformation("已推送未读计数更新，聊天: {ChatId}, 影响用户数: {UserCount}", 
-                chatUniqueMark, contacts.Count);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "推送未读计数更新失败，聊天: {ChatId}", chatUniqueMark);
         }
     }
 
@@ -394,105 +467,6 @@ public class ChatHub(
             logger.LogError(ex, "标记消息已读失败，用户: {UserId}, 聊天: {ChatId}", userId, chatUniqueMark);
         }
     }
-
-    /// <summary>
-    /// 获取用户所有聊天的未读计数（客户端调用）
-    /// I DOUBT IF THIS IS REALLY GOTTA BE USED. 
-    /// </summary>
-    public async Task GetUnreadCounts()
-    {
-        var userId = GetCurrentUserId();
-        if (!userId.HasValue) return;
-
-        try
-        {
-            var unreadCounts = await contactService.GetUserUnreadCountsAsync(userId.Value);
-            var totalUnreadCount = await contactService.GetTotalUnreadCountAsync(userId.Value);
-
-            await Clients.Caller.SendAsync("ReceiveUnreadCounts", new
-            {
-                UnreadCounts = unreadCounts,
-                TotalUnreadCount = totalUnreadCount,
-                UpdateTime = DateTime.UtcNow
-            });
-
-            logger.LogDebug("发送未读计数给用户 {UserId}, 总未读数: {TotalCount}", userId, totalUnreadCount);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "获取未读计数失败，用户: {UserId}", userId);
-        }
-    }
     
-    
-    /// <summary>
-    /// 模拟用户发送消息（系统调用）
-    /// </summary>
-    public async Task SendMessageAsUser(
-        string chatUniqueMark, 
-        Guid senderId, 
-        string content, 
-        EMessageType messageType = EMessageType.Normal
-    )
-    {
-        try
-        {
-            // 1. 验证聊天存在
-            var chat = await context.Chats
-                .Include(c => c.Contacts)
-                .FirstOrDefaultAsync(c => c.UniqueMark == chatUniqueMark);
 
-            if (chat == null)
-            {
-                logger.LogWarning("模拟发送消息失败：聊天 {ChatId} 不存在", chatUniqueMark);
-                return;
-            }
-
-            // 2. 验证发送者存在且是聊天成员
-            var sender = await context.Users.FindAsync(senderId);
-            if (sender == null)
-            {
-                logger.LogWarning("模拟发送消息失败：发送者 {SenderId} 不存在", senderId);
-                return;
-            }
-
-            var isMember = await context.Contacts
-                .AnyAsync(c => c.ObjectId == chat.UniqueMark && c.HostId == senderId);
-        
-            if (!isMember)
-            {
-                logger.LogWarning("模拟发送消息失败：用户 {SenderId} 不是聊天 {ChatId} 的成员", senderId, chatUniqueMark);
-                return;
-            }
-
-            // 3. 创建消息对象
-            var message = new Message(sender, chat, content)
-            {
-                TraceId = Guid.NewGuid().ToString(),
-                Type = messageType,
-                SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Info = "",
-                IsMentioningAll = false,
-                MentionedUserGuids = null
-            };
-
-            // 4. 将消息发送到消息队列
-            await messageQueueService.SendMessageAsync(message);
-
-            // 5. 增加聊天中所有联系人的未读计数（排除发送者自己）
-            await contactService.IncreaseUnreadCountAsync(chatUniqueMark, senderId);
-
-            // 6. 推送完整的Contact和Message对象给所有相关用户
-            await PushUpdatedContactAndMessageAsync(chatUniqueMark, senderId, message);
-
-            logger.LogInformation("模拟用户 {SenderId} 在聊天 {ChatId} 发送消息，消息ID: {MessageId}", 
-                senderId, chatUniqueMark, message.TraceId);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "模拟发送消息时发生错误，发送者: {SenderId}, 聊天: {ChatId}", 
-                senderId, chatUniqueMark);
-        }
-    }
 }
