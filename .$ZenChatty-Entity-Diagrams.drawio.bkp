@@ -1,0 +1,241 @@
+<mxfile host="app.diagrams.net" modified="2024-12-19T10:00:00.000Z" agent="5.0" etag="_1234567890" version="23.1.1">
+  <diagram name="实体关系图" id="1234567890">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- User实体 -->
+        <mxCell id="user" value="User" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- User属性 -->
+        <mxCell id="user_props" value="LocalId (PK)&#xa;Email&#xa;DisplayName&#xa;AvatarFileLocator&#xa;BackgroundFileLocator&#xa;Bio&#xa;CustomId&#xa;PhoneNumber&#xa;Status (EUserStatus)&#xa;Gender (EGender)&#xa;Birth&#xa;RegisteredAt" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="100" y="170" width="120" height="180" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat实体 -->
+        <mxCell id="chat" value="Chat" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat属性 -->
+        <mxCell id="chat_props" value="UniqueMark (PK)&#xa;InitById (FK)&#xa;InitiatorAvatarLocator&#xa;InitiatorName&#xa;Status (EChatStatus)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="400" y="170" width="120" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- Message实体 -->
+        <mxCell id="message" value="Message" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="700" y="100" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- Message属性 -->
+        <mxCell id="message_props" value="TraceId (PK)&#xa;Content&#xa;Info&#xa;Type (EMessageType)&#xa;SentTimestamp&#xa;ServerCaughtTimestamp&#xa;IsMentioningAll&#xa;MentionedUserGuids&#xa;IsAnnouncement&#xa;SenderId (FK)&#xa;SenderName&#xa;SenderAvatarLocator&#xa;ViaGroupChatId&#xa;OfChatId (FK)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="700" y="170" width="120" height="200" as="geometry"/>
+        </mxCell>
+        
+        <!-- Contact实体 -->
+        <mxCell id="contact" value="Contact" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="100" y="450" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- Contact属性 -->
+        <mxCell id="contact_props" value="ContactId (PK)&#xa;HostId (FK)&#xa;ObjectId (FK)&#xa;LastUnreadCount&#xa;LastUsed&#xa;AddTime&#xa;IsPinned&#xa;IsBlocked&#xa;DisplayName&#xa;HasVitalUnread" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="100" y="520" width="120" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivateChat实体 -->
+        <mxCell id="private_chat" value="PrivateChat" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivateChat属性 -->
+        <mxCell id="private_chat_props" value="继承Chat所有属性&#xa;IsInformal&#xa;ReceiverId (FK)&#xa;ReceiverName&#xa;ReceiverAvatarLocator" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="400" y="520" width="120" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChat实体 -->
+        <mxCell id="group_chat" value="GroupChat" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="450" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChat属性 -->
+        <mxCell id="group_chat_props" value="继承Chat所有属性" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="700" y="520" width="120" height="40" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChatMember实体 -->
+        <mxCell id="group_member" value="GroupChatMember" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="700" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChatMember属性 -->
+        <mxCell id="group_member_props" value="Id (PK)&#xa;TheGuyId (FK)&#xa;GroupChatId (FK)&#xa;InvitedById (FK)&#xa;Type (EGroupMemberType)&#xa;GivenTitle&#xa;Nickname&#xa;IsSilent&#xa;JoinedAt&#xa;SilentUntil" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="400" y="770" width="120" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupSettings实体 -->
+        <mxCell id="group_settings" value="GroupSettings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="700" y="700" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupSettings属性 -->
+        <mxCell id="group_settings_props" value="Id (PK)&#xa;DisplayName&#xa;AvatarFileLocator&#xa;IsAllSilent&#xa;IsInviteOnly&#xa;IsPrivateChatAllowed" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="700" y="770" width="120" height="100" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivacySettings实体 -->
+        <mxCell id="privacy_settings" value="PrivacySettings" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="700" width="120" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivacySettings属性 -->
+        <mxCell id="privacy_settings_props" value="Id (PK)&#xa;UserId (FK)&#xa;IsDiscoverableViaSearch&#xa;IsInvitableToGroup&#xa;IsAddableFromGroup&#xa;IsNewChatKeepSilent&#xa;AllowViewInfoFromGroupChat&#xa;ContactVisibility&#xa;BioVisibility&#xa;GenderVisibility&#xa;BirthdayVisibility" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="1">
+          <mxGeometry x="100" y="770" width="120" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- 关系线 -->
+        
+        <!-- User 1:1 PrivacySettings -->
+        <mxCell id="user_privacy" value="1:1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="user" target="privacy_settings">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- User 1:N Contact -->
+        <mxCell id="user_contact" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="user" target="contact">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- User 1:N GroupChatMember -->
+        <mxCell id="user_group_member" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="user" target="group_member">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat 1:N Message -->
+        <mxCell id="chat_message" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat" target="message">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat 1:N Contact -->
+        <mxCell id="chat_contact" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="chat" target="contact">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat 继承关系 -->
+        <mxCell id="chat_inherit_private" value="继承" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat" target="private_chat">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="chat_inherit_group" value="继承" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat" target="group_chat">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChat 1:1 GroupSettings -->
+        <mxCell id="group_settings_rel" value="1:1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="group_chat" target="group_settings">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChat 1:N GroupChatMember -->
+        <mxCell id="group_member_rel" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="group_chat" target="group_member">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- User 1:N Message (Sender) -->
+        <mxCell id="user_message" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="user" target="message">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+  
+  <diagram name="类图" id="9876543210">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- User类 -->
+        <mxCell id="user_class" value="User&#xa;+ LocalId: Guid&#xa;+ Email: string&#xa;+ DisplayName: string&#xa;+ AvatarFileLocator: string&#xa;+ BackgroundFileLocator: string&#xa;+ Bio: string&#xa;+ CustomId: string?&#xa;+ PhoneNumber: string?&#xa;+ Status: EUserStatus&#xa;+ Gender: EGender&#xa;+ Birth: DateTime?&#xa;+ RegisteredAt: DateTime&#xa;+ Privacies: PrivacySettings&#xa;+ AuthObject: UserAuthObject?&#xa;+ Contacts: ICollection&lt;Contact&gt;&#xa;+ GroupMemberships: ICollection&lt;GroupChatMember&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="200" height="280" as="geometry"/>
+        </mxCell>
+        
+        <!-- Chat类 -->
+        <mxCell id="chat_class" value="Chat&#xa;+ UniqueMark: string&#xa;+ InitById: Guid&#xa;+ InitiatorAvatarLocator: string&#xa;+ InitiatorName: string&#xa;+ Status: EChatStatus&#xa;+ History: ICollection&lt;Message&gt;&#xa;+ Contacts: ICollection&lt;Contact&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="100" width="200" height="200" as="geometry"/>
+        </mxCell>
+        
+        <!-- Message类 -->
+        <mxCell id="message_class" value="Message&#xa;+ TraceId: string&#xa;+ Content: string&#xa;+ Info: string&#xa;+ Type: EMessageType&#xa;+ SentTimestamp: long&#xa;+ ServerCaughtTimestamp: long&#xa;+ IsMentioningAll: bool&#xa;+ MentionedUserGuids: string[]?&#xa;+ IsAnnouncement: bool&#xa;+ SenderId: Guid&#xa;+ SenderName: string&#xa;+ SenderAvatarLocator: string&#xa;+ ViaGroupChatId: string?&#xa;+ OfChatId: string&#xa;+ OfChat: Chat" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="700" y="100" width="200" height="280" as="geometry"/>
+        </mxCell>
+        
+        <!-- Contact类 -->
+        <mxCell id="contact_class" value="Contact&#xa;+ ContactId: Guid&#xa;+ HostId: Guid&#xa;+ Host: User&#xa;+ ObjectId: string&#xa;+ Object: Chat&#xa;+ LastUnreadCount: ushort&#xa;+ LastUsed: DateTime&#xa;+ AddTime: DateTime&#xa;+ IsPinned: bool&#xa;+ IsBlocked: bool&#xa;+ DisplayName: string?&#xa;+ HasVitalUnread: bool" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="100" y="450" width="200" height="220" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivateChat类 -->
+        <mxCell id="private_chat_class" value="PrivateChat : Chat&#xa;+ IsInformal: bool&#xa;+ ReceiverId: Guid&#xa;+ ReceiverName: string&#xa;+ ReceiverAvatarLocator: string" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="450" width="200" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChat类 -->
+        <mxCell id="group_chat_class" value="GroupChat : Chat&#xa;+ Members: ICollection&lt;GroupChatMember&gt;&#xa;+ Settings: GroupSettings&#xa;+ AnnouncementMessages: ICollection&lt;Message&gt;" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="450" width="200" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupChatMember类 -->
+        <mxCell id="group_member_class" value="GroupChatMember&#xa;+ Id: Guid&#xa;+ TheGuyId: Guid&#xa;+ TheGuy: User&#xa;+ GroupChatId: string&#xa;+ GroupChat: GroupChat&#xa;+ InvitedById: Guid?&#xa;+ InvitedBy: User?&#xa;+ Type: EGroupMemberType&#xa;+ GivenTitle: string?&#xa;+ Nickname: string&#xa;+ IsSilent: bool&#xa;+ JoinedAt: DateTime&#xa;+ SilentUntil: DateTime?" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="650" width="200" height="220" as="geometry"/>
+        </mxCell>
+        
+        <!-- GroupSettings类 -->
+        <mxCell id="group_settings_class" value="GroupSettings&#xa;+ Id: Guid&#xa;+ DisplayName: string&#xa;+ AvatarFileLocator: string&#xa;+ IsAllSilent: bool&#xa;+ IsInviteOnly: bool&#xa;+ IsPrivateChatAllowed: bool" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="700" y="650" width="200" height="150" as="geometry"/>
+        </mxCell>
+        
+        <!-- PrivacySettings类 -->
+        <mxCell id="privacy_settings_class" value="PrivacySettings&#xa;+ Id: Guid&#xa;+ UserId: Guid&#xa;+ User: User&#xa;+ IsDiscoverableViaSearch: bool&#xa;+ IsInvitableToGroup: bool&#xa;+ IsAddableFromGroup: bool&#xa;+ IsNewChatKeepSilent: bool&#xa;+ AllowViewInfoFromGroupChat: bool&#xa;+ ContactVisibility: EPrivacyVisibilityRange&#xa;+ BioVisibility: EPrivacyVisibilityRange&#xa;+ GenderVisibility: EPrivacyVisibilityRange&#xa;+ BirthdayVisibility: EPrivacyVisibilityRange" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="100" y="650" width="200" height="220" as="geometry"/>
+        </mxCell>
+        
+        <!-- 继承关系 -->
+        <mxCell id="inherit_chat_private" value="继承" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat_class" target="private_chat_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="inherit_chat_group" value="继承" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat_class" target="group_chat_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- 关联关系 -->
+        <mxCell id="user_privacy_assoc" value="1:1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="user_class" target="privacy_settings_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="user_contact_assoc" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="user_class" target="contact_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="chat_message_assoc" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="chat_class" target="message_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="user_message_assoc" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="user_class" target="message_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="group_member_assoc" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="group_chat_class" target="group_member_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="user_group_member_assoc" value="1:N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="user_class" target="group_member_class">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
