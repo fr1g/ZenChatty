@@ -19,7 +19,7 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
             setError(null);
 
             if (!credential?.AccessToken) {
-                setError('未找到有效的访问令牌');
+                setError('No valid access token found');
                 setLoading(false);
                 return;
             }
@@ -29,7 +29,7 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
                 userToken: credential.AccessToken
             }).contact;
             const userContacts = requiringAll ? await contactApi.getContacts() : await contactApi.getRecentContacts();
-            console.log('获取到联系人数量:', userContacts.length);
+            console.log('Fetched contacts count:', userContacts.length);
 
             const sortedContacts = userContacts.sort((a, b) =>
                 new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
@@ -37,36 +37,36 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
 
             setContacts(sortedContacts);
         } catch (err) {
-            setError('获取联系人失败');
-            console.error('获取联系人失败:', err);
+            setError('Failed to fetch contacts');
+            console.error('Failed to fetch contacts:', err);
         } finally {
             setLoading(false);
         }
     }, [credential?.AccessToken, requiringAll]);
 
-    // 设置SignalR事件监听
+    // Set up SignalR event listeners
     const setupSignalRListeners = useCallback(() => {
         if (!signalRClient) return;
 
-        // 监听联系人更新事件
+        // Listen for contact update events
         signalRClient.onContactAndMessageUpdated = (contact: Contact, message: any, totalUnreadCount: number) => {
-            console.log('收到联系人更新:', contact.contactId, contact.displayName);
+            console.log('Received contact update:', contact.contactId, contact.displayName);
             
-            // 更新Redux状态
+            // Update Redux state
             dispatch(updateContactAction(contact));
             
-            // 更新本地状态
+            // Update local state
             setContacts(prev => {
                 const index = prev.findIndex(c => c.contactId === contact.contactId);
                 if (index === -1) {
-                    // 新联系人，添加到列表开头
+                    // New contact, add to list start
                     return [contact, ...prev];
                 }
 
                 const newContacts = [...prev];
                 newContacts[index] = contact;
 
-                // 按最后使用时间重新排序
+                // Re-sort by last used time
                 return newContacts.sort((a, b) =>
                     new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
                 );
@@ -74,12 +74,12 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
         };
 
         signalRClient.onContactUpdated = (contact: Contact) => {
-            console.log('收到联系人信息更新:', contact.contactId);
+            console.log('Received contact info update:', contact.contactId);
             
-            // 更新Redux状态
+            // Update Redux state
             dispatch(updateContactAction(contact));
             
-            // 更新本地状态
+            // Update local state
             setContacts(prev => {
                 const index = prev.findIndex(c => c.contactId === contact.contactId);
                 if (index === -1) return prev;
@@ -91,9 +91,9 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
         };
 
         signalRClient.onUnreadCountUpdated = (contactId: string, unreadCount: number) => {
-            console.log('收到未读计数更新:', contactId, unreadCount);
+            console.log('Received unread count update:', contactId, unreadCount);
             
-            // 更新本地状态
+            // Update local state
             setContacts(prev => {
                 const index = prev.findIndex(c => c.contactId === contactId);
                 if (index === -1) return prev;
@@ -115,44 +115,44 @@ export const useContacts = (signalRClient: any, requiringAll = false) => {
         setupSignalRListeners();
     }, [fetchContacts, setupSignalRListeners]);
 
-    // 更新单个联系人的方法
+    // Method to update single contact
     const updateContact = useCallback((updatedContact: Contact) => {
-        // 更新Redux状态
+        // Update Redux state
         dispatch(updateContactAction(updatedContact));
         
         setContacts(prev => {
             const index = prev.findIndex(c => c.contactId === updatedContact.contactId);
             if (index === -1) {
-                // 如果联系人不存在，添加到列表开头
+                // If contact doesn't exist, add to list start
                 return [updatedContact, ...prev];
             }
 
-            // 更新现有联系人
+            // Update existing contact
             const newContacts = [...prev];
             newContacts[index] = updatedContact;
 
-            // 按最后使用时间重新排序
+            // Re-sort by last used time
             return newContacts.sort((a, b) =>
                 new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
             );
         });
     }, [dispatch]);
 
-    // 添加新联系人的方法
+    // Method to add new contact
     const addContact = useCallback((newContact: Contact) => {
-        // 更新Redux状态
+        // Update Redux state
         dispatch(updateContactAction(newContact));
         
         setContacts(prev => {
             const existingIndex = prev.findIndex(c => c.contactId === newContact.contactId);
             if (existingIndex !== -1) {
-                // 如果联系人已存在，更新它
+                // If contact already exists, update it
                 const updatedContacts = [...prev];
                 updatedContacts[existingIndex] = newContact;
                 return updatedContacts;
             }
 
-            // 添加新联系人到列表开头
+            // Add new contact to list start
             return [newContact, ...prev];
         });
     }, [dispatch]);

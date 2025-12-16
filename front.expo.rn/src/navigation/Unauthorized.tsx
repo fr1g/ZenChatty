@@ -17,7 +17,7 @@ export default function UnauthorizedView({ theme }: { theme: ReactNavigation.The
     
     const doLogin = (afterJob: () => void, credential: Credential) => {
         console.log('doLogin', credential)
-        // 这里应该调用 Redux action 来更新认证状态
+        // Should call Redux action to update auth state here
         // dispatch(loginSuccess(credential));
         afterJob();
     }

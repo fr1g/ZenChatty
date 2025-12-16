@@ -7,6 +7,7 @@ import { PrivateChat, PrivateChatModel } from './models/PrivateChat';
 import { GroupChat, GroupChatModel } from './models/GroupChat';
 import { GroupMember, GroupMemberModel } from './models/GroupMember';
 import { Message, MessageModel } from './models/Message';
+import { FriendRequest, FriendRequestModel } from './models/FriendRequest';
 
 export interface DatabaseResult {
   insertId?: number;
@@ -185,6 +186,24 @@ export class DatabaseManager {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_guid) REFERENCES users (user_guid)
+      )
+    `);
+
+    // 创建好友请求表
+    await this.db.execAsync(`
+      CREATE TABLE IF NOT EXISTS friend_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        request_guid TEXT UNIQUE NOT NULL, -- 对应Message的traceId
+        requester_guid TEXT NOT NULL, -- 发起请求的用户
+        receiver_guid TEXT NOT NULL, -- 接收请求的用户
+        message_guid TEXT, -- 关联的消息ID
+        via_group_guid TEXT, -- 如果通过群组添加，记录群组ID
+        status TEXT DEFAULT 'pending', -- pending/accepted/rejected/revoked
+        request_message TEXT, -- 请求附加消息
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (requester_guid) REFERENCES users (user_guid),
+        FOREIGN KEY (receiver_guid) REFERENCES users (user_guid)
       )
     `);
 
@@ -507,6 +526,59 @@ export class DatabaseManager {
                    END, gm.joined_at`;
     const rows = await this.query(sql, [groupGuid]);
     return rows.map(row => GroupMemberModel.fromRow(row));
+  }
+
+  // FriendRequest operations
+  public async saveFriendRequest(request: FriendRequest): Promise<number> {
+    const sql = `INSERT OR REPLACE INTO friend_requests 
+      (request_guid, requester_guid, receiver_guid, message_guid, via_group_guid, status, request_message, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+    
+    const result = await this.executeSql(sql, [
+      request.request_guid,
+      request.requester_guid,
+      request.receiver_guid,
+      request.message_guid || null,
+      request.via_group_guid || null,
+      request.status,
+      request.request_message || null
+    ]);
+    
+    return result.insertId || 0;
+  }
+
+  public async getFriendRequestByGuid(requestGuid: string): Promise<FriendRequest | null> {
+    const sql = `SELECT * FROM friend_requests WHERE request_guid = ?`;
+    const rows = await this.query(sql, [requestGuid]);
+    return rows.length > 0 ? FriendRequestModel.fromRow(rows[0]) : null;
+  }
+
+  public async getPendingFriendRequests(userGuid: string): Promise<FriendRequest[]> {
+    const sql = `SELECT * FROM friend_requests 
+                 WHERE receiver_guid = ? AND status = 'pending'
+                 ORDER BY created_at DESC`;
+    const rows = await this.query(sql, [userGuid]);
+    return rows.map(row => FriendRequestModel.fromRow(row));
+  }
+
+  public async getSentFriendRequests(userGuid: string): Promise<FriendRequest[]> {
+    const sql = `SELECT * FROM friend_requests 
+                 WHERE requester_guid = ?
+                 ORDER BY created_at DESC`;
+    const rows = await this.query(sql, [userGuid]);
+    return rows.map(row => FriendRequestModel.fromRow(row));
+  }
+
+  public async updateFriendRequestStatus(requestGuid: string, status: 'pending' | 'accepted' | 'rejected' | 'revoked'): Promise<void> {
+    const sql = `UPDATE friend_requests 
+                 SET status = ?, updated_at = CURRENT_TIMESTAMP 
+                 WHERE request_guid = ?`;
+    await this.executeSql(sql, [status, requestGuid]);
+  }
+
+  public async deleteFriendRequest(requestGuid: string): Promise<void> {
+    const sql = `DELETE FROM friend_requests WHERE request_guid = ?`;
+    await this.executeSql(sql, [requestGuid]);
   }
 
   public async getGroupMember(groupGuid: string, userGuid: string): Promise<GroupMember | null> {

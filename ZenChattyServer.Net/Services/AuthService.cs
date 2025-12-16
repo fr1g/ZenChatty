@@ -125,10 +125,24 @@ public class AuthService(
 
         if (existingSession != null)
         {
-            // 如果已有相同设备的活跃会话，直接使用它
-            existingSession.LastAccessedAt = DateTime.UtcNow;
-            deviceSession = existingSession;
-            // 保存对现有会话的更改
+            // 如果已有相同设备的活跃会话，重新加载以获取最新的 RowVersion
+            var sessionId = existingSession.Id;
+            var freshSession = await context.DeviceSessions
+                .FirstOrDefaultAsync(ds => ds.Id == sessionId);
+            
+            if (freshSession != null)
+            {
+                // 更新最后访问时间
+                freshSession.LastAccessedAt = DateTime.UtcNow;
+                context.DeviceSessions.Update(freshSession);
+                deviceSession = freshSession;
+            }
+            else
+            {
+                // 会话已被删除，创建新会话
+                deviceSession = await CreateDeviceSession(authObject, request.DeviceId);
+                context.DeviceSessions.Add(deviceSession);
+            }
         }
         else
         {
@@ -140,15 +154,71 @@ public class AuthService(
             if (activeSessions.Count >= jwtConfig.MaxDevicesPerUser)
             {
                 var oldestSession = activeSessions.OrderBy(ds => ds.LastAccessedAt).First();
-                authObject.DeviceSessions.Remove(oldestSession); // todo: is this really the oldest?
+                
+                // 重新加载要删除的会话以获取最新的 RowVersion
+                var sessionToRemove = await context.DeviceSessions
+                    .FirstOrDefaultAsync(ds => ds.Id == oldestSession.Id);
+                
+                if (sessionToRemove != null)
+                {
+                    context.DeviceSessions.Remove(sessionToRemove);
+                }
             }
 
-            Console.WriteLine("xxx");
             deviceSession = await CreateDeviceSession(authObject, request.DeviceId);
-            context.DeviceSessions.Add(deviceSession); // >?
+            context.DeviceSessions.Add(deviceSession);
         }
 
-        await context.SaveChangesAsync();
+        // 使用重试机制处理并发冲突和主键冲突
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++)
+        {
+            try
+            {
+                await context.SaveChangesAsync();
+                break; // 成功保存，跳出循环
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                if (i == maxRetries - 1)
+                {
+                    throw new InvalidOperationException(
+                        $"无法保存设备会话，已重试 {maxRetries} 次（并发冲突）。请稍后重试。", ex);
+                }
+                
+                // 刷新实体以获取数据库中的最新值
+                foreach (var entry in ex.Entries)
+                {
+                    await entry.ReloadAsync();
+                }
+                
+                await Task.Delay(50 * (i + 1));
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx 
+                                               && sqlEx.Number == 2627) // 主键冲突
+            {
+                if (i == maxRetries - 1)
+                {
+                    throw new InvalidOperationException(
+                        $"无法保存设备会话，已重试 {maxRetries} 次（主键冲突）。请稍后重试。", ex);
+                }
+                
+                // 主键冲突：清理变更跟踪器，重新生成设备会话
+                foreach (var entry in context.ChangeTracker.Entries<DeviceSession>())
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        entry.State = EntityState.Detached;
+                    }
+                }
+                
+                // 重新创建设备会话（使用新的 ID）
+                deviceSession = await CreateDeviceSession(authObject, request.DeviceId);
+                context.DeviceSessions.Add(deviceSession);
+                
+                await Task.Delay(50 * (i + 1));
+            }
+        }
 
         var accessToken = GenerateAccessToken(user, deviceSession.DeviceId);
 
@@ -344,9 +414,11 @@ public class AuthService(
         var refreshToken = GenerateRefreshToken();
         var expiresAt = DateTime.UtcNow.Add(jwtConfig.RefreshTokenExpiration);
 
+        // 创建新的设备会话，使用全新的 ID
         var deviceSession = new DeviceSession
         {
-            UserAuthObjectId = authObject.Id, // 设置外键
+            Id = Guid.NewGuid(), // 确保生成新的唯一 ID
+            UserAuthObjectId = authObject.Id,
             DeviceId = deviceId,
             RefreshToken = refreshToken,
             RefreshTokenExpiresAt = expiresAt,
@@ -354,10 +426,9 @@ public class AuthService(
             IsActive = true
         };
 
-        authObject.DeviceSessions.Add(deviceSession);
-        // await _context.SaveChangesAsync();
-        var res = context.DeviceSessions.FirstOrDefault(ds => ds.DeviceId == deviceId);
-        return res ?? deviceSession;
+        // 只返回新创建的会话，不要查询旧的
+        // 调用方已经负责检查是否需要创建新会话
+        return await Task.FromResult(deviceSession);
     }
 
     private string GenerateAccessToken(User user, string deviceId)

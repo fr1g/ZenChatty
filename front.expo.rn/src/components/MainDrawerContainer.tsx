@@ -1,13 +1,13 @@
 import { DrawerContentScrollView, DrawerItem, DrawerItemList } from "@react-navigation/drawer";
-import { DrawerNavigationState, ParamListBase, StackActions } from "@react-navigation/native";
+import { DrawerNavigationState, ParamListBase } from "@react-navigation/native";
 import { DrawerNavigationHelpers, DrawerDescriptorMap } from "node_modules/@react-navigation/drawer/lib/typescript/module/src/types";
 import { View, StyleSheet, Text, Linking, Alert, ImageBackground } from "react-native";
 import { useCredential, useUserInfo } from "../hooks/useCredential";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState, User, logoutUser, Credential, ImageActs, ProfileImageUrlPair, DefaultAvatarUrl } from "zen-core-chatty-ts";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { SQLiteStorageAdapter } from "../database/SQLiteStorageAdapter";
-import { ClientConfig } from "./../App";
+import { ContextedClientConfig } from "./../App";
 import { LogoutHelper } from "../class/helpers/LogoutHelper";
 
 type Props = {
@@ -19,6 +19,7 @@ type Props = {
 export default function MainDrawerContainer(props: Props) {
     const user = useSelector((state: RootState) => state.auth.user);
     const credential = useSelector((state: RootState) => state.auth.credential);
+    const clientConfig = useContext(ContextedClientConfig);
     const dispatch = useDispatch();
     const [storageAdapter, setStorageAdapter] = useState(new SQLiteStorageAdapter());
     const [imagePair, setImagePair] = useState<ProfileImageUrlPair | null>(null);
@@ -44,26 +45,24 @@ export default function MainDrawerContainer(props: Props) {
                         try {
                             if (credential) {
                                 await storageAdapter.initialize();
-                                // 调用退出登录action
+                                // Call logout action
                                 await dispatch(logoutUser({
                                     credential,
-                                    clientConfig: ClientConfig,
+                                    clientConfig: clientConfig,
                                     storageMethod: async (credentialToClear: Credential, wipe: boolean) => {
                                         if (wipe) {
-                                            // 使用工具方法清理用户数据
+                                            // Use utility method to clean up user data
                                             await LogoutHelper.cleanupUserData(
                                                 credentialToClear,
                                                 storageAdapter,
-                                                ClientConfig
+                                                clientConfig
                                             );
                                         }
                                     }
                                 }) as any).unwrap();
 
-                                // 导航回登录页面
-                                props.navigation.dispatch(
-                                    StackActions.replace('Unauthorized')
-                                );
+                                // Navigation happens automatically via conditional rendering
+                                // when credential is cleared from Redux state
                             }
                         } catch (error) {
                             console.error('Failed: ', error);
@@ -79,7 +78,7 @@ export default function MainDrawerContainer(props: Props) {
     };
 
     return <DrawerContentScrollView {...props} className="border-4 border-rose-300" style={styles.drawerContainer}>
-        {/* 自定义头部 */}
+        {/* Custom header */}
         <View className="shadow" style={styles.drawerHeaderBg} >
             <ImageBackground style={styles.drawerHeader} source={{ uri: (`${imagePair?.background == DefaultAvatarUrl ? imagePair?.background : imagePair?.background}`) }}>
             </ImageBackground>

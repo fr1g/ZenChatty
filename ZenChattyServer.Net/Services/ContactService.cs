@@ -125,7 +125,9 @@ public class ContactService(UserRelatedContext context, ILogger<ContactService> 
     {
         try
         {
+            // 使用 AsNoTracking 避免 EF Core 生成代理类，否则 JSON 多态序列化会失败
             return await context.Contacts
+                .AsNoTracking()
                 .Include(c => c.Object)
                 .Include(c => c.Object.History.OrderByDescending(m => m.SentTimestamp).Take(1))
                 .Where(c => c.HostId == userId)

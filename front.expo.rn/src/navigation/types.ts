@@ -8,6 +8,7 @@ export type ChatScopeParams = {
 
 export class ReachingInfo {
     targetQueryId?: string;
+    targetName?: string; // Display name of target user/group
     isTargetAGroup: boolean = false; // true: targetQueryId is the Info-To-Be-Queried Group's ID
                                      // false: ~ is  ~ person's ID
     isOpenningConversation: boolean = true; // true: ... is chatUniqueMark, otherwise ignore. Overriding isTargetAGroup
@@ -21,12 +22,12 @@ export const ChatScopeParamInitState = {
     whereFrom: "",
     params: undefined
 }
-// ChatScope导航器的参数类型
+// ChatScope navigator parameter types
 export type ChatScopeParamList = {
     cs_home: ChatScopeParams;
 };
 
-// 根导航器的参数类型
+// Root navigator parameter types
 export type RootStackParamList = {
     cs_home: ChatScopeParams;
     main: undefined;
@@ -35,7 +36,7 @@ export type RootStackParamList = {
     settings: ChatScopeParams;
 };
 
-// 扩展类型：用于定义新的路由类型
+// Extended types: for defining new route types
 export type RouteWithBaseParams<T = undefined> = T extends undefined ? ChatScopeParams : ChatScopeParams & T;
 
 declare global {

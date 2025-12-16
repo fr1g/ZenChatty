@@ -19,21 +19,21 @@ export default class UserCredential {
         this.userInfo = userInfo;
     }
 
-    // 检查访问令牌是否即将过期
+    // Check if access token is expiring soon
     isAccessTokenExpiringSoon(): boolean {
         const now = Date.now();
-        const threshold = 5 * 60 * 1000; // 5分钟阈值
+        const threshold = 5 * 60 * 1000; // 5 minute threshold
         return this.accessTokenExpiresAtTimestamp - now <= threshold;
     }
 
-    // 检查刷新令牌是否即将过期
+    // Check if refresh token is expiring soon
     isRefreshTokenExpiringSoon(): boolean {
         const now = Date.now();
-        const threshold = 24 * 60 * 60 * 1000; // 24小时阈值
+        const threshold = 24 * 60 * 60 * 1000; // 24 hour threshold
         return this.refreshTokenExpiresAtTimestamp - now <= threshold;
     }
 
-    // 转换为 SDK 中的 Credential 类型
+    // Convert to SDK Credential type
     toCredential(): Credential {
         return {
             UserGuid: this.userGuid,
@@ -45,12 +45,12 @@ export default class UserCredential {
         };
     }
 
-    // 从 SDK 中的 Credential 创建 UserCredential 实例
+    // Create UserCredential instance from SDK Credential
     static fromCredential(credential: Credential, userInfo?: User): UserCredential {
         return new UserCredential(credential, userInfo);
     }
 
-    // 从登录响应创建 UserCredential 实例
+    // Create UserCredential instance from login response
     static fromAuthResponse(authResponse: any, deviceId: string): UserCredential {
         const credential: Credential = {
             UserGuid: authResponse.user?.userGuid || '',

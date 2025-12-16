@@ -3,20 +3,20 @@ import { useSelector, useDispatch } from 'react-redux';
 import { RootState, addNewMessage, updateUnreadCount, Message } from 'zen-core-chatty-ts';
 
 /**
- * 自定义Hook，用于监听新消息并自动更新Redux状态
- * @param contactId 联系人ID，用于过滤特定联系人的消息
- * @returns 当前联系人的消息列表和未读计数
+ * Custom Hook for listening to new messages and auto-updating Redux state
+ * @param contactId Contact ID for filtering messages for specific contact
+ * @returns Message list and unread count for current contact
  */
 export const useMessageListener = (contactId?: string) => {
     const dispatch = useDispatch();
     
-    // 从Redux状态获取所有消息
+    // Get all messages from Redux state
     const allMessages = useSelector((state: RootState) => state.messages.messageList);
     
-    // 从Redux状态获取未读计数
+    // Get unread counts from Redux state
     const unreadCounts = useSelector((state: RootState) => state.messages.unreadCounts);
     
-    // 根据contactId过滤消息
+    // Filter messages by contactId
     const messages = useMemo(() => {
         if (contactId) {
             return allMessages.filter((message: any) => message.contactId === contactId);
@@ -24,44 +24,44 @@ export const useMessageListener = (contactId?: string) => {
         return allMessages;
     }, [allMessages, contactId]);
     
-    // 获取特定联系人的未读计数
+    // Get unread count for specific contact
     const unreadCount = useMemo(() => {
         if (contactId) {
             return (unreadCounts as Record<string, number>)[contactId] || 0;
         }
-        // 如果没有指定contactId，返回总未读计数
+        // If no contactId specified, return total unread count
         return Object.values(unreadCounts as Record<string, number>).reduce((sum: number, count: number) => sum + count, 0);
     }, [unreadCounts, contactId]);
     
-    // 本地状态用于存储新接收的消息（可选）
+    // Local state for storing newly received messages (optional)
     const [newMessages, setNewMessages] = useState<any[]>([]);
     
     /**
-     * 手动添加新消息到Redux状态
-     * @param message 新消息对象
+     * Manually add new message to Redux state
+     * @param message New message object
      */
     const addMessage = (message: Message) => {
         dispatch(addNewMessage(message));
     };
     
     /**
-     * 更新未读计数
-     * @param contactId 联系人ID
-     * @param count 新的未读计数
+     * Update unread count
+     * @param contactId Contact ID
+     * @param count New unread count
      */
     const updateCount = (contactId: string, count: number) => {
         dispatch(updateUnreadCount({ contactId, unreadCount: count }));
     };
     
-    // 监听消息变化的副作用（可选）
+    // Side effect for listening to message changes (optional)
     useEffect(() => {
-        // 可以在这里添加额外的消息处理逻辑
-        console.log(`消息监听器已激活，联系人ID: ${contactId || '全部'}`);
-        console.log(`当前消息数量: ${messages.length}`);
-        console.log(`未读计数: ${unreadCount}`);
+        // Can add additional message processing logic here
+        console.log(`Message listener activated, contact ID: ${contactId || 'all'}`);
+        console.log(`Current message count: ${messages.length}`);
+        console.log(`Unread count: ${unreadCount}`);
         
         return () => {
-            console.log(`消息监听器已卸载，联系人ID: ${contactId || '全部'}`);
+            console.log(`Message listener unmounted, contact ID: ${contactId || 'all'}`);
         };
     }, [contactId, messages.length, unreadCount]);
     

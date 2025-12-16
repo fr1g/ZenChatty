@@ -12,7 +12,12 @@ public class ChatAgent
     {
         context.Messages.Add(message);
         await context.SaveChangesAsync();
+        
+        // 向已加入聊天组的用户发送 IncomeMessage
         await agency.SendMessageAsUserAsync(message);
+        
+        // 向所有聊天参与者的个人通知组发送 UpdateRecents（用于更新首页聊天列表）
+        await agency.PushUpdateRecentsToParticipantsAsync(message);
     } // (hub)有新消息 -> foreach:接收者::Contact更新(unreadCount++)(previewMsg) -> 如果有vital，更新vital再推送
      // 
     private static bool IsVitalEvent(Message message, User who) // todo maycauseproblem 必须保证消息传入的时候是完整的对象（mention list完整） 

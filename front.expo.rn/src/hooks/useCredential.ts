@@ -2,7 +2,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../redux/StoreProvider";
 import { AuthState, ClientInitObject, CreateZenCoreClient, Credential, setUser, User } from "zen-core-chatty-ts";
 import { Alert } from "react-native";
-import { ClientConfig } from "App";
+import { DefaultConfig } from "ZenClient.config";
 
 export const useCredential = (): Credential | null => {
     const authState = useSelector((state: RootState) => state.auth);
@@ -31,7 +31,7 @@ export const useCurrentUserGet = (selectedAuthState: AuthState, dispatch: Functi
         let finalGot = authState.user;
         if (!finalGot && authState.credential) {
             let client = CreateZenCoreClient({
-                ...ClientConfig, // circle require, but can be ignored.
+                ...DefaultConfig,
                 userToken: authState.credential.AccessToken!,
             } as ClientInitObject);
             let userInfo: User | undefined = undefined;
@@ -67,6 +67,6 @@ export type AuthInfo = {
 }
 
 /**
- * 当前用户信息的类型定义
+ * Type definition for current user info
  */
 export type CurrentUserInfo = ReturnType<typeof useCurrentUserGet>;

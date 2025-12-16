@@ -15,14 +15,14 @@ export async function getImgByLocator(locator: string): Promise<string> {
 }
 
 /**
- * 从给定 URL 下载文件并返回 Blob
- * @param url 服务端文件地址
+ * Download file from given URL and return Blob
+ * @param url Server file address
  * @returns Promise<Blob>
  */
 export async function fetchFileAsBlob(url: string): Promise<Blob> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`下载文件失败: ${response.status} ${response.statusText}`);
+    throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
   }
   return await response.blob();
 }
@@ -33,9 +33,9 @@ export async function fetchFileAsBase64(url: string): Promise<string> {
 }
 
 /**
- * 将 Blob 转换为 Base64 编码的字符串
- * @param blob 要转换的 Blob 对象
- * @returns Promise<string> Base64 编码的字符串
+ * Convert Blob to Base64 encoded string
+ * @param blob Blob object to convert
+ * @returns Promise<string> Base64 encoded string
  */
 export async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {

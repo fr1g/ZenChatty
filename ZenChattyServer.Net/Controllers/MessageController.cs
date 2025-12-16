@@ -116,13 +116,13 @@ public class MessageController(
                 return BadRequest(SendMessageResponse.InternalError("Sender does not exist"));
             }
 
-            var message = new Message(sender, chat, $"{request.Content} # (this message was sent via API) T::{isTestingRequest}")
+            var message = new Message(sender, chat, request.Content)
             {
                 TraceId = Guid.NewGuid().ToString(),
                 Type = request.MessageType,
                 SentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                Info = $"{request.Info} # (this message was sent via API) T::{isTestingRequest}" ?? "",
+                ServerCaughtTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Info = request.Info ?? "",
                 IsMentioningAll = request.IsMentioningAll,
                 MentionedUserGuids = request.MentionedUserIds?.Select(id => id.ToString()).ToArray()
             };

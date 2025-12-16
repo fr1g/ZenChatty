@@ -34,7 +34,7 @@ export default function
                 });
                 break;
             } catch (error) {
-                console.error('获取用户IMG失败:', error);
+                console.error('Failed to get user image:', error);
             }
         }
 
@@ -49,7 +49,7 @@ export default function
     // return <SafeAreaProviderCompat> 
     // image:
     /*
-     *  onError={(error) => console.log('图片加载失败:', error)} onLoad={() => console.log('图片加载成功')}
+     *  onError={(error) => console.log('Image load failed:', error)} onLoad={() => console.log('Image load successful')}
     */
     return <View style={{ paddingTop: statusBarHeight }} className='bg-slate-500'>
         <View className={`flex px-3 pb-1 w-full gap-3 h-20 ${(dir === 'right') ? 'flex-row-reverse' : 'flex-row'}`} >

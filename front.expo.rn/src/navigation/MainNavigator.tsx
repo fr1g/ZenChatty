@@ -2,6 +2,9 @@ import { NavigationContainer, ParamListBase, RouteProp, StaticParamList } from '
 import { createDrawerNavigator, DrawerNavigationOptions, DrawerNavigationProp } from '@react-navigation/drawer';
 import Overview from '../screens/overview';
 import UserSearchScreen from '../screens/UserSearchScreen';
+import FriendRequestsScreen from '../screens/FriendRequestsScreen';
+import FriendsListScreen from '../screens/FriendsListScreen';
+import ContactsScreen from '../screens/ContactsScreen';
 import MainDrawerHeader from '../components/MainDrawerHeader';
 import MainDrawerContainer from '../components/MainDrawerContainer';
 import { createContext, useEffect, useState } from 'react';
@@ -64,9 +67,13 @@ export default function DefaultView({ theme }: { theme: ReactNavigation.Theme })
                         <Drawer.Navigator
                             screenOptions={screenOptions}
                             drawerContent={(props) => <MainDrawerContainer {...props} />}>
-                            <Drawer.Screen name='index' component={Overview} />
-                            <Drawer.Screen name='ex' component={Retest} />
-                            <Drawer.Screen name='user-search' component={UserSearchScreen} options={{ title: 'Add Friend' }} />
+                            <Drawer.Screen name='index' component={Overview} options={{ title: 'Chats' }} />
+                            <Drawer.Screen name='contacts' component={ContactsScreen} options={{ title: 'Contacts' }} />
+                            {/* The following pages can be navigated from Contacts page, hidden from drawer to avoid duplication */}
+                            <Drawer.Screen name='friends' component={FriendsListScreen} options={{ title: 'Friends', drawerItemStyle: { display: 'none' } }} />
+                            <Drawer.Screen name='friend-requests' component={FriendRequestsScreen} options={{ title: 'Friend Requests', drawerItemStyle: { display: 'none' } }} />
+                            <Drawer.Screen name='user-search' component={UserSearchScreen} options={{ title: 'Add Friend', drawerItemStyle: { display: 'none' } }} />
+                            <Drawer.Screen name='ex' component={Retest} options={{ drawerItemStyle: { display: 'none' } }} />
                         </Drawer.Navigator>
                         :
                         <ChatScopeViews />

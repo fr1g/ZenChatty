@@ -1,39 +1,39 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import * as Models from './models/index.js';
 
-// 事件数据接口定义
+// 事件数据接口定义（匹配后端的 camelCase 序列化）
 export interface IncomeMessageData {
-    EventType: string;
-    ChatUniqueMark: string;
-    Timestamp: number;
-    Message: Models.Message;
+    eventType: string;
+    chatUniqueMark: string;
+    timestamp: number;
+    message: Models.Message;
 }
 
 export interface PatchMessageData {
-    EventType: string;
-    ChatUniqueMark: string;
-    Timestamp: number;
-    UpdatedMessage: Models.Message;
-    UpdateType: string;
+    eventType: string;
+    chatUniqueMark: string;
+    timestamp: number;
+    updatedMessage: Models.Message;
+    updateType: string;
 }
 
 export interface UpdateRecentsData {
-    ChatUniqueMark: string;
-    Message: Models.Message;
-    TotalUnreadCount: number;
-    UpdateTime: string;
+    chatUniqueMark: string;
+    message: Models.Message;
+    totalUnreadCount: number;
+    updateTime: string;
 }
 
 export interface UpdateMessageResponseData {
-    Result: string;
-    ErrorMessage?: string;
+    result: string;
+    errorMessage?: string;
 }
 
 export interface ReceiveUpdatedContactAndMessageData {
-    Contact: Models.Contact;
-    Message: Models.Message;
-    TotalUnreadCount: number;
-    UpdateTime: string;
+    contact: Models.Contact;
+    message: Models.Message;
+    totalUnreadCount: number;
+    updateTime: string;
 }
 
 export default class SignalRClient {
@@ -75,7 +75,8 @@ export default class SignalRClient {
                 .withUrl(hubUrl, {
                     accessTokenFactory: () => this.accessToken || '',
                     skipNegotiation: false, // 启用协商以支持代理
-                    transport: 4 // 使用所有可用传输方式
+                    // 使用所有可用传输方式：WebSockets(1) | ServerSentEvents(2) | LongPolling(4) = 7
+                    // 或者不设置，让客户端自动选择最佳方式
                 })
                 .configureLogging(LogLevel.Debug) // 提高日志级别以调试
                 .withAutomaticReconnect({
@@ -123,10 +124,10 @@ export default class SignalRClient {
         // 接收新消息事件（对应后端IncomeMessage）
         this.connection.on('IncomeMessage', (data: IncomeMessageData) => {
             console.log('收到新消息事件:', {
-                chatId: data.ChatUniqueMark,
-                messageId: data.Message.traceId,
-                eventType: data.EventType,
-                timestamp: data.Timestamp
+                chatId: data.chatUniqueMark,
+                messageId: data.message?.traceId,
+                eventType: data.eventType,
+                timestamp: data.timestamp
             });
             this.onIncomeMessage?.(data);
         });
@@ -134,11 +135,11 @@ export default class SignalRClient {
         // 接收消息更新事件（对应后端PatchMessage）
         this.connection.on('PatchMessage', (data: PatchMessageData) => {
             console.log('收到消息更新事件:', {
-                chatId: data.ChatUniqueMark,
-                messageId: data.UpdatedMessage.traceId,
-                eventType: data.EventType,
-                updateType: data.UpdateType,
-                timestamp: data.Timestamp
+                chatId: data.chatUniqueMark,
+                messageId: data.updatedMessage?.traceId,
+                eventType: data.eventType,
+                updateType: data.updateType,
+                timestamp: data.timestamp
             });
             this.onPatchMessage?.(data);
         });
@@ -146,10 +147,10 @@ export default class SignalRClient {
         // 接收最近消息更新事件（对应后端UpdateRecents）
         this.connection.on('UpdateRecents', (data: UpdateRecentsData) => {
             console.log('收到最近消息更新事件:', {
-                chatId: data.ChatUniqueMark,
-                messageId: data.Message.traceId,
-                totalUnreadCount: data.TotalUnreadCount,
-                updateTime: data.UpdateTime
+                chatId: data.chatUniqueMark,
+                messageId: data.message?.traceId,
+                totalUnreadCount: data.totalUnreadCount,
+                updateTime: data.updateTime
             });
             this.onUpdateRecents?.(data);
         });

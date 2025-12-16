@@ -29,8 +29,10 @@ public class UserRelatedContext : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder
-            .UseSqlServer(_connectionString)
-            .UseLazyLoadingProxies(); // 启用延迟加载
+            .UseSqlServer(_connectionString);
+            // 禁用延迟加载代理 - 代理类与 JSON 多态序列化不兼容
+            // 所有关联数据需要显式使用 .Include() 加载
+            // .UseLazyLoadingProxies();
     }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)

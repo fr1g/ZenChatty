@@ -78,34 +78,67 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
 
     /// <summary>
     /// 查询用户信息（根据隐私设置过滤）
+    /// 支持通过 Email、CustomId 或 LocalId (GUID) 查找用户
     /// </summary>
     public async Task<UserInfoResponse> QueryUserInfoAsync(User requester, string targetSeekBy)
     {
         try
         {
+            logger.LogInformation("[QueryUserInfo] 开始查询用户 - 请求者: {RequesterId}, 查询参数: {TargetSeekBy}", 
+                requester.LocalId, targetSeekBy);
+            
+            // 尝试按 Email 或 CustomId 查找
             var targetUser = await context.Users
                 .Include(u => u.Privacies)
                 .FirstOrDefaultAsync(u => u.Email == targetSeekBy || u.CustomId == targetSeekBy);
             
+            // 如果没找到，尝试按 GUID (LocalId) 查找
+            if (targetUser == null && Guid.TryParse(targetSeekBy, out var guidValue))
+            {
+                logger.LogInformation("[QueryUserInfo] 按 Email/CustomId 未找到，尝试按 GUID 查找: {Guid}", guidValue);
+                targetUser = await context.Users
+                    .Include(u => u.Privacies)
+                    .FirstOrDefaultAsync(u => u.LocalId == guidValue);
+            }
+            
             if (targetUser == null)
+            {
+                logger.LogWarning("[QueryUserInfo] 用户不存在 - 查询参数: {TargetSeekBy}", targetSeekBy);
+                
+                // 调试：列出数据库中的一些用户
+                var sampleUsers = await context.Users.Take(5).Select(u => new { u.LocalId, u.Email, u.CustomId }).ToListAsync();
+                logger.LogInformation("[QueryUserInfo] 数据库样本用户: {@SampleUsers}", sampleUsers);
+                
                 return new UserInfoResponse { success = false, message = "目标用户不存在" };
+            }
 
-            // 检查是否允许通过搜索发现
-            if (!targetUser.Privacies.IsDiscoverableViaSearch) // log: dont know why in properties this guy got a [?], and i didnt remember why make this nullable
+            logger.LogInformation("[QueryUserInfo] 找到目标用户 - LocalId: {LocalId}, CustomId: {CustomId}, Email: {Email}", 
+                targetUser.LocalId, targetUser.CustomId, targetUser.Email);
+
+            // 检查是否允许通过搜索发现 (内部查询时跳过此检查)
+            var isInternalQuery = Guid.TryParse(targetSeekBy, out _);
+            if (!isInternalQuery && !targetUser.Privacies.IsDiscoverableViaSearch)
+            {
+                logger.LogInformation("[QueryUserInfo] 用户不允许被搜索 - LocalId: {LocalId}", targetUser.LocalId);
                 return new UserInfoResponse { success = false, message = "该用户不允许被搜索" };
+            }
 
             // 检查关系以确定可见性
             var isFriend = RelationshipHelper.IsUserAFriend(context, requester,  targetUser);
             var isInSameGroup = await IsInSameGroupAsync(requester.LocalId.ToString(), targetUser.LocalId.ToString());
 
+            logger.LogInformation("[QueryUserInfo] 关系检查 - isFriend: {IsFriend}, isInSameGroup: {IsInSameGroup}", 
+                isFriend, isInSameGroup);
+
             // 根据隐私设置过滤用户信息
             var filteredUserInfo = FilterUserInfoByPrivacy(targetUser, isFriend, isInSameGroup);
             
+            logger.LogInformation("[QueryUserInfo] 查询成功 - 返回用户: {LocalId}", filteredUserInfo.LocalId);
             return filteredUserInfo;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "查询用户信息失败");
+            logger.LogError(ex, "[QueryUserInfo] 查询用户信息失败 - 查询参数: {TargetSeekBy}", targetSeekBy);
             return new UserInfoResponse { success = false, message = "查询用户信息失败" };
         }
     }
@@ -545,25 +578,52 @@ public class UserSocialService(UserRelatedContext context, ILogger<UserSocialSer
     /// </summary>
     public async Task<List<Contact>> GetContactsAsync(string userId, bool ignoreInformal = false, bool isRecently = true)
     {
+        var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
+            Console.WriteLine($"[GetContacts] ⏱️ 开始获取联系人 - userId: {userId}, ignoreInformal: {ignoreInformal}, isRecently: {isRecently}");
+            
             var now = DateTime.UtcNow;
+            var userGuid = Guid.Parse(userId); // 预先转换，避免在 SQL 中做字符串转换
+            
+            // 使用 AsNoTracking 避免 EF Core 生成代理类，否则 JSON 多态序列化会失败
+            // 只获取最新 1 条消息用于预览（减少数据量，提升性能）
+            var dbStopwatch = System.Diagnostics.Stopwatch.StartNew();
             var contacts = await context.Contacts
-                .Include(c => c.Host)
+                .AsNoTracking()
                 .Include(c => c.Object)
-                .Where(c => // 猪脑过载了
-                            (c.Host.LocalId.ToString() == userId) &&
+                    .ThenInclude(chat => chat.History.OrderByDescending(m => m.SentTimestamp).Take(1))
+                .Where(c => 
+                            c.HostId == userGuid && // 使用 Guid 直接比较，效率更高
                             (ignoreInformal ? !(c.Object is PrivateChat && ((PrivateChat)c.Object).IsInformal) : true) &&
                             (isRecently ? EF.Functions.DateDiffHour(c.LastUsed, now) >= -72 : true)
                       )
                 .OrderByDescending(c => c.LastUsed)
                 .ToListAsync();
+            dbStopwatch.Stop();
 
-            return contacts;
+            Console.WriteLine($"[GetContacts] ⏱️ 数据库查询耗时: {dbStopwatch.ElapsedMilliseconds}ms, 查询到 {contacts.Count} 个联系人");
+            
+            // 去重：按 ObjectId 去重，保留最新的
+            var distinctContacts = contacts
+                .GroupBy(c => c.ObjectId)
+                .Select(g => g.First())
+                .ToList();
+            
+            if (distinctContacts.Count != contacts.Count)
+            {
+                Console.WriteLine($"[GetContacts] 去重后: {distinctContacts.Count} 个联系人 (移除了 {contacts.Count - distinctContacts.Count} 个重复)");
+            }
+
+            totalStopwatch.Stop();
+            Console.WriteLine($"[GetContacts] ⏱️ 总耗时: {totalStopwatch.ElapsedMilliseconds}ms, 返回 {distinctContacts.Count} 个联系人");
+            
+            return distinctContacts;
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to get contact list");
+            Console.WriteLine($"[GetContacts] 异常: {ex.Message}");
             return new List<Contact>();
         }
     }

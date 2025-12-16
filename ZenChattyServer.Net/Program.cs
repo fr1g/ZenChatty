@@ -55,9 +55,47 @@ builder.Services.AddAuthentication(options =>
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             
-            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
-                context.Token = accessToken;
+            Console.WriteLine($"========== JWT OnMessageReceived ==========");
+            Console.WriteLine($"Path: {path}");
+            Console.WriteLine($"Token from query: {(!string.IsNullOrEmpty(accessToken) ? $"存在 (长度: {accessToken.ToString().Length})" : "不存在")}");
             
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
+            {
+                context.Token = accessToken;
+                Console.WriteLine("✅ Token 已设置到上下文");
+            }
+            else
+            {
+                Console.WriteLine("⚠️ Token 未设置（路径不匹配或 Token 为空）");
+            }
+            Console.WriteLine("==========================================");
+            
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"❌ ========== JWT 认证失败 ==========");
+            Console.WriteLine($"异常: {context.Exception.Message}");
+            Console.WriteLine($"异常类型: {context.Exception.GetType().Name}");
+            Console.WriteLine($"堆栈: {context.Exception.StackTrace}");
+            Console.WriteLine("==========================================");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine($"✅ ========== JWT Token 验证成功 ==========");
+            var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Console.WriteLine($"用户ID: {userId ?? "未找到"}");
+            Console.WriteLine("==========================================");
+            return Task.CompletedTask;
+        },
+        OnChallenge = context =>
+        {
+            Console.WriteLine($"⚠️ ========== JWT 认证挑战 ==========");
+            Console.WriteLine($"Error: {context.Error}");
+            Console.WriteLine($"ErrorDescription: {context.ErrorDescription}");
+            Console.WriteLine($"AuthenticateFailure: {context.AuthenticateFailure?.Message}");
+            Console.WriteLine("==========================================");
             return Task.CompletedTask;
         }
     };
@@ -72,7 +110,9 @@ builder.Services.AddScoped<ChatService>(); // todo ??
 builder.Services.AddScoped<ChatQueryHelper>();
 builder.Services.AddScoped<RelationshipHelper>();
 builder.Services.AddScoped<MessageValidationService>();
-builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
+// 使用空操作消息队列服务（不需要 RabbitMQ）
+// 如果需要启用 RabbitMQ，将下面一行改为：builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
+builder.Services.AddScoped<IMessageQueueService, NoOpMessageQueueService>();
 builder.Services.AddSingleton<MessageCacheService>();
 // todo builder.Services.AddScoped<CacheSyncService>();
 builder.Services.AddScoped<ChatHubService>();
@@ -85,35 +125,48 @@ builder.Services.AddDbContext<UserRelatedContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // 添加SignalR服务
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+    {
+        // 启用详细错误信息（开发环境）
+        options.EnableDetailedErrors = true;
+        
+        // 配置超时时间
+        options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+        options.HandshakeTimeout = TimeSpan.FromSeconds(30);
+        options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        
+        Console.WriteLine("========== SignalR 配置 ==========");
+        Console.WriteLine($"EnableDetailedErrors: {options.EnableDetailedErrors}");
+        Console.WriteLine($"ClientTimeoutInterval: {options.ClientTimeoutInterval}");
+        Console.WriteLine($"HandshakeTimeout: {options.HandshakeTimeout}");
+        Console.WriteLine($"KeepAliveInterval: {options.KeepAliveInterval}");
+        Console.WriteLine("==================================");
+    })
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
 
-// 添加CORS配置
+// 添加CORS配置 - 允许所有来源
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ReactNativeApp", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:8081", // Expo开发服务器
-                "http://localhost:19000", // Expo Metro bundler
-                "http://localhost:19006", // Expo开发工具
-                "http://chatty.vot.moe", 
-                "http://rus.kami.su" // 您的frp映射域名
-                // todo i still want to ensure support of https. open client. then let's just allow all cors!
-            )
+        policy.SetIsOriginAllowed(_ => true) // 允许所有来源
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
     });
 });
 
-// 配置RabbitMQ
-builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
-builder.Services.AddSingleton<RabbitMQConfig>(provider =>
-{
-    var config = new RabbitMQConfig();
-    builder.Configuration.GetSection("RabbitMQ").Bind(config);
-    return config;
-});
+// 配置RabbitMQ（仅在启用 RabbitMQMessageQueueService 时需要）
+// builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
+// builder.Services.AddSingleton<RabbitMQConfig>(provider =>
+// {
+//     var config = new RabbitMQConfig();
+//     builder.Configuration.GetSection("RabbitMQ").Bind(config);
+//     return config;
+// });
 
 var app = builder.Build();
 try
@@ -135,15 +188,86 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     
-    // 启用CORS（开发环境）
-    app.UseCors("ReactNativeApp");
-    
     // dev test scope
-
-    userContext.Database.EnsureDeleted();
-    userContext.Database.EnsureCreated();
+    // ⚠️ 注释掉以下两行以保留数据库数据
+    // 如果需要重置数据库，取消注释即可
+    // userContext.Database.EnsureDeleted();
+    // userContext.Database.EnsureCreated();
     
-} 
+    // 确保数据库存在（不会删除现有数据）
+    userContext.Database.EnsureCreated();
+}
+
+// 启用CORS（所有环境都需要）
+app.UseCors("ReactNativeApp");
+
+// 添加 WebSocket 和 SignalR 调试中间件
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    
+    // 记录所有 /chatHub 的请求
+    if (path.StartsWithSegments("/chatHub"))
+    {
+        Console.WriteLine($"========================================");
+        Console.WriteLine($"========== 收到 chatHub 请求 ==========");
+        Console.WriteLine($"时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}");
+        Console.WriteLine($"路径: {path}");
+        Console.WriteLine($"方法: {context.Request.Method}");
+        Console.WriteLine($"协议: {context.Request.Protocol}");
+        Console.WriteLine($"IsWebSocket: {context.WebSockets.IsWebSocketRequest}");
+        Console.WriteLine($"QueryString: {context.Request.QueryString}");
+        
+        // 输出请求头
+        Console.WriteLine("请求头:");
+        foreach (var header in context.Request.Headers)
+        {
+            // 对于 Authorization 头，只显示是否存在
+            if (header.Key.Equals("Authorization", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"  - {header.Key}: [存在]");
+            }
+            else if (header.Key.Equals("Cookie", StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"  - {header.Key}: [存在]");
+            }
+            else
+            {
+                Console.WriteLine($"  - {header.Key}: {header.Value}");
+            }
+        }
+        
+        // 检查 access_token
+        var accessToken = context.Request.Query["access_token"];
+        Console.WriteLine($"access_token 查询参数: {(!string.IsNullOrEmpty(accessToken) ? $"存在 (长度: {accessToken.ToString().Length})" : "不存在")}");
+        
+        Console.WriteLine($"========================================");
+    }
+    
+    try
+    {
+        await next();
+        
+        if (path.StartsWithSegments("/chatHub"))
+        {
+            Console.WriteLine($"========== chatHub 请求完成 ==========");
+            Console.WriteLine($"状态码: {context.Response.StatusCode}");
+            Console.WriteLine($"========================================");
+        }
+    }
+    catch (Exception ex)
+    {
+        if (path.StartsWithSegments("/chatHub"))
+        {
+            Console.WriteLine($"❌ ========== chatHub 请求异常 ==========");
+            Console.WriteLine($"异常: {ex.Message}");
+            Console.WriteLine($"类型: {ex.GetType().Name}");
+            Console.WriteLine($"堆栈: {ex.StackTrace}");
+            Console.WriteLine($"========================================");
+        }
+        throw;
+    }
+});
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
@@ -185,18 +309,17 @@ catch (Exception e)
     Console.Error.WriteLine($"!!!CRIT System User maybe not exists: {e.Message}");
 }
 
-// 启动RabbitMQ消费者服务
+// 启动消息队列消费者服务（如果使用 RabbitMQ）
 try
 {
-    // using var scope = app.Services.CreateScope();
     var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
     await messageQueueService.StartConsumingAsync();
-    Console.WriteLine("RabbitMQ消费者服务已启动");
+    Console.WriteLine("消息队列服务已启动");
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"启动RabbitMQ消费者服务失败: {ex.Message}");
-    throw;
+    // 不抛出异常，允许应用在没有消息队列的情况下运行
+    Console.WriteLine($"消息队列服务启动跳过: {ex.Message}");
 }
 
 await app.RunAsync();

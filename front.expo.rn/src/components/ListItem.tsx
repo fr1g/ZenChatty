@@ -3,10 +3,14 @@ import Avatar from "./Avatar";
 import { DefaultAvatarUrl } from "zen-core-chatty-ts";
 import { ReactNode } from "react";
 
-export default function ListItem({ item }: { item: ListItemProps }) {
+export default function ListItem({ item, onPress, onLongPress }: { item: ListItemProps, onPress?: () => void, onLongPress?: () => void }) {
+    const Container = (onPress || onLongPress) ? TouchableOpacity : View;
 
-    return <TouchableOpacity 
+    return <Container 
     style={{height: 86}}
+    onPress={onPress}
+    onLongPress={onLongPress}
+    delayLongPress={500}
     className=' relative flex-row items-center border-b border-b-zinc-300 dark:border-b-zinc-700'>
         <View className="relative">
             <View style={{
@@ -37,7 +41,7 @@ export default function ListItem({ item }: { item: ListItemProps }) {
                 {item.subtitle} 
             </Text>
         </View>
-    </TouchableOpacity>
+    </Container>
 }
 
 export class ListItemProps {

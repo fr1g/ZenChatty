@@ -26,15 +26,26 @@ public class UserSocialController(
 
     /// <summary>
     /// 查询用户信息（根据隐私设置过滤）
+    /// 支持通过 Email、CustomId 或 LocalId (GUID) 查找
     /// </summary>
     [HttpPost("get-user-info/{targetSeekBy}")]
-    public async Task<ActionResult<UserInfoResponse>> QueryUserInfo(string targetSeekBy) // wrong! it should be:
-    // todo it should be a path variable, search it if the id match or the email match
+    public async Task<ActionResult<UserInfoResponse>> QueryUserInfo(string targetSeekBy)
     {
+        Console.WriteLine($"[API get-user-info] 收到请求 - targetSeekBy: {targetSeekBy}");
+        
         var refer = await AuthenticateAsync();
-        if (refer.failResult != null) return Unauthorized(refer.failResult);
+        if (refer.failResult != null)
+        {
+            Console.WriteLine($"[API get-user-info] 认证失败");
+            return Unauthorized(refer.failResult);
+        }
 
-        var result = await userSocialService.QueryUserInfoAsync(refer.user!, targetSeekBy.ToLower());
+        Console.WriteLine($"[API get-user-info] 认证成功 - 请求者: {refer.user!.LocalId}");
+        
+        // 不再强制转小写，保留原始参数（GUID需要保持原样）
+        var result = await userSocialService.QueryUserInfoAsync(refer.user!, targetSeekBy);
+        
+        Console.WriteLine($"[API get-user-info] 查询结果 - success: {result.success}, message: {result.message}");
         
         if (!result.success)
             return BadRequest(result);
@@ -245,6 +256,58 @@ public class UserSocialController(
         return Ok(contacts);
     }
 
+    /// <summary>
+    /// 删除对话（从联系人列表中移除，不删除聊天记录）
+    /// </summary>
+    [HttpDelete("contact/{contactId}")]
+    public async Task<ActionResult<BasicResponse>> DeleteContact(string contactId)
+    {
+        Console.WriteLine($"[DeleteContact] 收到请求 - contactId: {contactId}");
+        
+        var refer = await AuthenticateAsync();
+        if (refer.failResult != null)
+        {
+            Console.WriteLine($"[DeleteContact] 认证失败");
+            return Unauthorized(refer.failResult);
+        }
+
+        try
+        {
+            var userId = refer.user!.LocalId;
+            Console.WriteLine($"[DeleteContact] 当前用户: {userId}");
+            
+            if (!Guid.TryParse(contactId, out var contactGuid))
+            {
+                Console.WriteLine($"[DeleteContact] 无效的 contactId 格式: {contactId}");
+                return BadRequest(new BasicResponse { content = "无效的联系人ID", success = false });
+            }
+
+            // 查找联系人记录
+            var contact = await context.Contacts
+                .FirstOrDefaultAsync(c => c.ContactId == contactGuid && c.HostId == userId);
+
+            if (contact == null)
+            {
+                Console.WriteLine($"[DeleteContact] 联系人不存在或无权删除");
+                return NotFound(new BasicResponse { content = "联系人不存在或无权删除", success = false });
+            }
+
+            Console.WriteLine($"[DeleteContact] 找到联系人 - DisplayName: {contact.DisplayName}, ObjectId: {contact.ObjectId}");
+
+            // 删除联系人记录
+            context.Contacts.Remove(contact);
+            await context.SaveChangesAsync();
+
+            Console.WriteLine($"[DeleteContact] 成功删除联系人");
+            return Ok(new BasicResponse { content = "已删除对话", success = true });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[DeleteContact] 异常: {ex.Message}");
+            return StatusCode(500, new BasicResponse { content = "服务器错误", success = false });
+        }
+    }
+
     #endregion
 
     #region 隐私设置管理接口
@@ -347,7 +410,9 @@ public class UserSocialController(
                 OfChat = created.chat!,
                 OfChatId = created.chat.UniqueMark,
                 ViaGroupChatId = viaGroupId,
-                Info = "NFR::Group"
+                Info = "NFR::Group",
+                SenderId = refer.user!.LocalId,
+                SenderName = refer.user!.DisplayName ?? refer.user!.CustomId
             };
         }
         else
@@ -369,16 +434,418 @@ public class UserSocialController(
                 Type = EMessageType.Requesting,
                 OfChat = created.chat!,
                 OfChatId = created.chatId,
-                Info = "NFR::Dir"
+                Info = "NFR::Dir",
+                SenderId = refer.user!.LocalId,
+                SenderName = refer.user!.DisplayName ?? refer.user!.CustomId
             };
         }
         
         await ChatAgent.Say(context, requestMessage, chatHub);
         
         return Ok(new BasicResponse { 
-            content = "好友请求接口已创建，请实现具体业务逻辑", 
+            content = "好友请求已发送", 
             success = true 
         });
+    }
+
+    /// <summary>
+    /// 接受好友请求
+    /// </summary>
+    [HttpPost("accept-friend-request")]
+    public async Task<ActionResult<BasicResponse>> AcceptFriendRequest([FromQuery] string requestMessageId)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            // 查找好友请求消息
+            var requestMessage = await context.Messages
+                .FirstOrDefaultAsync(m => m.TraceId == requestMessageId && m.Type == EMessageType.Requesting);
+            
+            if (requestMessage == null)
+                return NotFound(new BasicResponse
+                {
+                    content = "好友请求不存在",
+                    success = false
+                });
+
+            // 解析请求内容，提取请求发起者ID
+            // Content格式: "requestBy:{guid};receiver:{guid};i-wanna-add-u-as-friend" 或 "requestBy:{guid};receiver:{guid};thru-group:{guid};i-wanna-add-u-as-friend"
+            var content = requestMessage.Content;
+            var requestByStart = content.IndexOf("requestBy:") + 10;
+            var requestByEnd = content.IndexOf(";", requestByStart);
+            var requesterIdStr = content.Substring(requestByStart, requestByEnd - requestByStart);
+            
+            if (!Guid.TryParse(requesterIdStr, out var requesterId))
+                return BadRequest(new BasicResponse
+                {
+                    content = "无效的请求格式",
+                    success = false
+                });
+
+            // 确认当前用户是请求的接收者
+            var receiverStart = content.IndexOf("receiver:") + 9;
+            var receiverEnd = content.IndexOf(";", receiverStart);
+            var receiverIdStr = content.Substring(receiverStart, receiverEnd - receiverStart);
+            
+            if (!Guid.TryParse(receiverIdStr, out var receiverId) || receiverId != refer.user!.LocalId)
+                return Forbid();
+
+            // 检查是否已经接受过（通过检查是否已有正式好友关系）
+            var existingFriendship = await context.PrivateChats
+                .FirstOrDefaultAsync(pc => 
+                    ((pc.InitById == requesterId && pc.ReceiverId == receiverId) ||
+                     (pc.InitById == receiverId && pc.ReceiverId == requesterId)) &&
+                    !pc.IsInformal);
+
+            if (existingFriendship != null)
+                return BadRequest(new BasicResponse
+                {
+                    content = "已经是好友关系",
+                    success = false
+                });
+
+            // 调用添加好友方法
+            var result = await userSocialService.AddFriendAsync(receiverId.ToString(), requesterId.ToString(), true);
+            
+            if (!result.success)
+                return BadRequest(new BasicResponse
+                {
+                    content = result.message,
+                    success = false
+                });
+
+            // 更新请求消息状态（添加标记）
+            requestMessage.Info = requestMessage.Info?.Replace("NFR::", "NFR::Accepted::");
+            context.Messages.Update(requestMessage);
+            await context.SaveChangesAsync();
+
+            // 发送系统通知消息给请求发起者
+            var acceptNotification = new Message
+            {
+                Content = $"{refer.user.DisplayName} 接受了你的好友请求",
+                Type = EMessageType.Event,
+                OfChatId = result.chatId,
+                SenderId = refer.user.LocalId,
+                Info = "FriendRequestAccepted"
+            };
+            await ChatAgent.Say(context, acceptNotification, chatHub);
+
+            return Ok(new BasicResponse
+            {
+                content = "已接受好友请求",
+                success = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"接受好友请求失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
+    }
+
+    /// <summary>
+    /// 拒绝好友请求
+    /// </summary>
+    [HttpPost("reject-friend-request")]
+    public async Task<ActionResult<BasicResponse>> RejectFriendRequest([FromQuery] string requestMessageId)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            // 查找好友请求消息
+            var requestMessage = await context.Messages
+                .FirstOrDefaultAsync(m => m.TraceId == requestMessageId && m.Type == EMessageType.Requesting);
+            
+            if (requestMessage == null)
+                return NotFound(new BasicResponse
+                {
+                    content = "好友请求不存在",
+                    success = false
+                });
+
+            // 解析请求内容
+            var content = requestMessage.Content;
+            var receiverStart = content.IndexOf("receiver:") + 9;
+            var receiverEnd = content.IndexOf(";", receiverStart);
+            var receiverIdStr = content.Substring(receiverStart, receiverEnd - receiverStart);
+            
+            if (!Guid.TryParse(receiverIdStr, out var receiverId) || receiverId != refer.user!.LocalId)
+                return Forbid();
+
+            // 更新请求消息状态
+            requestMessage.Info = requestMessage.Info?.Replace("NFR::", "NFR::Rejected::");
+            context.Messages.Update(requestMessage);
+            await context.SaveChangesAsync();
+
+            // 可选：发送拒绝通知（取决于产品需求）
+            // var rejectNotification = new Message { ... };
+            // await ChatAgent.Say(context, rejectNotification, chatHub);
+
+            return Ok(new BasicResponse
+            {
+                content = "已拒绝好友请求",
+                success = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"拒绝好友请求失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
+    }
+
+    /// <summary>
+    /// 获取收到的待处理好友请求
+    /// </summary>
+    [HttpGet("friend-requests/pending")]
+    public async Task<ActionResult<List<Message>>> GetPendingFriendRequests()
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            var userId = refer.user!.LocalId;
+
+            // 查找所有发给当前用户的、类型为Requesting的消息
+            var pendingRequests = await context.Messages
+                .Where(m => m.Type == EMessageType.Requesting && 
+                           m.Content.Contains($"receiver:{userId}") &&
+                           (m.Info.StartsWith("NFR::Dir") || m.Info.StartsWith("NFR::Group")) &&
+                           !m.Info.Contains("Accepted") &&
+                           !m.Info.Contains("Rejected"))
+                .OrderByDescending(m => m.SentTimestamp)
+                .ToListAsync();
+
+            return Ok(pendingRequests);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"获取待处理好友请求失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
+    }
+
+    /// <summary>
+    /// 获取已发送的好友请求
+    /// </summary>
+    [HttpGet("friend-requests/sent")]
+    public async Task<ActionResult<List<Message>>> GetSentFriendRequests()
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            var userId = refer.user!.LocalId;
+
+            // 查找当前用户发送的所有Requesting类型消息
+            var sentRequests = await context.Messages
+                .Where(m => m.Type == EMessageType.Requesting && 
+                           m.SenderId == userId)
+                .OrderByDescending(m => m.SentTimestamp)
+                .ToListAsync();
+
+            return Ok(sentRequests);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"获取已发送好友请求失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
+    }
+
+    /// <summary>
+    /// 撤销好友请求
+    /// </summary>
+    [HttpPost("revoke-friend-request")]
+    public async Task<ActionResult<BasicResponse>> RevokeFriendRequest([FromQuery] string requestMessageId)
+    {
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null) return Unauthorized(refer.failResult);
+
+        try
+        {
+            var requestMessage = await context.Messages
+                .FirstOrDefaultAsync(m => m.TraceId == requestMessageId && 
+                                        m.Type == EMessageType.Requesting &&
+                                        m.SenderId == refer.user!.LocalId);
+            
+            if (requestMessage == null)
+                return NotFound(new BasicResponse
+                {
+                    content = "好友请求不存在或无权撤销",
+                    success = false
+                });
+
+            // 标记为已撤销
+            requestMessage.Info = requestMessage.Info?.Replace("NFR::", "NFR::Revoked::");
+            requestMessage.IsCanceled = true;
+            context.Messages.Update(requestMessage);
+            await context.SaveChangesAsync();
+
+            return Ok(new BasicResponse
+            {
+                content = "已撤销好友请求",
+                success = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"撤销好友请求失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
+    }
+
+    /// <summary>
+    /// 解除好友关系
+    /// </summary>
+    [HttpPost("remove-friend/{targetUserId}")]
+    public async Task<ActionResult<BasicResponse>> RemoveFriend(string targetUserId)
+    {
+        Console.WriteLine($"[RemoveFriend] 收到请求 - targetUserId: {targetUserId}");
+        
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null)
+        {
+            Console.WriteLine($"[RemoveFriend] 认证失败");
+            return Unauthorized(refer.failResult);
+        }
+
+        try
+        {
+            var userId = refer.user!.LocalId;
+            Console.WriteLine($"[RemoveFriend] 当前用户: {userId}");
+            
+            if (!Guid.TryParse(targetUserId, out var targetGuid))
+            {
+                Console.WriteLine($"[RemoveFriend] 无效的用户ID格式: {targetUserId}");
+                return BadRequest(new BasicResponse { content = "无效的用户ID", success = false });
+            }
+
+            Console.WriteLine($"[RemoveFriend] 查找私聊关系 - userId: {userId}, targetGuid: {targetGuid}");
+            
+            // 查找私聊关系
+            var privateChat = await context.PrivateChats
+                .FirstOrDefaultAsync(pc => 
+                    ((pc.InitById == userId && pc.ReceiverId == targetGuid) ||
+                     (pc.InitById == targetGuid && pc.ReceiverId == userId)) &&
+                    !pc.IsInformal);
+
+            if (privateChat == null)
+            {
+                Console.WriteLine($"[RemoveFriend] 好友关系不存在 - 查找 informal 私聊...");
+                // 调试：检查是否存在任何私聊（包括 informal）
+                var anyChat = await context.PrivateChats
+                    .FirstOrDefaultAsync(pc => 
+                        (pc.InitById == userId && pc.ReceiverId == targetGuid) ||
+                        (pc.InitById == targetGuid && pc.ReceiverId == userId));
+                if (anyChat != null)
+                {
+                    Console.WriteLine($"[RemoveFriend] 找到私聊但已是 informal - InitById: {anyChat.InitById}, ReceiverId: {anyChat.ReceiverId}, IsInformal: {anyChat.IsInformal}");
+                }
+                else
+                {
+                    Console.WriteLine($"[RemoveFriend] 完全没有找到私聊关系");
+                }
+                return NotFound(new BasicResponse { content = "好友关系不存在", success = false });
+            }
+
+            Console.WriteLine($"[RemoveFriend] 找到私聊 - UniqueMark: {privateChat.UniqueMark}, IsInformal: {privateChat.IsInformal}");
+
+            // 将好友关系标记为非正式（解除好友但保留聊天记录）
+            privateChat.IsInformal = true;
+            context.PrivateChats.Update(privateChat);
+            await context.SaveChangesAsync();
+
+            Console.WriteLine($"[RemoveFriend] 成功解除好友关系");
+            return Ok(new BasicResponse { content = "已解除好友关系", success = true });
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[RemoveFriend] 异常: {ex.Message}");
+            Console.Error.WriteLine($"[RemoveFriend] 堆栈: {ex.StackTrace}");
+            return StatusCode(500, new BasicResponse { content = "服务器错误", success = false });
+        }
+    }
+
+    /// <summary>
+    /// 获取好友列表（非临时私聊的联系人）
+    /// </summary>
+    [HttpGet("friends")]
+    public async Task<ActionResult<List<Contact>>> GetFriends()
+    {
+        Console.WriteLine($"[GetFriends] 收到请求");
+        
+        var refer = await AuthHelper.RejectOrNotAsync(AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault()), authService);
+        if (refer.failResult != null)
+        {
+            Console.WriteLine($"[GetFriends] 认证失败");
+            return Unauthorized(refer.failResult);
+        }
+
+        try
+        {
+            var userId = refer.user!.LocalId;
+            Console.WriteLine($"[GetFriends] 当前用户: {userId}");
+
+            // 获取所有非临时的私聊联系人（即好友）
+            // 使用 AsNoTracking 避免 EF Core 生成代理类，否则 JSON 多态序列化会失败
+            var friends = await context.Contacts
+                .AsNoTracking()
+                .Include(c => c.Object)
+                .Where(c => c.HostId == userId && 
+                           c.Object is PrivateChat &&
+                           !(c.Object as PrivateChat)!.IsInformal &&
+                           !c.IsBlocked)
+                .OrderByDescending(c => c.LastUsed)
+                .ToListAsync();
+
+            Console.WriteLine($"[GetFriends] 找到 {friends.Count} 个好友");
+            
+            // 调试：打印每个好友的详细信息
+            foreach (var friend in friends)
+            {
+                var pc = friend.Object as PrivateChat;
+                Console.WriteLine($"[GetFriends] 好友: ContactId={friend.ContactId}, DisplayName={friend.DisplayName}, ObjectId={friend.ObjectId}");
+                Console.WriteLine($"[GetFriends]   PrivateChat: InitById={pc?.InitById}, ReceiverId={pc?.ReceiverId}, UniqueMark={pc?.UniqueMark}, IsInformal={pc?.IsInformal}");
+            }
+
+            return Ok(friends);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"获取好友列表失败: {ex.Message}");
+            return StatusCode(500, new BasicResponse
+            {
+                content = "服务器错误",
+                success = false
+            });
+        }
     }
 
     #endregion

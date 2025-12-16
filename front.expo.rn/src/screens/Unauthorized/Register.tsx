@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, View, TextInput, TouchableOpacity, Text, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,7 +6,7 @@ import { useDispatch } from "react-redux";
 import ButtonSet, { ButtonItem } from "../../components/ButtonSet";
 import { bg } from "../../class/shared/ConstBgStyles";
 import { CoreRedux, RegisterRequest, RegDataForm } from "zen-core-chatty-ts";
-import { ClientConfig } from "../../App";
+import { ContextedClientConfig } from "../../App";
 
 const { registerUser } = CoreRedux;
 
@@ -38,6 +38,7 @@ function SecondStage({ bottomInset, stageSetter }: { bottomInset: number, stageS
 
 function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stageSetter: (value: boolean) => void }) {
     const dispatch = useDispatch();
+    const clientConfig = useContext(ContextedClientConfig);
 
     const {
         control,
@@ -45,22 +46,15 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
         formState: { errors },
         watch,
         trigger
-    } = useForm<RegisterRequest & { confirmPassword: string, verificationCode: string }>({
+    } = useForm<RegisterRequest & { confirmPassword: string }>({
         defaultValues: {
             uniqueCustomId: "",
             email: "",
-            verificationCode: "",
             password: "",
             confirmPassword: ""
         },
         mode: "all"
     });
-
-    // Function to handle getting verification code
-    const handleGetVerificationCode = () => {
-        console.log('Getting verification code...');
-        // Implementation for sending verification code would go here
-    };
 
     // Function to handle uid validation on input and blur
     const handleUidValidation = (value: string | undefined, onBlur: () => void) => {
@@ -77,15 +71,15 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
     // State for agreement checkbox
     const [isAgreed, setIsAgreed] = useState(false);
 
-    const onSubmit = async (data: RegisterRequest & { confirmPassword: string, verificationCode: string }) => {
+    const onSubmit = async (data: RegisterRequest & { confirmPassword: string }) => {
         if (!isAgreed) {
             Alert.alert('Agreement Required', 'Please agree to the terms and conditions');
             return;
         }
 
         try {
-            const { confirmPassword, verificationCode, ...registerData } = data;
-            // 修复字段映射：将 uniqueCustomId 映射到 customUserId
+            const { confirmPassword, ...registerData } = data;
+            // Fix field mapping: map uniqueCustomId to customUserId
             const regDataForm: RegDataForm = {
                 customUserId: registerData.uniqueCustomId,
                 passwd: registerData.password || '',
@@ -94,15 +88,15 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
                 gender: registerData.gender || 0,
                 birthday: registerData.birthday
             };
-            const result = await dispatch(registerUser({registerData: regDataForm, clientConfig: ClientConfig}) as any).unwrap();
+            const result = await dispatch(registerUser({registerData: regDataForm, clientConfig: clientConfig}) as any).unwrap();
 
             if (result.success) {
                 console.log('Registration successful:', result);
                 Alert.alert('Registration Successful', 'Your account has been created successfully');
-                // 注册成功，可以跳转到登录页面或其他操作
+                // Registration successful, can navigate to login page or other actions
             } else {
                 console.error('Registration failed with result:', result);
-                // 优先显示后端返回的具体错误信息
+                // Prefer specific error message from backend response
                 const errorMessage = result.error || 'Unknown error occurred. Please check console for details.';
                 Alert.alert('Registration Failed', errorMessage);
             }
@@ -115,7 +109,7 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
                 backendResponse: error.backendResponse
             });
             
-            // 优先使用后端响应体中的错误信息
+            // Prefer error message from backend response body
             const backendError = error.backendResponse;
             const errorMessage = backendError && typeof backendError === 'object'
                 ? backendError.content || backendError.message || backendError.error || error.message
@@ -181,44 +175,6 @@ function RegisterMain({ bottomInset, stageSetter }: { bottomInset: number, stage
                 name="email"
             />
             {errors.email && <Text>This is required.</Text>}
-        </View>
-        <View className="w-full">
-            <Text className="dark:text-white text-black text-xl align-middle">Verification Code (Required)</Text>
-            <View className="flex flex-row gap-2">
-                <Controller
-                    control={control}
-                    rules={{
-                        required: "Verification code is required",
-                        pattern: {
-                            value: /^[A-Za-z0-9]{0,6}$/,
-                            message: "Verification code must be up to 6 characters long and contain only letters and numbers"
-                        }
-                    }}
-                    render={({ field: { onChange, onBlur, value } }) => (
-                        <TextInput
-                            className="bg-slate-400 flex-1 rounded-lg text-lg px-1.5"
-                            placeholder="Enter verification code"
-                            onBlur={() => { setChanged(_ => !_); return onBlur }}
-                            onChangeText={(text) => {
-                                // Limit input to 6 characters
-                                if (text.length <= 6) {
-                                    onChange(text);
-                                }
-                            }}
-                            value={value}
-                            keyboardType="default"
-                        />
-                    )}
-                    name="verificationCode"
-                />
-                <TouchableOpacity
-                    onPress={handleGetVerificationCode}
-                    className="bg-slate-400 rounded-lg px-4 justify-center"
-                >
-                    <Text className="text-center text-lg">Get Code</Text>
-                </TouchableOpacity>
-            </View>
-            {errors.verificationCode && <Text className="text-red-500">{errors.verificationCode.message as string}</Text>}
         </View>
         <View className="w-full">
             <Text className="dark:text-white text-black text-xl align-middle">Password</Text>

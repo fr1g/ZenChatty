@@ -5,6 +5,9 @@ using ZenChattyServer.Net.Models.Enums;
 
 namespace ZenChattyServer.Net.Models;
 
+// 添加多态序列化支持，确保子类特有字段能被正确序列化
+[JsonDerivedType(typeof(PrivateChat), typeDiscriminator: "private")]
+[JsonDerivedType(typeof(GroupChat), typeDiscriminator: "group")]
 public class Chat(User initBy)
 {
     public Chat() : this(null!)

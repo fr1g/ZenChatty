@@ -1,4 +1,4 @@
-// 这个文件已经是一坨史山了我真他妈服了啊，到处都是飞线
+// This file is a mess with wiring everywhere
 import './global.css';
 
 import { DefaultTheme, DarkTheme } from '@react-navigation/native';
@@ -31,7 +31,7 @@ import { SQLiteStorageAdapter } from './database/SQLiteStorageAdapter';
 import { LogoutHelper } from './class/helpers/LogoutHelper';
 import { DefaultConfig } from 'ZenClient.config';
 
-// SignalR客户端上下文
+// SignalR client context
 export const SignalRContext = createContext<SignalRClient | null>(null);
 
 export let ClientConfig: ClientInitObject = DefaultConfig;
@@ -49,67 +49,126 @@ export default function App() {
     );
 }
 
-// SignalR连接管理函数
+// SignalR connection management function
 export const initializeSignalR = async (
     clientConfig: ClientInitObject,
     signalRClient: SignalRClient,
     dispatch: Function
 ): Promise<void> => {
     try {
-        // 设置访问令牌
+        console.log('🚀 [RN SignalR] ========== Starting SignalR initialization ==========');
+        
+        // Set access token
         if (clientConfig.userToken) {
             signalRClient.setAccessToken(clientConfig.userToken);
+            console.log('✅ [RN SignalR] Token set:', {
+                tokenLength: clientConfig.userToken.length,
+                tokenPreview: clientConfig.userToken.substring(0, 50) + '...'
+            });
+        } else {
+            console.error('❌ [RN SignalR] Token does not exist!');
         }
 
-        // 调试信息：显示连接配置
-        console.log('SignalR连接配置:', {
+        // Debug info: show connection config
+        console.log('📋 [RN SignalR] Connection config:', {
             baseURL: clientConfig.baseURL,
             port: clientConfig.port,
+            fullURL: `${clientConfig.baseURL}:${clientConfig.port}`,
             hasToken: !!clientConfig.userToken,
             tokenLength: clientConfig.userToken?.length || 0
         });
 
-        // 建立连接
+        // Establish connection
+        console.log('⏳ [RN SignalR] Establishing connection...');
         await signalRClient.connect();
+        console.log('✅ [RN SignalR] Connection successful! State:', signalRClient.getConnectionState());
 
-        // 设置事件处理
+        console.log('📝 [RN SignalR] Setting up event handlers...');
+        
+        // Set up event handling - using IncomeMessage event
+        signalRClient.onIncomeMessage = (data) => {
+            console.log('📨 [RN SignalR] ========== Received IncomeMessage ==========');
+            console.log('📨 [RN SignalR] Raw data:', JSON.stringify(data, null, 2));
+            
+            // Update Redux state: add new message
+            // Note: SignalR SDK returns camelCase format (data.message)
+            const message = data.message;
+            if (message) {
+                console.log('✅ [RN SignalR] Message parsed successfully:', {
+                    traceId: message.traceId,
+                    chatId: data.chatUniqueMark,
+                    senderId: message.senderId,
+                    content: message.content?.substring(0, 50),
+                    timestamp: message.sentTimestamp
+                });
+                console.log('⏳ [RN SignalR] Dispatching to Redux: addNewMessage');
+                dispatch(addNewMessage(message));
+                console.log('✅ [RN SignalR] Message added to Redux');
+            } else {
+                console.error('❌ [RN SignalR] Message data incomplete:', data);
+            }
+            console.log('📨 [RN SignalR] ========== IncomeMessage processing complete ==========');
+        };
+        
+        // Listen for message update events (recall, edit, etc.)
+        signalRClient.onPatchMessage = (data) => {
+            console.log('📝 [RN SignalR] ========== Received PatchMessage ==========');
+            console.log('📝 [RN SignalR] Data:', JSON.stringify(data, null, 2));
+            
+            const updatedMessage = data.updatedMessage;
+            if (updatedMessage) {
+                console.log('✅ [RN SignalR] Message update:', {
+                    traceId: updatedMessage.traceId,
+                    updateType: data.updateType
+                });
+                dispatch(addNewMessage(updatedMessage)); // Redux will replace message with same traceId
+            }
+            console.log('📝 [RN SignalR] ========== PatchMessage processing complete ==========');
+        };
+        
+        // Keep old callback for compatibility
         signalRClient.onContactAndMessageUpdated = (contact, message, totalUnreadCount) => {
-            console.log('收到实时消息更新:', { contact, message, totalUnreadCount });
-            // 更新Redux状态：添加新消息并更新联系人
+            console.log('📬 [RN SignalR] Received old format message:', {
+                contactId: contact?.uniqueMark,
+                messageId: message?.traceId,
+                totalUnreadCount
+            });
             dispatch(addNewMessage(message));
             dispatch(updateRecentContact(contact));
-            // 更新总未读计数（这里需要根据实际需求处理）
-            // dispatch(updateUnreadCount({ contactId: contact.id, unreadCount: totalUnreadCount }));
         };
 
         signalRClient.onUnreadCountUpdated = (contactId, unreadCount) => {
-            console.log('未读计数更新:', { contactId, unreadCount });
-            // 更新Redux状态：更新未读计数
+            console.log('🔔 [RN SignalR] Unread count updated:', { contactId, unreadCount });
             dispatch(updateUnreadCount({ contactId, unreadCount }));
         };
 
         signalRClient.onContactUpdated = (contact) => {
-            console.log('联系人更新:', contact);
-            // 更新Redux状态：更新联系人信息
+            console.log('👤 [RN SignalR] Contact updated:', contact?.uniqueMark);
             dispatch(updateContact(contact));
         };
 
+        // Note: onUpdateRecents is handled in overview.tsx for real-time home screen updates
+        // Do NOT set it here to avoid overwriting the overview.tsx handler
+
         signalRClient.onReconnecting = (error) => {
-            console.log('SignalR重新连接中:', error);
+            console.warn('🔄 [RN SignalR] Reconnecting...', error?.message);
         };
 
         signalRClient.onReconnected = (connectionId) => {
-            console.log('SignalR重新连接成功:', connectionId);
+            console.log('✅ [RN SignalR] Reconnection successful! ConnectionId:', connectionId);
         };
 
         signalRClient.onConnectionClosed = (error) => {
-            console.log('SignalR连接关闭:', error);
+            console.warn('🔴 [RN SignalR] Connection closed', error?.message);
         };
 
-        console.log('SignalR连接初始化成功');
+        console.log('✅ [RN SignalR] ========== SignalR initialization complete ==========');
+        console.log('✅ [RN SignalR] Current connection state:', signalRClient.getConnectionState());
     } catch (error) {
-        console.error('SignalR连接初始化失败:', {
+        console.error('❌ [RN SignalR] ========== Initialization failed ==========');
+        console.error('❌ [RN SignalR] Error details:', {
             error,
+            message: error instanceof Error ? error.message : String(error),
             baseURL: clientConfig.baseURL,
             port: clientConfig.port,
             hasToken: !!clientConfig.userToken,
@@ -120,13 +179,13 @@ export const initializeSignalR = async (
     }
 };
 
-// 断开SignalR连接
+// Disconnect SignalR connection
 export const disconnectSignalR = async (signalRClient: SignalRClient): Promise<void> => {
     try {
         await signalRClient.disconnect();
-        console.log('SignalR连接已断开');
+        console.log('SignalR connection disconnected');
     } catch (error) {
-        console.error('断开SignalR连接失败:', error);
+        console.error('Failed to disconnect SignalR:', error);
     }
 };
 
@@ -163,11 +222,11 @@ export const tryGetUserEssentials = async (
         if (possible && possible.message.toLowerCase().includes("token expired")) {
 
             await LogoutHelper.cleanupCredentialsOnly(guid, storageAdapter)
-            Alert.alert("Login Expired", "you may need to re-login"); // todo 标准化alert
+            Alert.alert("Login Expired", "you may need to re-login"); // todo standardize alert
 
         }
         else
-            Alert.alert("获取用户信息失败", possible?.message);
+            Alert.alert("Failed to get user info", possible?.message);
         throw new Error("error on getting user info");
     }
     console.log('cached user info: ', userInfo);
@@ -185,7 +244,7 @@ function AppContent({ theme }: { theme: any }) {
     const [clientConfig, setClientConfig] = useState<ClientInitObject>(ClientConfig);
     const [signalRClient, setSignalRClient] = useState<SignalRClient | null>(null);
 
-    // SignalR连接管理
+    // SignalR connection management
     useEffect(() => {
         if (isAuthenticated && clientConfig.userToken) {
             const problem = clientConfig.baseURL!.match(/:.[0-9]/g);
@@ -198,26 +257,26 @@ function AppContent({ theme }: { theme: any }) {
             setSignalRClient(signalR);
 
             initializeSignalR(clientConfig, signalR, dispatch).catch(error => {
-                console.error('SignalR连接失败:', error);
+                console.error('SignalR connection failed:', error);
             });
 
             return () => {
                 disconnectSignalR(signalR).catch(error => {
-                    console.error('断开SignalR连接失败:', error);
+                    console.error('Failed to disconnect SignalR:', error);
                 });
             };
         } else {
-            // 用户未认证，断开SignalR连接
+            // User not authenticated, disconnect SignalR
             if (signalRClient) {
                 disconnectSignalR(signalRClient).catch(error => {
-                    console.error('断开SignalR连接失败:', error);
+                    console.error('Failed to disconnect SignalR:', error);
                 });
                 setSignalRClient(null);
             }
         }
     }, [isAuthenticated, clientConfig.userToken]);
 
-    // 认证状态变化时更新SignalR连接
+    // Update SignalR connection when auth state changes
     useEffect(() => {
         if (signalRClient && clientConfig.userToken) {
             signalRClient.setAccessToken(clientConfig.userToken);
@@ -233,14 +292,14 @@ function AppContent({ theme }: { theme: any }) {
                 storageAdapter = new SQLiteStorageAdapter();
                 await storageAdapter.initialize();
 
-                console.log('=== 开始恢复认证状态 ===');
+                console.log('=== Starting auth state restoration ===');
 
-                console.log('检查凭据表...');
+                console.log('Checking credentials table...');
                 const credentials = await storageAdapter.getAllCredentials();
-                console.log(`凭据表记录数: ${credentials.length}`);
+                console.log(`Credentials table count: ${credentials.length}`);
 
                 if (credentials.length <= 0) {
-                    console.log('没有有效凭据，跳过恢复');
+                    console.log('No valid credentials, skipping restoration');
                     setIsLoading(false);
                     return;
                 }
@@ -251,7 +310,7 @@ function AppContent({ theme }: { theme: any }) {
 
                     const expiresAt = credential.expires_at ? new Date(credential.expires_at).getTime() : 0;
 
-                    console.log('凭据检查:', {
+                    console.log('Credential check:', {
                         user_guid: credential.user_guid,
                         expires_at: credential.expires_at,
                         now: now,
@@ -270,7 +329,7 @@ function AppContent({ theme }: { theme: any }) {
                     );
                     if (!isValid) throw new Error("Invalid user token");
                     if (expiresAt > now) {
-                        // 凭据有效，恢复登录状态
+                        // Credentials valid, restore login state
                         const restoredCredential = {
                             UserGuid: credential.user_guid,
                             UsingDeviceId: credential.using_device_id,
@@ -284,9 +343,9 @@ function AppContent({ theme }: { theme: any }) {
                         // whatever, let it be.
                         ClientConfig.userToken = credential.access_token;
 
-                        console.log('认证状态已从SQLite恢复:', restoredCredential);
+                        console.log('Auth state restored from SQLite:', restoredCredential);
                     } else {
-                        console.log('缓存的凭据已过期，尝试使用refresh token刷新...');
+                        console.log('Cached credentials expired, attempting refresh with refresh token...');
 
                         const refreshTokenExpiresAt = credential.refresh_token_expires_at ? new Date(credential.refresh_token_expires_at).getTime() : 0;
                         if (refreshTokenExpiresAt > now) { // maybe useless, since always checks token on backend
@@ -297,7 +356,7 @@ function AppContent({ theme }: { theme: any }) {
                                     deviceId: credential.using_device_id
                                 };
 
-                                console.log('正在使用refresh token刷新access token...');
+                                console.log('Refreshing access token using refresh token...');
                                 const refreshResponse = await client.auth.refreshToken(refreshRequest);
 
                                 if (refreshResponse.accessToken) {
@@ -325,30 +384,30 @@ function AppContent({ theme }: { theme: any }) {
                                     dispatch(setCredential(restoredCredential));
                                     ClientConfig.userToken = newCredential.access_token;
 
-                                    console.log('凭据刷新成功，认证状态已恢复:', restoredCredential);
+                                        console.log('Credentials refreshed successfully, auth state restored:', restoredCredential);
                                 } else {
-                                    console.log('refresh token刷新失败，需要重新登录');
+                                    console.log('Refresh token refresh failed, need to re-login');
                                 }
                             } catch (error) {
-                                console.error('refresh token刷新失败:', error);
-                                console.log('需要重新登录');
+                                console.error('Refresh token refresh failed:', error);
+                                console.log('Need to re-login');
                             }
                         } else {
-                            console.log('refresh token也已过期，需要重新登录');
+                            console.log('Refresh token also expired, need to re-login');
                         }
                     }
                 } else {
-                    console.log('没有找到有效的凭据记录');
+                    console.log('No valid credentials found');
                 }
 
                 // might useless stuff
                 const cachedUserInfo = await storageAdapter.getCachedCurrentUserInfo();
                 if (cachedUserInfo) {
-                    console.log('找到缓存的用户信息:', cachedUserInfo);
+                    console.log('Found cached user info:', cachedUserInfo);
                 } else {
-                    console.log('没有找到缓存的用户信息');
+                    console.log('No cached user info found');
                 }
-                // 早就你妈throw了能到这里不可能还是undefined我真他妈操了
+                // Should have thrown earlier if reaching here
 
             } catch (error) {
                 console.error('Error on auth reconfigure OR setting current info of user:', error);
@@ -356,12 +415,12 @@ function AppContent({ theme }: { theme: any }) {
                 try {
                     if ((error as Error).message.toLowerCase().includes('invalid')) {
                         Alert.alert("Log out", "Your status has expired.");
-                        // 使用工具方法清理无效凭据
+                        // Use utility method to clean up invalid credentials
                         await LogoutHelper.cleanupCredentialsOnly(guid, storageAdapter!);
-                        console.log('无效凭据已成功清除: ', guid);
+                        console.log('Invalid credentials successfully cleared: ', guid);
                     }
                 } catch (cleanupError) {
-                    console.error('清除无效凭据失败:', cleanupError);
+                    console.error('Failed to clear invalid credentials:', cleanupError);
                 }
                 // 
             } finally {
@@ -381,11 +440,11 @@ function AppContent({ theme }: { theme: any }) {
         });
     }, [isAuthenticated, authState]);
 
-    // 显示加载状态
+    // Display loading state
     if (isLoading) {
         return (
             <SafeAreaProvider>
-                {/* 可以添加加载指示器 */}
+                {/* Can add loading indicator here */}
             </SafeAreaProvider>
         );
     }

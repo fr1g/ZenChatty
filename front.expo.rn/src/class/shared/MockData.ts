@@ -51,4 +51,4 @@ export const MockContactBook = {
 } // dto to save space, all contact hosts should be null, and frontend automatically set it to owner and cache it.
 
 */
-// 不再需要。现在他妈的时间紧得跟啥似的哪还有时间一点点用mockdata调试
+// No longer needed. Time is too tight to debug with mockdata one by one
