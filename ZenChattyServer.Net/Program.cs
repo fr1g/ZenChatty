@@ -188,15 +188,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
     
-    // dev test scope
-    // ⚠️ 注释掉以下两行以保留数据库数据
-    // 如果需要重置数据库，取消注释即可
-    // userContext.Database.EnsureDeleted();
-    // userContext.Database.EnsureCreated();
-    
-    // 确保数据库存在（不会删除现有数据）
-    userContext.Database.EnsureCreated();
+    // dev test scope 
+    userContext.Database.EnsureDeleted();
 }
+userContext.Database.EnsureCreated();
 
 // 启用CORS（所有环境都需要）
 app.UseCors("ReactNativeApp");
