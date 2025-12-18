@@ -100,7 +100,7 @@ export default function UserSearchScreen({ navigation }: any) {
                     }
                 ]);
             } else {
-                Alert.alert('Send Failed', result.content || 'Please try again later');
+                Alert.alert('Send Failed', result.message || 'Please try again later');
             }
         } catch (error: any) {
             console.error('Failed to send friend request:', error);
@@ -113,9 +113,9 @@ export default function UserSearchScreen({ navigation }: any) {
     return (
         <View style={styles.container}>
             {/* Top navigation bar */}
-            <View style={[styles.header, { paddingTop: insets.top }]}>
-                <TouchableOpacity 
-                    style={styles.backButton} 
+            {/* <View style={[styles.header, { paddingTop: 0 }]}>
+                <TouchableOpacity
+                    style={styles.backButton}
                     onPress={handleGoBack}
                     activeOpacity={0.6}
                 >
@@ -123,13 +123,13 @@ export default function UserSearchScreen({ navigation }: any) {
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Add Friend</Text>
                 <View style={styles.headerRight} />
-            </View>
+            </View> */}
 
-            <KeyboardAvoidingView 
+            <KeyboardAvoidingView
                 style={styles.content}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <ScrollView 
+                <ScrollView
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
@@ -149,7 +149,7 @@ export default function UserSearchScreen({ navigation }: any) {
                                 onSubmitEditing={handleSearch}
                             />
                             {searchText.length > 0 && (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={() => {
                                         setSearchText('');
                                         setSearchResult(null);
@@ -160,7 +160,7 @@ export default function UserSearchScreen({ navigation }: any) {
                                 </TouchableOpacity>
                             )}
                         </View>
-                        
+
                         <TouchableOpacity
                             style={[styles.searchButton, loading && styles.searchButtonDisabled]}
                             onPress={handleSearch}
@@ -194,7 +194,7 @@ export default function UserSearchScreen({ navigation }: any) {
                                             {(searchResult.displayName || searchResult.customId || '?').charAt(0).toUpperCase()}
                                         </Text>
                                     </View>
-                                    
+
                                     {/* User info */}
                                     <View style={styles.userInfo}>
                                         <Text style={styles.userName}>
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#EDEDED',
     },
-    
+
     // Top navigation bar
     header: {
         backgroundColor: '#fff',
@@ -273,11 +273,11 @@ const styles = StyleSheet.create({
     headerRight: {
         width: 28,
     },
-    
+
     content: {
         flex: 1,
     },
-    
+
     // Search area
     searchSection: {
         backgroundColor: '#fff',
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '500',
     },
-    
+
     // Hint area
     hintSection: {
         alignItems: 'center',
@@ -333,13 +333,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#888',
     },
-    
+
     // Search results
     resultSection: {
         marginTop: 12,
         marginHorizontal: 16,
     },
-    
+
     // User card
     userCard: {
         backgroundColor: '#fff',
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
-    
+
     // Not found card
     notFoundCard: {
         backgroundColor: '#fff',

@@ -46,7 +46,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
     const parseRequestStatus = (message: Message): FriendRequest => {
         const info = message.info || '';
         let requestStatus: 'pending' | 'accepted' | 'rejected' | 'revoked' = 'pending';
-        
+
         if (info.includes('Accepted')) {
             requestStatus = 'accepted';
         } else if (info.includes('Rejected')) {
@@ -54,7 +54,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
         } else if (info.includes('Revoked')) {
             requestStatus = 'revoked';
         }
-        
+
         return { ...message, requestStatus };
     };
 
@@ -64,7 +64,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
             console.log('No credentials, skipping load');
             return;
         }
-        
+
         setLoading(true);
         try {
             const client = CreateZenCoreClient({
@@ -127,7 +127,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
 
     const handleAccept = async (request: FriendRequest) => {
         if (!request.traceId) return;
-        
+
         setProcessingId(request.traceId);
         try {
             const client = CreateZenCoreClient({
@@ -136,7 +136,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
             });
 
             const result = await client.contact.acceptFriendRequest(request.traceId);
-            
+
             if (result.success) {
                 Alert.alert('Success', 'Friend added');
                 loadAllRequests();
@@ -153,7 +153,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
 
     const handleReject = async (request: FriendRequest) => {
         if (!request.traceId) return;
-        
+
         Alert.alert('Confirm', 'Are you sure you want to reject?', [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -185,7 +185,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
 
     const handleRevoke = async (request: FriendRequest) => {
         if (!request.traceId) return;
-        
+
         Alert.alert('Confirm', 'Are you sure you want to revoke?', [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -220,7 +220,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now.getTime() - date.getTime();
-        
+
         if (diff < 24 * 60 * 60 * 1000) {
             return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         } else if (diff < 7 * 24 * 60 * 60 * 1000) {
@@ -250,7 +250,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
         const isPending = item.requestStatus === 'pending';
         const isReceived = activeTab === 'received';
         const displayName = getDisplayName(item, isReceived);
-        
+
         return (
             <View style={styles.requestItem}>
                 {/* Avatar */}
@@ -259,7 +259,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                         {displayName.charAt(0).toUpperCase()}
                     </Text>
                 </View>
-                
+
                 {/* Info */}
                 <View style={styles.requestInfo}>
                     <Text style={styles.requestName}>{displayName}</Text>
@@ -267,7 +267,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                         {isReceived ? 'Wants to be your friend' : 'Waiting for verification'}
                     </Text>
                 </View>
-                
+
                 {/* Action buttons */}
                 <View style={styles.actionArea}>
                     {isPending ? (
@@ -297,8 +297,8 @@ export default function FriendRequestsScreen({ navigation }: any) {
                             styles.statusText,
                             item.requestStatus === 'accepted' && styles.statusAccepted
                         ]}>
-                            {item.requestStatus === 'accepted' ? 'Added' : 
-                             item.requestStatus === 'rejected' ? 'Rejected' : 'Expired'}
+                            {item.requestStatus === 'accepted' ? 'Added' :
+                                item.requestStatus === 'rejected' ? 'Rejected' : 'Expired'}
                         </Text>
                     )}
                 </View>
@@ -318,17 +318,6 @@ export default function FriendRequestsScreen({ navigation }: any) {
     return (
         <View style={styles.container}>
             {/* Top navigation bar */}
-            <View style={[styles.header, { paddingTop: insets.top }]}>
-                <TouchableOpacity 
-                    style={styles.backButton} 
-                    onPress={handleGoBack}
-                    activeOpacity={0.6}
-                >
-                    <Feather name="arrow-left" size={24} color="#000" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>New Friends</Text>
-                <View style={styles.headerRight} />
-            </View>
 
             {/* Tab switch */}
             <View style={styles.tabContainer}>
@@ -341,7 +330,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                         Received
                     </Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'sent' && styles.activeTab]}
                     onPress={() => setActiveTab('sent')}
@@ -364,8 +353,8 @@ export default function FriendRequestsScreen({ navigation }: any) {
                     renderItem={renderRequestItem}
                     keyExtractor={(item, index) => item.traceId || `request-${index}`}
                     contentContainerStyle={
-                        (activeTab === 'received' ? receivedRequests : sentRequests).length === 0 
-                            ? styles.emptyList 
+                        (activeTab === 'received' ? receivedRequests : sentRequests).length === 0
+                            ? styles.emptyList
                             : undefined
                     }
                     refreshControl={
@@ -391,7 +380,7 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#EDEDED',
     },
-    
+
     // Top navigation bar
     header: {
         backgroundColor: '#fff',
@@ -416,7 +405,7 @@ const styles = StyleSheet.create({
     headerRight: {
         width: 28,
     },
-    
+
     // Tab switch
     tabContainer: {
         flexDirection: 'row',
@@ -441,13 +430,13 @@ const styles = StyleSheet.create({
         color: '#07C160',
         fontWeight: '600',
     },
-    
+
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
+
     // Request item
     requestItem: {
         flexDirection: 'row',
@@ -488,7 +477,7 @@ const styles = StyleSheet.create({
         color: '#888',
         marginTop: 2,
     },
-    
+
     // Action area
     actionArea: {
         marginLeft: 12,
@@ -519,7 +508,7 @@ const styles = StyleSheet.create({
     statusAccepted: {
         color: '#07C160',
     },
-    
+
     // Empty state
     emptyList: {
         flexGrow: 1,
