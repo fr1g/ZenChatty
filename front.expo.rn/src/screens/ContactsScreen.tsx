@@ -56,7 +56,7 @@ export default function ContactsScreen({ navigation }: any) {
 
     const loadData = async () => {
         if (!credential?.AccessToken) return;
-        
+
         setLoading(true);
         try {
             const client = CreateZenCoreClient({
@@ -72,7 +72,7 @@ export default function ContactsScreen({ navigation }: any) {
                 avatarUrl: contact.avatarFileLocator,
                 objectId: contact.objectId
             }));
-            
+
             // Sort by name
             friendItems.sort((a, b) => a.displayName.localeCompare(b.displayName, 'en-US'));
             setFriends(friendItems);
@@ -98,7 +98,7 @@ export default function ContactsScreen({ navigation }: any) {
                 targetName: friend.displayName
             }
         };
-        
+
         updater?.setParam(chatParams);
         scopeChange.change('chat');
     };
@@ -107,16 +107,16 @@ export default function ContactsScreen({ navigation }: any) {
     const handleRemoveFriend = async (friend: FriendItem) => {
         // Need to get friend's user ID from PrivateChat
         const privateChat = friend.contact.object as any;
-        
+
         console.log('[RemoveFriend] Starting to remove friend');
         console.log('[RemoveFriend] friend.contact:', JSON.stringify(friend.contact, null, 2));
         console.log('[RemoveFriend] currentUser.localId:', currentUser?.localId);
         console.log('[RemoveFriend] privateChat?.initById:', privateChat?.initById);
         console.log('[RemoveFriend] privateChat?.receiverId:', privateChat?.receiverId);
-        
+
         // Option 1: Try to get from privateChat initById/receiverId
-        let friendUserId = privateChat?.initById === currentUser?.localId 
-            ? privateChat?.receiverId 
+        let friendUserId = privateChat?.initById === currentUser?.localId
+            ? privateChat?.receiverId
             : privateChat?.initById;
 
         console.log('[RemoveFriend] Option 1 - friendUserId from privateChat:', friendUserId);
@@ -164,13 +164,13 @@ export default function ContactsScreen({ navigation }: any) {
                             });
 
                             const result = await client.contact.removeFriend(friendUserId);
-                            
+
                             if (result.success) {
                                 // Remove from list
                                 setFriends(prev => prev.filter(f => f.contact.contactId !== friend.contact.contactId));
                                 Alert.alert('Success', 'Friend removed');
                             } else {
-                                Alert.alert('Failed', result.content || 'Failed to remove friend');
+                                Alert.alert('Failed', result.message || 'Failed to remove friend');
                             }
                         } catch (error: any) {
                             console.error('Failed to remove friend:', error);
@@ -265,7 +265,7 @@ export default function ContactsScreen({ navigation }: any) {
     // Render friend item
     const renderFriendItem = ({ item }: { item: FriendItem }) => {
         const isRemoving = removingId === item.contact.contactId;
-        
+
         return (
             <TouchableOpacity
                 style={styles.friendItem}
@@ -291,7 +291,7 @@ export default function ContactsScreen({ navigation }: any) {
     const ListHeader = () => (
         <View style={styles.headerSection}>
             {functionEntries.map(renderFunctionItem)}
-            
+
             {/* Friend list title */}
             <View style={styles.sectionTitle}>
                 <Text style={styles.sectionTitleText}>
@@ -307,7 +307,7 @@ export default function ContactsScreen({ navigation }: any) {
         <View style={styles.emptyContainer}>
             <Feather name="users" size={48} color="#C7C7CC" />
             <Text style={styles.emptyText}>No friends yet</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={styles.addButton}
                 onPress={() => navigation.navigate('user-search')}
             >
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#EDEDED',
     },
-    
+
     // Function entry area
     headerSection: {
         marginBottom: 8,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
-    
+
     // Section title
     sectionTitle: {
         backgroundColor: '#EDEDED',
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
         fontSize: 11,
         color: '#aaa',
     },
-    
+
     // Friend item
     friendItem: {
         flexDirection: 'row',
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     removingIndicator: {
         marginLeft: 8,
     },
-    
+
     // Empty state
     emptyList: {
         flexGrow: 1,

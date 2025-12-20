@@ -12,7 +12,8 @@
     "sync": "npx tailwindcss@3 -i ./global.css -o ./global.output.css",
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "local": "echo file:../../zencore.chatty"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
@@ -23,6 +24,7 @@
     "@react-navigation/native": "^7.1.6",
     "@react-navigation/stack": "^7.4.8",
     "babel-preset-expo": "^54.0.8",
+    "eas-cli": "^16.28.0",
     "expo": "^54.0.0",
     "expo-camera": "^17.0.9",
     "expo-device": "^8.0.9",
@@ -48,7 +50,7 @@
     "react-native-worklets": "0.5.1",
     "react-redux": "^9.2.0",
     "tsc": "^2.0.4",
-    "zen-core-chatty-ts": "file:../../zencore.chatty",
+    "zen-core-chatty-ts": "^1.1.0",
     "zustand": "^4.5.1"
   },
   "devDependencies": {

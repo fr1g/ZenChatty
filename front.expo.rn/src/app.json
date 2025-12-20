@@ -32,6 +32,11 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.anonymous.src"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fb8c4e9e-c90a-4d14-b24b-c86bad463ba0"
+      }
     }
   }
 }

@@ -10,7 +10,7 @@ import {
     RefreshControl
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { CreateZenCoreClient, Message } from 'zen-core-chatty-ts';
+import { CreateZenCoreClient, Message, User } from 'zen-core-chatty-ts';
 import { useCredential } from 'hooks/useCredential';
 import { ContextedClientConfig } from 'App';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -43,7 +43,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
         }, [credential?.AccessToken])
     );
 
-    const parseRequestStatus = (message: Message): FriendRequest => {
+    const parseRequestStatus = (message: Message, receiver?: User): FriendRequest => {
         const info = message.info || '';
         let requestStatus: 'pending' | 'accepted' | 'rejected' | 'revoked' = 'pending';
 
@@ -55,7 +55,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
             requestStatus = 'revoked';
         }
 
-        return { ...message, requestStatus };
+        return { ...message, requestStatus, receiverName: receiver?.displayName } as unknown as FriendRequest;
     };
 
     // Load all requests (load both received and sent)
@@ -79,7 +79,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
             ]);
 
             // Process received requests
-            const parsedReceived = receivedData.map(parseRequestStatus);
+            const parsedReceived = receivedData.map((v) => parseRequestStatus(v));
             setReceivedRequests(parsedReceived);
 
             // Process sent requests - try to get receiver info
@@ -141,7 +141,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                 Alert.alert('Success', 'Friend added');
                 loadAllRequests();
             } else {
-                Alert.alert('Failed', result.content || 'Operation failed');
+                Alert.alert('Failed', result.message || 'Operation failed');
             }
         } catch (error: any) {
             console.error('Failed to accept friend request:', error);
@@ -171,7 +171,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                             Alert.alert('Success', 'Rejected');
                             loadAllRequests();
                         } else {
-                            Alert.alert('Failed', result.content || 'Operation failed');
+                            Alert.alert('Failed', result.message || 'Operation failed');
                         }
                     } catch (error: any) {
                         Alert.alert('Error', error.message || 'Operation failed');
@@ -203,7 +203,7 @@ export default function FriendRequestsScreen({ navigation }: any) {
                             Alert.alert('Success', 'Revoked');
                             loadAllRequests();
                         } else {
-                            Alert.alert('Failed', result.content || 'Operation failed');
+                            Alert.alert('Failed', result.message || 'Operation failed');
                         }
                     } catch (error: any) {
                         Alert.alert('Error', error.message || 'Operation failed');

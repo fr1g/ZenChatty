@@ -1,5 +1,5 @@
 import { Alert, FlatList, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, RefreshControl, ActionSheetIOS, Platform } from 'react-native';
-import { Contact, EMessageType, ImageActs, Message, CreateZenCoreClient } from 'zen-core-chatty-ts';
+import { Contact, EMessageType, ImageActs, Message, CreateZenCoreClient, GroupChat } from 'zen-core-chatty-ts';
 import ListItem, { ListItemProps } from 'components/ListItem';
 import { useContext, useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ export default function Overview() {
     const dispatch = useDispatch();
     const updater = useContext(JumpContext);
     const scopeChange = useContext(ScopeContext);
-    
+
     // Use local state to store contact data (fetched from API)
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export default function Overview() {
     const getLatestMessage = (contact: Contact): Message | null => {
         const history = contact.object?.history;
         if (!history || history.length === 0) return null;
-        
+
         // Find message with the largest timestamp (newest)
         return history.reduce((latest, current) => {
             const latestMsg = latest as Message;
@@ -91,33 +91,33 @@ export default function Overview() {
             setLoading(false);
             return;
         }
-        
+
         try {
             setLoading(true);
             setError(null);
-            
+
             const client = CreateZenCoreClient({
                 ...clientConfig,
                 userToken: credential.AccessToken
             });
-            
+
             console.log('[Overview] ⏱️ 开始网络请求...');
             const startTime = Date.now();
-            
+
             const recentContacts = await client.contact.getRecentContacts();
-            
+
             const networkTime = Date.now() - startTime;
             console.log(`[Overview] ⏱️ 网络请求完成，耗时: ${networkTime}ms`);
-            
+
             console.log('[Overview] ========== Fetching contacts list ==========');
             console.log('[Overview] Raw data count:', recentContacts.length);
-            
+
             // Debug: print detailed info for each contact
             recentContacts.forEach((contact, index) => {
                 const historyCount = contact.object?.history?.length ?? 0;
-                console.log(`[Overview] [${index}] ${contact.displayName} - contactId: ${contact.contactId}, objectId: ${contact.objectId}, historyCount: ${historyCount}`);
+                console.log(`[Overview] [${index}] ${contact.displayName} - contactId: ${contact.contactId}, chatMark: ${contact.object.uniqueMark}, historyCount: ${historyCount}`);
             });
-            
+
             // Frontend deduplication: dedupe by displayName, keep the one with message history
             const contactMap = new Map<string, Contact>();
             recentContacts.forEach(contact => {
@@ -125,38 +125,38 @@ export default function Overview() {
                 const existing = contactMap.get(key);
                 const currentHistoryCount = contact.object?.history?.length ?? 0;
                 const existingHistoryCount = existing?.object?.history?.length ?? 0;
-                
+
                 // If no contact with same name exists, or current contact has more messages, use current contact
                 if (!existing || currentHistoryCount > existingHistoryCount) {
                     contactMap.set(key, contact);
                 }
             });
             const uniqueContacts = Array.from(contactMap.values());
-            
+
             if (uniqueContacts.length !== recentContacts.length) {
                 console.log(`[Overview] After deduping by displayName: ${uniqueContacts.length} (removed ${recentContacts.length - uniqueContacts.length} duplicates)`);
             }
-            
+
             // Sort by latest message time (newest first)
             const sortedContacts = [...uniqueContacts].sort((a, b) => {
                 const aHistory = a.object?.history;
                 const bHistory = b.object?.history;
-                
+
                 // Get latest message timestamp
                 const getLatestTimestamp = (history: any[] | undefined): number => {
                     if (!history || history.length === 0) return 0;
                     return Math.max(...history.map((m: Message) => m.sentTimestamp || 0));
                 };
-                
+
                 const aTime = getLatestTimestamp(aHistory);
                 const bTime = getLatestTimestamp(bHistory);
-                
+
                 return bTime - aTime; // Sort descending, newest first
             });
-            
+
             setContacts(sortedContacts);
             console.log('[Overview] Final contacts count:', sortedContacts.length);
-            
+
             // Debug: print info for first contact after sorting
             if (sortedContacts.length > 0) {
                 const firstContact = sortedContacts[0];
@@ -201,18 +201,18 @@ export default function Overview() {
             console.log('[Overview] ChatUniqueMark:', data.chatUniqueMark);
             console.log('[Overview] Message:', data.message?.content?.substring(0, 50));
             console.log('[Overview] UnreadCount:', data.totalUnreadCount);
-            
+
             setContacts(prevContacts => {
                 // Find the contact by chatUniqueMark
                 const contactIndex = prevContacts.findIndex(
                     c => c.object?.uniqueMark === data.chatUniqueMark
                 );
-                
+
                 if (contactIndex >= 0) {
                     // Contact exists, update it
                     const updatedContacts = [...prevContacts];
                     const existingContact = updatedContacts[contactIndex];
-                    
+
                     // Create updated contact with new message
                     const updatedContact = {
                         ...existingContact,
@@ -225,12 +225,12 @@ export default function Overview() {
                             ]
                         }
                     };
-                    
+
                     // Remove from current position
                     updatedContacts.splice(contactIndex, 1);
                     // Add to top (most recent)
                     updatedContacts.unshift(updatedContact as Contact);
-                    
+
                     console.log('[Overview] Updated existing contact:', existingContact.displayName);
                     return updatedContacts;
                 } else {
@@ -241,7 +241,7 @@ export default function Overview() {
                     return prevContacts;
                 }
             });
-            
+
             console.log('[Overview] ========== UpdateRecents processed ==========');
         };
 
@@ -288,7 +288,7 @@ export default function Overview() {
             console.log('[Overview] SignalR reconnected, re-setting UpdateRecents listener');
             signalRClient.onUpdateRecents = handleUpdateRecents;
         };
-        
+
         return () => {
             signalRClient.onReconnected = previousReconnected;
             console.log('[Overview] Cleaned up SignalR UpdateRecents listener');
@@ -296,25 +296,28 @@ export default function Overview() {
     }, [signalRClient]);
 
     // Click contact to enter chat
-    const handleChatWithContact = (contact: Contact) => {
+    const handleChatWithContact = (contact: Contact, isPrivateChatFromGroup = false) => {
         // Use contact.object.uniqueMark as chat identifier (consistent with ContactsScreen)
         const chatUniqueMark = contact.object?.uniqueMark;
-        
+
         if (!chatUniqueMark) {
             console.error('Cannot get chat identifier:', contact);
             Alert.alert('Error', 'Cannot open chat, contact data incomplete');
             return;
         }
-        
+
         const chatParams: ChatScopeParams = {
             whereFrom: 'overview',
             goingTo: 'conversation',
             params: {
                 targetQueryId: chatUniqueMark,
-                targetName: contact.displayName || 'Unknown User'
+                targetName: contact.displayName || 'Unknown User',
+                isTargetAGroup: contact.object instanceof GroupChat,
+                isOpenningConversation: true,
+                isTargetConversationInGroup: isPrivateChatFromGroup
             }
         };
-        
+
         console.log('Entering chat:', chatParams);
         updater?.setParam(chatParams);
         scopeChange.change('chat');
@@ -324,7 +327,7 @@ export default function Overview() {
     const handleLongPressContact = (contact: Contact) => {
         const contactName = contact.displayName || 'this chat';
         console.log('[Overview] Long press chat:', contact.contactId, contactName);
-        
+
         if (Platform.OS === 'ios') {
             ActionSheetIOS.showActionSheetWithOptions(
                 {
@@ -346,10 +349,10 @@ export default function Overview() {
                 'Select action',
                 [
                     { text: 'Cancel', style: 'cancel' },
-                    { 
-                        text: 'Delete Chat', 
-                        style: 'destructive', 
-                        onPress: () => handleDeleteChat(contact) 
+                    {
+                        text: 'Delete Chat',
+                        style: 'destructive',
+                        onPress: () => handleDeleteChat(contact)
                     }
                 ]
             );
@@ -360,7 +363,7 @@ export default function Overview() {
     const handleDeleteChat = (contact: Contact) => {
         const contactName = contact.displayName || 'this chat';
         console.log('[Overview] Requesting to delete chat:', contact.contactId);
-        
+
         Alert.alert(
             'Delete Chat',
             `Are you sure you want to delete the chat with "${contactName}"?\n\nThe chat will be removed from the list, but chat history will be preserved.`,
@@ -371,25 +374,25 @@ export default function Overview() {
                     style: 'destructive',
                     onPress: async () => {
                         console.log('[Overview] Confirming delete chat:', contact.contactId);
-                        
+
                         try {
                             const client = CreateZenCoreClient({
                                 ...clientConfig,
                                 userToken: credential?.AccessToken!
                             });
-                            
+
                             // Call backend API to delete chat
                             const result = await client.contact.deleteContact(contact.contactId);
                             console.log('[Overview] Delete result:', result);
-                            
+
                             if (result.success) {
                                 // Remove from local list
-                                setContacts(prevContacts => 
+                                setContacts(prevContacts =>
                                     prevContacts.filter(c => c.contactId !== contact.contactId)
                                 );
                                 Alert.alert('Success', 'Chat deleted');
                             } else {
-                                Alert.alert('Failed', result.content || 'Failed to delete chat');
+                                Alert.alert('Failed', result.message || 'Failed to delete chat');
                             }
                         } catch (error: any) {
                             console.error('[Overview] Failed to delete chat:', error);
@@ -451,8 +454,8 @@ export default function Overview() {
                 className='grow pb-5 border-t border-t-gray-300'
                 data={contacts}
                 renderItem={({ item }) => (
-                    <ListItem 
-                        item={transformContactItem(item)} 
+                    <ListItem
+                        item={transformContactItem(item)}
                         onPress={() => handleChatWithContact(item)}
                         onLongPress={() => handleLongPressContact(item)}
                     />
