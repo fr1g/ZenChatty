@@ -215,16 +215,15 @@ export default function Conversation({ route, navigation }: any) {
             console.log('✅ [Conversation] HTTP API response:', result);
 
             // Check response format: {isQueued: true, resultCanBe: 200} or {success: true}
-            const isSuccess = result.success === true ||
-                (result.isQueued === true && result.resultCanBe === 200);
+            const isSuccess = result.success === true;// || (result.isQueued === true && result.resultCanBe === 200);
 
             if (isSuccess) {
                 console.log('✅ [Conversation] Message sent successfully!');
-                console.log('✅ [Conversation] Message ID:', result.messageId);
+                console.log('✅ [Conversation] info:', result.message);
                 console.log('✅ [Conversation] Waiting for SignalR to push new message...');
                 // Message will be pushed back via SignalR onIncomeMessage event
             } else {
-                const errorMsg = result.errorMessage || result.message || 'Send failed';
+                const errorMsg = result.message || 'Send failed';
                 console.error('❌ [Conversation] Send failed:', errorMsg);
                 throw new Error(errorMsg);
             }

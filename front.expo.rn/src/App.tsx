@@ -57,7 +57,7 @@ export const initializeSignalR = async (
 ): Promise<void> => {
     try {
         console.log('🚀 [RN SignalR] ========== Starting SignalR initialization ==========');
-        
+
         // Set access token
         if (clientConfig.userToken) {
             signalRClient.setAccessToken(clientConfig.userToken);
@@ -84,12 +84,12 @@ export const initializeSignalR = async (
         console.log('✅ [RN SignalR] Connection successful! State:', signalRClient.getConnectionState());
 
         console.log('📝 [RN SignalR] Setting up event handlers...');
-        
+
         // Set up event handling - using IncomeMessage event
         signalRClient.onIncomeMessage = (data) => {
             console.log('📨 [RN SignalR] ========== Received IncomeMessage ==========');
             console.log('📨 [RN SignalR] Raw data:', JSON.stringify(data, null, 2));
-            
+
             // Update Redux state: add new message
             // Note: SignalR SDK returns camelCase format (data.message)
             const message = data.message;
@@ -109,12 +109,12 @@ export const initializeSignalR = async (
             }
             console.log('📨 [RN SignalR] ========== IncomeMessage processing complete ==========');
         };
-        
+
         // Listen for message update events (recall, edit, etc.)
         signalRClient.onPatchMessage = (data) => {
             console.log('📝 [RN SignalR] ========== Received PatchMessage ==========');
             console.log('📝 [RN SignalR] Data:', JSON.stringify(data, null, 2));
-            
+
             const updatedMessage = data.updatedMessage;
             if (updatedMessage) {
                 console.log('✅ [RN SignalR] Message update:', {
@@ -125,11 +125,11 @@ export const initializeSignalR = async (
             }
             console.log('📝 [RN SignalR] ========== PatchMessage processing complete ==========');
         };
-        
+
         // Keep old callback for compatibility
         signalRClient.onContactAndMessageUpdated = (contact, message, totalUnreadCount) => {
             console.log('📬 [RN SignalR] Received old format message:', {
-                contactId: contact?.uniqueMark,
+                contactId: contact?.contactId,
                 messageId: message?.traceId,
                 totalUnreadCount
             });
@@ -143,7 +143,7 @@ export const initializeSignalR = async (
         };
 
         signalRClient.onContactUpdated = (contact) => {
-            console.log('👤 [RN SignalR] Contact updated:', contact?.uniqueMark);
+            console.log('👤 [RN SignalR] Contact updated:', contact?.contactId);
             dispatch(updateContact(contact));
         };
 
@@ -384,7 +384,7 @@ function AppContent({ theme }: { theme: any }) {
                                     dispatch(setCredential(restoredCredential));
                                     ClientConfig.userToken = newCredential.access_token;
 
-                                        console.log('Credentials refreshed successfully, auth state restored:', restoredCredential);
+                                    console.log('Credentials refreshed successfully, auth state restored:', restoredCredential);
                                 } else {
                                     console.log('Refresh token refresh failed, need to re-login');
                                 }
