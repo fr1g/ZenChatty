@@ -10,8 +10,8 @@ public class MessageCacheService
 {
     private readonly IMemoryCache _memoryCache;
     private readonly ILogger<MessageCacheService> _logger;
-    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30); // 缓存30分钟
-    private readonly int _maxCachedMessagesPerChat = 1000; // 每个聊天最多缓存1000条消息
+    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30); 
+    private readonly int _maxCachedMessagesPerChat = 1000; 
 
     public MessageCacheService(
         IMemoryCache memoryCache,

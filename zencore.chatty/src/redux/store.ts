@@ -12,7 +12,6 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // 忽略这些字段的序列化检查，因为它们可能包含非序列化数据
         ignoredActions: [],
         ignoredPaths: [],
       },

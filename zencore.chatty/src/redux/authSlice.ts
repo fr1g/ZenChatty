@@ -25,21 +25,19 @@ export const loginUser = createAsyncThunk(
             let credential = await AuthActs.login(loginData, clientConfig, storageMethod);
             return credential;
         } catch (error) {
-            // 记录详细错误信息到console
-            console.error('登录失败 - 详细错误信息:', {
+            console.error('LOGIN-fail:', {
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-                loginData: { username: loginData.login, password: '***' } // 隐藏密码
+                loginData: { username: loginData.login, password: '***' } 
             });
 
             if (error instanceof AuthError) {
-                return rejectWithValue(`登录失败: ${error.message}`);
+                return rejectWithValue(`login failed: ${error.message}`);
             }
 
-            // 返回详细的错误信息
             const errorMessage = error instanceof Error
-                ? `登录失败: ${error.message}`
-                : '登录失败，请检查网络连接';
+                ? `login failed: ${error.message}`
+                : 'no msg';
             return rejectWithValue(errorMessage);
         }
     }

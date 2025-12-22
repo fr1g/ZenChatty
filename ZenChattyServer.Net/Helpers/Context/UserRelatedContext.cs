@@ -30,9 +30,6 @@ public class UserRelatedContext : DbContext
     {
         optionsBuilder
             .UseSqlServer(_connectionString);
-            // 禁用延迟加载代理 - 代理类与 JSON 多态序列化不兼容
-            // 所有关联数据需要显式使用 .Include() 加载
-            // .UseLazyLoadingProxies();
     }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -43,24 +40,6 @@ public class UserRelatedContext : DbContext
             .WithOne(p => p.User)
             .HasForeignKey<PrivacySettings>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
-            
-        // can user only have relationship via contact.
-        // User -> Contact -> PrivateChat(Chat) <- Contact <- User ...OR
-        // User Created Group --> Group <- GroupMembers <-- ...Users (1v1)
-        
-        // modelBuilder.Entity<Chat>()
-        //     .HasOne(c => c.InitBy)
-        //     .WithMany(u => u.Chats)
-        //     .HasForeignKey("InitById")
-        //     .OnDelete(DeleteBehavior.Restrict);
-        //     
-        // modelBuilder.Entity<PrivateChat>()
-        //     .HasOne(pc => pc.Receiver)
-        //     .WithMany(u => u.PrivateChats)
-        //     .HasForeignKey("ReceiverId")
-        //     .OnDelete(DeleteBehavior.Restrict);
-        
-        // ?
             
         modelBuilder.Entity<Message>()
             .HasOne(m => m.OfChat)

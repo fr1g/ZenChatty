@@ -8,7 +8,6 @@ namespace ZenChattyServer.Net.Controllers;
 
 public class AuthedControllerBase(AuthService authService) : ControllerBase
 {
-    
     protected async Task<(BasicResponse? failResult, bool isValid, User? user)> AuthenticateAsync()
     {
         var token = AuthHelper.Unbear(Request.Headers.Authorization.FirstOrDefault());

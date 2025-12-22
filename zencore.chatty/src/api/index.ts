@@ -38,7 +38,10 @@ export class ZenCoreClient {
 
     public settedTokenRaw: string = "none";
 
-    constructor(baseURL: string = 'https://localhost:5637', port: number = 5637, userToken: string | undefined = undefined, userAgent: string = _defaultUa, timeout: number = 10000) {
+    constructor(baseURL: string = 'https://localhost:5637', 
+                port: number = 5637, userToken: string | undefined = undefined, 
+                userAgent: string = _defaultUa, timeout: number = 10000
+    ) {
 
         let assembled = baseURL.match(/:[0-9]/g) ? baseURL : baseURL + ":" + port;
 

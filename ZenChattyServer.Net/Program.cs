@@ -62,11 +62,11 @@ builder.Services.AddAuthentication(options =>
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chatHub"))
             {
                 context.Token = accessToken;
-                Console.WriteLine("✅ Token 已设置到上下文");
+                Console.WriteLine("Token in context");
             }
             else
             {
-                Console.WriteLine("⚠️ Token 未设置（路径不匹配或 Token 为空）");
+                Console.WriteLine("Token not present");
             }
             Console.WriteLine("==========================================");
             
@@ -74,24 +74,22 @@ builder.Services.AddAuthentication(options =>
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine($"❌ ========== JWT 认证失败 ==========");
-            Console.WriteLine($"异常: {context.Exception.Message}");
-            Console.WriteLine($"异常类型: {context.Exception.GetType().Name}");
-            Console.WriteLine($"堆栈: {context.Exception.StackTrace}");
+            Console.WriteLine($"========== JWT failed setup ==========");
+            Console.WriteLine($"E: {context.Exception.Message}");
             Console.WriteLine("==========================================");
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
         {
-            Console.WriteLine($"✅ ========== JWT Token 验证成功 ==========");
+            Console.WriteLine($"========== JWT Token set ==========");
             var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            Console.WriteLine($"用户ID: {userId ?? "未找到"}");
+            Console.WriteLine($"USERID: {userId ?? "NOTFOUND"}");
             Console.WriteLine("==========================================");
             return Task.CompletedTask;
         },
         OnChallenge = context =>
         {
-            Console.WriteLine($"⚠️ ========== JWT 认证挑战 ==========");
+            Console.WriteLine($"========== JWT challenged ==========");
             Console.WriteLine($"Error: {context.Error}");
             Console.WriteLine($"ErrorDescription: {context.ErrorDescription}");
             Console.WriteLine($"AuthenticateFailure: {context.AuthenticateFailure?.Message}");

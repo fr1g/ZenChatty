@@ -23,6 +23,7 @@ export default function Conversation({ route, navigation }: any) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [focus, setFocus] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
@@ -35,6 +36,8 @@ export default function Conversation({ route, navigation }: any) {
     const chatParams = (updater?.param as ChatScopeParams).params;
     const currentUser = useSelector((state: RootState) => state.auth.user);
     const userCredential = useSelector((state: RootState) => state.auth.credential);
+
+    const bottomSpace = useSafeAreaInsets().bottom;
 
     const [requiringChatMark, setRequiringChatMark] = useState(chatParams?.targetQueryId);
     const chatName = chatParams?.targetName || 'Chat';
@@ -224,8 +227,10 @@ export default function Conversation({ route, navigation }: any) {
                 // Message will be pushed back via SignalR onIncomeMessage event
             } else {
                 const errorMsg = result.message || 'Send failed';
-                console.error('❌ [Conversation] Send failed:', errorMsg);
-                throw new Error(errorMsg);
+                if (result.message) {
+                    console.error('❌ [Conversation] Send failed:', errorMsg);
+                    throw new Error(errorMsg);
+                }
             }
 
             console.log('📤 [Conversation] ========== Send complete ==========');
@@ -792,13 +797,15 @@ export default function Conversation({ route, navigation }: any) {
             />
 
             {/* Input area */}
-            <View style={styles.inputContainer}>
+            <View style={{ ...styles.inputContainer, marginBottom: (focus ? 0 : (bottomSpace ?? 0)) }}>
                 <TextInput
                     style={styles.textInput}
                     value={inputText}
                     onChangeText={setInputText}
                     placeholder="Type a message..."
                     multiline
+                    onFocus={() => setFocus(true)}
+                    onBlur={() => setFocus(false)}
                     maxLength={500}
                 />
                 <TouchableOpacity

@@ -20,7 +20,6 @@ describe('ZenCoreClient Integration', () => {
         const token = 'test-token';
         client.setAuthToken(token);
 
-        // 验证所有API客户端都已初始化
         expect(client.auth).toBeDefined();
         expect(client.user).toBeDefined();
         expect(client.chat).toBeDefined();
@@ -32,7 +31,6 @@ describe('ZenCoreClient Integration', () => {
         client.setAuthToken('test-token');
         client.clearAuthToken();
 
-        // 验证所有API客户端都已初始化
         expect(client.auth).toBeDefined();
         expect(client.user).toBeDefined();
         expect(client.chat).toBeDefined();
