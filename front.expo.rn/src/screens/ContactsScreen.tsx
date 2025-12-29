@@ -18,7 +18,7 @@ import { ContextedClientConfig } from 'App';
 import { useSelector } from 'react-redux';
 import { RootState } from 'zen-core-chatty-ts';
 import { JumpContext, ScopeContext } from 'navigation/MainNavigator';
-import { ChatScopeParams } from 'navigation/types';
+import { ChatScopeParams, ReachingInfo } from 'navigation/types';
 
 interface FriendItem {
     contact: Contact;
@@ -70,8 +70,8 @@ export default function ContactsScreen({ navigation }: any) {
                 contact,
                 displayName: contact.displayName || 'Unknown User',
                 avatarUrl: contact.avatarFileLocator,
-                objectId: contact.objectId
-            }));
+                objectId: contact.object.uniqueMark
+            } as FriendItem));
 
             // Sort by name
             friendItems.sort((a, b) => a.displayName.localeCompare(b.displayName, 'en-US'));
@@ -96,7 +96,7 @@ export default function ContactsScreen({ navigation }: any) {
             params: {
                 targetQueryId: friend.contact.object?.uniqueMark,
                 targetName: friend.displayName
-            }
+            } as unknown as ReachingInfo
         };
 
         updater?.setParam(chatParams);

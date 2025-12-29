@@ -149,7 +149,7 @@ export default function Conversation({ route, navigation }: any) {
 
         // Debounce: delay 500ms execution to avoid rapid consecutive triggers
         loadMoreTimeoutRef.current = setTimeout(() => {
-            console.log('🔄 [Conversation] Triggering load more messages');
+            console.log('[Conversation] Triggering load more messages');
             loadMoreTimeoutRef.current = null; // Clear timer reference
 
             // Check state again (state may have changed during delay)
@@ -174,7 +174,7 @@ export default function Conversation({ route, navigation }: any) {
         console.log('📤 [Conversation] Sending state:', isSending);
 
         if (!inputText.trim() || isSending || !requiringChatMark) {
-            console.warn('⚠️ [Conversation] Send conditions not met:', {
+            console.warn('[Conversation] Send conditions not met:', {
                 hasInput: !!inputText.trim(),
                 hasChatId: !!requiringChatMark,
                 isSending
@@ -187,7 +187,7 @@ export default function Conversation({ route, navigation }: any) {
         try {
             setIsSending(true);
             setInputText(''); // Clear input immediately for better UX
-            console.log('✅ [Conversation] Input cleared');
+            console.log('[Conversation] Input cleared');
 
             // Create client instance
             const clientConfig: ClientInitObject = {
@@ -212,23 +212,23 @@ export default function Conversation({ route, navigation }: any) {
             });
 
             // Use HTTP API to send message (referencing web version)
-            console.log('⏳ [Conversation] Sending message via HTTP API...');
+            console.log('[Conversation] Sending message via HTTP API...');
             const result = await client.message.sendMessage(request);
 
-            console.log('✅ [Conversation] HTTP API response:', result);
+            console.log('[Conversation] HTTP API response:', result);
 
             // Check response format: {isQueued: true, resultCanBe: 200} or {success: true}
             const isSuccess = result.success === true;// || (result.isQueued === true && result.resultCanBe === 200);
 
             if (isSuccess) {
-                console.log('✅ [Conversation] Message sent successfully!');
-                console.log('✅ [Conversation] info:', result.message);
-                console.log('✅ [Conversation] Waiting for SignalR to push new message...');
+                console.log('[Conversation] Message sent successfully!');
+                console.log('[Conversation] info:', result.message);
+                console.log('[Conversation] Waiting for SignalR to push new message...');
                 // Message will be pushed back via SignalR onIncomeMessage event
             } else {
                 const errorMsg = result.message || 'Send failed';
                 if (result.message) {
-                    console.error('❌ [Conversation] Send failed:', errorMsg);
+                    console.error('[Conversation] Send failed:', errorMsg);
                     throw new Error(errorMsg);
                 }
             }
@@ -236,9 +236,9 @@ export default function Conversation({ route, navigation }: any) {
             console.log('📤 [Conversation] ========== Send complete ==========');
 
         } catch (error: any) {
-            console.error('❌ [Conversation] ========== Send failed ==========');
-            console.error('❌ [Conversation] Error:', error);
-            console.error('❌ [Conversation] Error details:', {
+            console.error('[Conversation] ========== Send failed ==========');
+            console.error('[Conversation] Error:', error);
+            console.error('[Conversation] Error details:', {
                 message: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
                 backendResponse: error?.backendResponse
@@ -275,7 +275,7 @@ export default function Conversation({ route, navigation }: any) {
         console.log('🔧 [Conversation] Current chat ID:', requiringChatMark);
 
         if (!signalRClient) {
-            console.warn('⚠️ [Conversation] SignalR client does not exist, skipping listener setup');
+            console.warn('[Conversation] SignalR client does not exist, skipping listener setup');
             return;
         }
 
@@ -298,27 +298,27 @@ export default function Conversation({ route, navigation }: any) {
 
             // Validate data completeness
             if (!message || !chatId) {
-                console.error('❌ [Conversation] Message data incomplete!');
+                console.error('[Conversation] Message data incomplete!');
                 return;
             }
 
             // Only process messages for current chat
             if (chatId === requiringChatMark) {
-                console.log('✅ [Conversation] Message belongs to current chat, processing...');
+                console.log('[Conversation] Message belongs to current chat, processing...');
 
                 setMessages(prev => {
                     // Check if message already exists (prevent duplicates)
                     const exists = prev.some(m => m.traceId === message.traceId);
                     if (exists) {
-                        console.warn('⚠️ [Conversation] Message already exists, skipping:', message.traceId);
+                        console.warn('[Conversation] Message already exists, skipping:', message.traceId);
                         return prev;
                     }
-                    console.log('✅ [Conversation] Adding new message to list:', message.traceId);
-                    console.log('✅ [Conversation] Current message count:', prev.length, '-> ', prev.length + 1);
+                    console.log('[Conversation] Adding new message to list:', message.traceId);
+                    console.log('[Conversation] Current message count:', prev.length, '-> ', prev.length + 1);
                     return [...prev, message];
                 });
 
-                console.log('⏳ [Conversation] Dispatching message to Redux');
+                console.log('[Conversation] Dispatching message to Redux');
                 dispatch(addNewMessage(message));
 
                 // Scroll to bottom
@@ -327,7 +327,7 @@ export default function Conversation({ route, navigation }: any) {
                     flatListRef.current?.scrollToEnd({ animated: true });
                 }, 100);
 
-                console.log('✅ [Conversation] Message processing complete');
+                console.log('[Conversation] Message processing complete');
             } else {
                 console.log('ℹ️ [Conversation] Message not for current chat, ignoring');
                 console.log('ℹ️ [Conversation] Message chat ID:', chatId);
@@ -345,13 +345,13 @@ export default function Conversation({ route, navigation }: any) {
             const chatId = data.chatUniqueMark;
 
             if (!updatedMessage || !chatId) {
-                console.error('❌ [Conversation] Message update data incomplete!');
+                console.error('[Conversation] Message update data incomplete!');
                 return;
             }
 
             // Only process message updates for current chat
             if (chatId === requiringChatMark) {
-                console.log('✅ [Conversation] Update belongs to current chat');
+                console.log('[Conversation] Update belongs to current chat');
 
                 setMessages(prev => {
                     const index = prev.findIndex(m => m.traceId === updatedMessage.traceId);
@@ -359,7 +359,7 @@ export default function Conversation({ route, navigation }: any) {
                         // Replace existing message
                         const newMessages = [...prev];
                         newMessages[index] = updatedMessage;
-                        console.log('✅ [Conversation] Replacing message:', updatedMessage.traceId, 'type:', data.updateType);
+                        console.log('[Conversation] Replacing message:', updatedMessage.traceId, 'type:', data.updateType);
                         return newMessages;
                     }
                     // If message doesn't exist, add it (might be an old message update)
@@ -390,25 +390,25 @@ export default function Conversation({ route, navigation }: any) {
         // Listen for reconnection events, auto-rejoin chat room after delay
         const previousOnReconnected = signalRClient.onReconnected;
         signalRClient.onReconnected = (connectionId) => {
-            console.log('🔄 [Conversation] SignalR reconnection successful:', connectionId);
-            console.log('🔄 [Conversation] Waiting 500ms before rejoining chat room...');
+            console.log('[Conversation] SignalR reconnection successful:', connectionId);
+            console.log('[Conversation] Waiting 500ms before rejoining chat room...');
             previousOnReconnected?.(connectionId);
 
             // Delay 500ms before joining chat room to avoid conflicts with server initialization
             if (requiringChatMark) {
                 setTimeout(() => {
-                    console.log('🚪 [Conversation] Attempting to rejoin chat room:', requiringChatMark);
+                    console.log('[Conversation] Attempting to rejoin chat room:', requiringChatMark);
                     signalRClient.joinChat(requiringChatMark)
-                        .then(() => console.log('✅ [Conversation] Rejoined chat room successfully'))
-                        .catch((err: any) => console.error('❌ [Conversation] Failed to rejoin chat room:', err.message));
+                        .then(() => console.log('[Conversation] Rejoined chat room successfully'))
+                        .catch((err: any) => console.error('[Conversation] Failed to rejoin chat room:', err.message));
                 }, 500);
             }
         };
 
-        console.log('✅ [Conversation] SignalR listener setup complete');
+        console.log('[Conversation] SignalR listener setup complete');
 
         return () => {
-            console.log('🧹 [Conversation] Cleaning up SignalR listeners');
+            console.log('[Conversation] Cleaning up SignalR listeners');
             // Clean up listeners
             signalRClient.onIncomeMessage = undefined;
             signalRClient.onPatchMessage = undefined;
@@ -454,31 +454,31 @@ export default function Conversation({ route, navigation }: any) {
 
     // Join chat room and fetch messages when component mounts
     useEffect(() => {
-        console.log('🎬 [Conversation] useEffect - Initializing chat');
-        console.log('🎬 [Conversation] Chat ID:', requiringChatMark);
-        console.log('🎬 [Conversation] SignalR:', signalRClient ? 'exists' : 'does not exist');
+        console.log('[Conversation] useEffect - Initializing chat');
+        console.log('[Conversation] Chat ID:', requiringChatMark);
+        console.log('[Conversation] SignalR:', signalRClient ? 'exists' : 'does not exist');
 
         if (!requiringChatMark || !signalRClient) {
-            console.warn('⚠️ [Conversation] Initialization conditions not met, skipping');
+            console.warn('[Conversation] Initialization conditions not met, skipping');
             return;
         }
 
         let isMounted = true;
 
         const initChat = async () => {
-            console.log('⏳ [Conversation] Starting chat initialization...');
+            console.log('[Conversation] Starting chat initialization...');
 
             // First fetch message history (via HTTP API, not dependent on SignalR)
-            console.log('📖 [Conversation] Fetching message history...');
+            console.log('[Conversation] Fetching message history...');
             fetchMessages();
 
             // Then try to join chat room (for real-time message push)
-            console.log('🚪 [Conversation] Attempting to join chat room...');
+            console.log('[Conversation] Attempting to join chat room...');
             const joined = await joinChatWithRetry(requiringChatMark);
             if (!joined && isMounted) {
-                console.warn('⚠️ [Conversation] Unable to join chat room, but can still fetch messages by refreshing');
+                console.warn('[Conversation] Unable to join chat room, but can still fetch messages by refreshing');
             } else {
-                console.log('✅ [Conversation] Chat initialization complete');
+                console.log('[Conversation] Chat initialization complete');
             }
         };
 
@@ -486,7 +486,7 @@ export default function Conversation({ route, navigation }: any) {
 
         // Leave chat room when component unmounts
         return () => {
-            console.log('🧹 [Conversation] Component unmounting, cleaning up chat room');
+            console.log('[Conversation] Component unmounting, cleaning up chat room');
             isMounted = false;
             // Clean up load more timer
             if (loadMoreTimeoutRef.current) {
@@ -497,13 +497,13 @@ export default function Conversation({ route, navigation }: any) {
             isInitialLoadRef.current = true;
 
             const state = signalRClient.getConnectionState();
-            console.log('🧹 [Conversation] SignalR state:', state);
+            console.log('[Conversation] SignalR state:', state);
 
             if (state === 'Connected') {
-                console.log('🚪 [Conversation] Leaving chat room:', requiringChatMark);
+                console.log('[Conversation] Leaving chat room:', requiringChatMark);
                 signalRClient.leaveChat(requiringChatMark)
-                    .then(() => console.log('✅ [Conversation] Left chat room:', requiringChatMark))
-                    .catch((error: any) => console.error('❌ [Conversation] Failed to leave chat room:', error.message));
+                    .then(() => console.log('[Conversation] Left chat room:', requiringChatMark))
+                    .catch((error: any) => console.error('[Conversation] Failed to leave chat room:', error.message));
             }
         };
     }, [requiringChatMark, signalRClient]);

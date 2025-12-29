@@ -61,12 +61,12 @@ export const initializeSignalR = async (
         // Set access token
         if (clientConfig.userToken) {
             signalRClient.setAccessToken(clientConfig.userToken);
-            console.log('✅ [RN SignalR] Token set:', {
+            console.log('[RN SignalR] Token set:', {
                 tokenLength: clientConfig.userToken.length,
                 tokenPreview: clientConfig.userToken.substring(0, 50) + '...'
             });
         } else {
-            console.error('❌ [RN SignalR] Token does not exist!');
+            console.error('[RN SignalR] Token does not exist!');
         }
 
         // Debug info: show connection config
@@ -79,9 +79,9 @@ export const initializeSignalR = async (
         });
 
         // Establish connection
-        console.log('⏳ [RN SignalR] Establishing connection...');
+        console.log('[RN SignalR] Establishing connection...');
         await signalRClient.connect();
-        console.log('✅ [RN SignalR] Connection successful! State:', signalRClient.getConnectionState());
+        console.log('[RN SignalR] Connection successful! State:', signalRClient.getConnectionState());
 
         console.log('📝 [RN SignalR] Setting up event handlers...');
 
@@ -94,18 +94,18 @@ export const initializeSignalR = async (
             // Note: SignalR SDK returns camelCase format (data.message)
             const message = data.message;
             if (message) {
-                console.log('✅ [RN SignalR] Message parsed successfully:', {
+                console.log('[RN SignalR] Message parsed successfully:', {
                     traceId: message.traceId,
                     chatId: data.chatUniqueMark,
                     senderId: message.senderId,
                     content: message.content?.substring(0, 50),
                     timestamp: message.sentTimestamp
                 });
-                console.log('⏳ [RN SignalR] Dispatching to Redux: addNewMessage');
+                console.log('[RN SignalR] Dispatching to Redux: addNewMessage');
                 dispatch(addNewMessage(message));
-                console.log('✅ [RN SignalR] Message added to Redux');
+                console.log('[RN SignalR] Message added to Redux');
             } else {
-                console.error('❌ [RN SignalR] Message data incomplete:', data);
+                console.error('[RN SignalR] Message data incomplete:', data);
             }
             console.log('📨 [RN SignalR] ========== IncomeMessage processing complete ==========');
         };
@@ -117,7 +117,7 @@ export const initializeSignalR = async (
 
             const updatedMessage = data.updatedMessage;
             if (updatedMessage) {
-                console.log('✅ [RN SignalR] Message update:', {
+                console.log('[RN SignalR] Message update:', {
                     traceId: updatedMessage.traceId,
                     updateType: data.updateType
                 });
@@ -151,22 +151,22 @@ export const initializeSignalR = async (
         // Do NOT set it here to avoid overwriting the overview.tsx handler
 
         signalRClient.onReconnecting = (error) => {
-            console.warn('🔄 [RN SignalR] Reconnecting...', error?.message);
+            console.warn('[RN SignalR] Reconnecting...', error?.message);
         };
 
         signalRClient.onReconnected = (connectionId) => {
-            console.log('✅ [RN SignalR] Reconnection successful! ConnectionId:', connectionId);
+            console.log('[RN SignalR] Reconnection successful! ConnectionId:', connectionId);
         };
 
         signalRClient.onConnectionClosed = (error) => {
             console.warn('🔴 [RN SignalR] Connection closed', error?.message);
         };
 
-        console.log('✅ [RN SignalR] ========== SignalR initialization complete ==========');
-        console.log('✅ [RN SignalR] Current connection state:', signalRClient.getConnectionState());
+        console.log('[RN SignalR] ========== SignalR initialization complete ==========');
+        console.log('[RN SignalR] Current connection state:', signalRClient.getConnectionState());
     } catch (error) {
-        console.error('❌ [RN SignalR] ========== Initialization failed ==========');
-        console.error('❌ [RN SignalR] Error details:', {
+        console.error('[RN SignalR] ========== Initialization failed ==========');
+        console.error('[RN SignalR] Error details:', {
             error,
             message: error instanceof Error ? error.message : String(error),
             baseURL: clientConfig.baseURL,

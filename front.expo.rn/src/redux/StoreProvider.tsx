@@ -5,41 +5,41 @@ import { store, RootState, AppDispatch } from 'zen-core-chatty-ts';
 import { initializeStorage } from './storageAdapter';
 
 interface StoreProviderProps {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }
 
 export const StoreProvider: React.FC<StoreProviderProps> = ({ children }) => {
-  const [isStorageInitialized, setIsStorageInitialized] = useState(false);
+    const [isStorageInitialized, setIsStorageInitialized] = useState(false);
 
-  useEffect(() => {
-    const initStorage = async () => {
-      try {
-        await initializeStorage();
-        setIsStorageInitialized(true);
-        console.log('存储适配器初始化完成');
-      } catch (error) {
-        console.error('存储适配器初始化失败:', error);
-        // to be updated: critical error: the storage is the lifeline 
-        setIsStorageInitialized(true);
-      }
-    };
+    useEffect(() => {
+        const initStorage = async () => {
+            try {
+                await initializeStorage();
+                setIsStorageInitialized(true);
+                console.log('init: store service');
+            } catch (error) {
+                console.error('redux store init failed - front:', error);
+                // to be updated: critical error: the storage is the lifeline 
+                setIsStorageInitialized(true);
+            }
+        };
 
-    initStorage();
-  }, []);
+        initStorage();
+    }, []);
 
-  if (!isStorageInitialized) {
-    return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center' 
-      }}>
-        <Text>Loading...</Text>
-      </View>
-    );
-  }
+    if (!isStorageInitialized) {
+        return (
+            <View style={{
+                flex: 1,
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <Text>Loading...</Text>
+            </View>
+        );
+    }
 
-  return <Provider store={store}>{children}</Provider>;
+    return <Provider store={store}>{children}</Provider>;
 };
 
 export { store, RootState, AppDispatch };

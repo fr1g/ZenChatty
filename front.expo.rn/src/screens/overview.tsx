@@ -168,7 +168,7 @@ export default function Overview() {
                     console.log('[Overview] Message timestamps:', timestamps);
                     console.log('[Overview] Latest message time:', new Date(Math.max(...timestamps)).toLocaleString());
                 } else {
-                    console.warn('[Overview] ⚠️ First contact has no message history!');
+                    console.warn('[Overview] First contact has no message history!');
                 }
             }
             console.log('[Overview] ========== Contacts list loaded ==========')
@@ -249,11 +249,11 @@ export default function Overview() {
         const setupHandler = () => {
             const state = signalRClient.getConnectionState();
             if (state === 'Connected') {
-                console.log('[Overview] ✅ SignalR connected, setting up UpdateRecents listener');
+                console.log('[Overview] SignalR connected, setting up UpdateRecents listener');
                 signalRClient.onUpdateRecents = handleUpdateRecents;
                 return true;
             }
-            console.log('[Overview] ⏳ SignalR not connected yet, state:', state);
+            console.log('[Overview] SignalR not connected yet, state:', state);
             return false;
         };
 
