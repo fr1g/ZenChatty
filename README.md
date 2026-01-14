@@ -1,3 +1,5 @@
+!!! NEW REFRESHED PROJ IS HERE (MAY INVISIBLE): [Chatty](https://github.com/fr1g/Chatty/)
+
 # ZenChatty
 Проект диплома для ПРИ. Мессенжер, Чат-приложение.
 
